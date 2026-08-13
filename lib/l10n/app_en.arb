@@ -12,6 +12,13 @@
       "time": {"type": "String"}
     }
   },
+  "adhanCountdownNow": "now",
+  "adhanCountdownIn": "in {clock}",
+  "@adhanCountdownIn": {
+    "placeholders": {
+      "clock": {"type": "String"}
+    }
+  },
   "homeDetected": "home detected",
   "notHome": "not home",
   "checkingHome": "checking home",

@@ -6,6 +6,8 @@
   "homeSubhead": "Diputar ke speaker rumah hanya saat Anda benar-benar di rumah — tanpa akun, tanpa GPS.",
   "nextAdhanEyebrow": "Adzan berikutnya",
   "nextAdhanHero": "{name} · {time}",
+  "adhanCountdownNow": "sekarang",
+  "adhanCountdownIn": "dalam {clock}",
   "homeDetected": "di rumah",
   "notHome": "tidak di rumah",
   "checkingHome": "memeriksa rumah",

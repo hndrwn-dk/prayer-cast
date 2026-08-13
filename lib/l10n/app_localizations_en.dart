@@ -30,6 +30,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get adhanCountdownNow => 'now';
+
+  @override
+  String adhanCountdownIn(String clock) {
+    return 'in $clock';
+  }
+
+  @override
   String get homeDetected => 'home detected';
 
   @override

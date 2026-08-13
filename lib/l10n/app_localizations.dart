@@ -134,6 +134,18 @@ abstract class AppLocalizations {
   /// **'{name} · {time}'**
   String nextAdhanHero(String name, String time);
 
+  /// No description provided for @adhanCountdownNow.
+  ///
+  /// In en, this message translates to:
+  /// **'now'**
+  String get adhanCountdownNow;
+
+  /// No description provided for @adhanCountdownIn.
+  ///
+  /// In en, this message translates to:
+  /// **'in {clock}'**
+  String adhanCountdownIn(String clock);
+
   /// No description provided for @homeDetected.
   ///
   /// In en, this message translates to:

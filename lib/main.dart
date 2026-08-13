@@ -31,6 +31,7 @@ import 'package:prayer_cast/home_delivery/ui/speaker_setup_page.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/atmosphere_background.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
+import 'package:prayer_cast/home_delivery/ui/widgets/adhan_countdown.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
 import 'package:prayer_cast/l10n/locale_controller.dart';
@@ -255,10 +256,11 @@ class _HomeShellState extends ConsumerState<_HomeShell>
       data: (n) => n != null,
       orElse: () => false,
     );
-    final nextTime = nextPrayer.maybeWhen(
-      data: (n) => n == null ? null : _fmtTime(n.scheduledAt),
+    final nextAt = nextPrayer.maybeWhen(
+      data: (n) => n?.scheduledAt,
       orElse: () => null,
     );
+    final nextTime = nextAt == null ? null : _fmtTime(nextAt);
     final nextName = nextPrayer.maybeWhen(
       data: (n) => n == null ? null : prayerDisplayName(l10n, n.name),
       orElse: () => null,
@@ -302,6 +304,7 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                   activeLang: activeLang,
                   canSchedule: canSchedule,
                   nextHeroConfigured: nextHeroConfigured,
+                  nextAt: nextAt,
                   nextTime: nextTime,
                   nextName: nextName,
                   nextEmptyLabel: nextEmptyLabel,
@@ -383,6 +386,7 @@ class _HomeHero extends StatelessWidget {
     required this.activeLang,
     required this.canSchedule,
     required this.nextHeroConfigured,
+    this.nextAt,
     required this.nextTime,
     required this.nextName,
     required this.nextEmptyLabel,
@@ -399,6 +403,7 @@ class _HomeHero extends StatelessWidget {
   final String activeLang;
   final bool canSchedule;
   final bool nextHeroConfigured;
+  final DateTime? nextAt;
   final String? nextTime;
   final String? nextName;
   final String? nextEmptyLabel;
@@ -446,6 +451,7 @@ class _HomeHero extends StatelessWidget {
                     delay: const Duration(milliseconds: 120),
                     child: _NextAdhanJewel(
                       configured: nextHeroConfigured,
+                      scheduledAt: nextAt,
                       time: nextTime,
                       prayerName: nextName,
                       emptyLabel: nextEmptyLabel,
@@ -576,6 +582,7 @@ class _HomeMasthead extends StatelessWidget {
 class _NextAdhanJewel extends StatelessWidget {
   const _NextAdhanJewel({
     required this.configured,
+    this.scheduledAt,
     required this.time,
     required this.prayerName,
     required this.emptyLabel,
@@ -583,6 +590,7 @@ class _NextAdhanJewel extends StatelessWidget {
   });
 
   final bool configured;
+  final DateTime? scheduledAt;
   final String? time;
   final String? prayerName;
   final String? emptyLabel;
@@ -615,6 +623,10 @@ class _NextAdhanJewel extends StatelessWidget {
                 color: PrayerCastColors.mist,
               ),
             ),
+          ],
+          if (scheduledAt != null) ...[
+            const SizedBox(height: 10),
+            AdhanCountdownLabel(scheduledAt: scheduledAt!),
           ],
         ] else
           Text(

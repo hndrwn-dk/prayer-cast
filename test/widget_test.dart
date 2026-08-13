@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:prayer_cast/home_delivery/coordinator/next_prayer_provider.dart';
 import 'package:prayer_cast/home_delivery/logging/delivery_database.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
+import 'package:prayer_cast/home_delivery/ui/widgets/adhan_countdown.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
 import 'package:prayer_cast/main.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
@@ -171,6 +172,8 @@ void main() {
     expect(find.text('Isya · 20:25'), findsNothing);
     expect(find.text('20:25'), findsOneWidget);
     expect(find.text('Isya'), findsOneWidget);
+    expect(find.byKey(AdhanCountdownLabel.keyName), findsOneWidget);
+    expect(find.text('sekarang'), findsOneWidget);
     expect(find.text('Singapore, Singapore'), findsNothing);
     expect(find.text('Singapore'), findsNWidgets(2));
   });
