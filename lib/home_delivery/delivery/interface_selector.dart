@@ -107,11 +107,14 @@ final class SystemNetworkInterfaces implements NetworkInterfaceSource {
   }
 }
 
-/// Picks the LAN interface whose subnet contains the Cast receiver (§5.2).
+/// Picks the local IPv4 the Cast speaker should fetch (§5.2).
 ///
 /// WHY: On a phone with VPN + hotspot + Wi-Fi, advertising the wrong IP is the
-/// most common cause of "speaker connects then goes silent". No shared subnet
-/// ⇒ typed [NoRouteToReceiverFailure] / [Outcome.failedNoRoute].
+/// most common cause of "speaker connects then goes silent". The receiver
+/// address from NSD is unauthenticated — a guest can advertise the saved Cast
+/// id with an off-subnet A-record. Prefer a shared-subnet LAN iface when the
+/// claim is on-net; otherwise advertise on a non-VPN LAN iface. VPN-only
+/// still maps to [NoRouteToReceiverFailure] / [Outcome.failedNoRoute].
 final class InterfaceSelector {
   InterfaceSelector({
     NetworkInterfaceSource? source,
@@ -122,31 +125,74 @@ final class InterfaceSelector {
   final NetworkInterfaceSource _source;
   final HomeDeliveryLogger _logger;
 
-  /// Returns the local IPv4 address that shares a subnet with [receiver].
+  /// Returns the local IPv4 to put in the media URL.
   ///
-  /// Throws [NoRouteToReceiverFailure] when none match.
+  /// [receiver] is an NSD/SDK hint, not a trust boundary. An off-subnet or
+  /// unspecified claim is ignored; a LAN iface is used instead of failing.
   Future<InternetAddress> selectFor(InternetAddress receiver) async {
-    if (receiver.type != InternetAddressType.IPv4) {
-      throw NoRouteToReceiverFailure(
-        'Receiver address is not IPv4: ${receiver.address}',
+    final interfaces = await _source.listIPv4();
+    final lan = [
+      for (final iface in interfaces)
+        if (!isVpnLike(iface.name)) iface,
+    ];
+
+    if (receiver.type == InternetAddressType.IPv4 &&
+        !receiver.isLoopback &&
+        receiver.address != '0.0.0.0') {
+      for (final iface in lan) {
+        if (sameSubnet(iface.address, iface.netmask, receiver)) {
+          _logger.info(
+            'Selected interface ${iface.name} (${iface.address.address}) '
+            'for receiver ${receiver.address}',
+            tag: 'InterfaceSelector',
+          );
+          return iface.address;
+        }
+      }
+      _logger.warn(
+        'Ignoring unauthenticated receiver ${receiver.address} '
+        '(no LAN subnet match) — advertising on a local iface',
+        tag: 'InterfaceSelector',
       );
     }
 
-    final interfaces = await _source.listIPv4();
-    for (final iface in interfaces) {
-      if (sameSubnet(iface.address, iface.netmask, receiver)) {
-        _logger.info(
-          'Selected interface ${iface.name} (${iface.address.address}) '
-          'for receiver ${receiver.address}',
-          tag: 'InterfaceSelector',
-        );
-        return iface.address;
-      }
+    if (lan.isNotEmpty) {
+      final chosen = _preferWifi(lan);
+      _logger.info(
+        'Selected LAN interface ${chosen.name} (${chosen.address.address})',
+        tag: 'InterfaceSelector',
+      );
+      return chosen.address;
     }
 
     throw NoRouteToReceiverFailure(
-      'No local interface shares a subnet with ${receiver.address}',
+      'No local LAN interface to advertise media '
+      '(receiver claim ${receiver.address})',
     );
+  }
+
+  /// TUN/PPP/WireGuard-style names are not reachable from a Nest on Wi-Fi.
+  static bool isVpnLike(String name) {
+    final n = name.toLowerCase();
+    return n.startsWith('tun') ||
+        n.startsWith('utun') ||
+        n.startsWith('ppp') ||
+        n.startsWith('wg') ||
+        n.startsWith('tap') ||
+        n.contains('ipsec') ||
+        n.contains('vpn');
+  }
+
+  static NetworkIface _preferWifi(List<NetworkIface> lan) {
+    for (final iface in lan) {
+      final n = iface.name.toLowerCase();
+      if (n.startsWith('wlan') ||
+          n.startsWith('wifi') ||
+          n.startsWith('wl')) {
+        return iface;
+      }
+    }
+    return lan.first;
   }
 
   /// True when [a] and [b] are in the same subnet under [netmask].

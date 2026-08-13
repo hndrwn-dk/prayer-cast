@@ -33,6 +33,47 @@ void main() {
       expect(chosen.address, '192.168.1.20');
     });
 
+    test('off-subnet NSD claim falls back to LAN, not NO_ROUTE', () async {
+      final selector = InterfaceSelector(
+        source: _FakeIfaces([
+          NetworkIface(
+            name: 'tun0',
+            address: InternetAddress('10.8.0.2'),
+            netmask: InternetAddress('255.255.255.0'),
+          ),
+          NetworkIface(
+            name: 'wlan0',
+            address: InternetAddress('192.168.1.20'),
+            netmask: InternetAddress('255.255.255.0'),
+          ),
+        ]),
+      );
+
+      final chosen =
+          await selector.selectFor(InternetAddress('203.0.113.9'));
+      expect(chosen.address, '192.168.1.20');
+    });
+
+    test('unspecified NSD host falls back to wlan over VPN', () async {
+      final selector = InterfaceSelector(
+        source: _FakeIfaces([
+          NetworkIface(
+            name: 'tun0',
+            address: InternetAddress('10.8.0.2'),
+            netmask: InternetAddress('255.255.255.0'),
+          ),
+          NetworkIface(
+            name: 'wlan0',
+            address: InternetAddress('192.168.1.20'),
+            netmask: InternetAddress('255.255.255.0'),
+          ),
+        ]),
+      );
+
+      final chosen = await selector.selectFor(InternetAddress.anyIPv4);
+      expect(chosen.address, '192.168.1.20');
+    });
+
     test('throws NO_ROUTE_TO_RECEIVER when no subnet matches', () async {
       final selector = InterfaceSelector(
         source: _FakeIfaces([

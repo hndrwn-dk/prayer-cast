@@ -346,6 +346,24 @@ void main() {
       expect(result.outcome, Outcome.played);
     });
 
+    test('poison off-subnet NSD host still casts on LAN iface', () async {
+      final platform = FakeCastPlatform(
+        devices: [
+          CastReceiver(
+            deviceId: castId,
+            friendlyName: 'Kitchen Nest',
+            host: InternetAddress('203.0.113.9'),
+          ),
+        ],
+      );
+      final orch = buildOrchestrator(platform: platform);
+      final future = orch.run(request());
+      await pumpThroughAzan();
+      final result = await future;
+      expect(result.outcome, Outcome.played);
+      expect(platform.loadedUrl?.host, '192.168.1.20');
+    });
+
     test('VPN-only interfaces → FAILED_NO_ROUTE', () async {
       final orch = buildOrchestrator(ifaces: _VpnOnly());
       final future = orch.run(request());

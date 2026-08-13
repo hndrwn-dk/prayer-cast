@@ -90,6 +90,24 @@ abstract interface class CastPlatform {
 
 enum CastPlaybackEvent { idle, finished, playing, error, other }
 
+/// Discovery policy: NSD `_googlecast._tcp` is unauthenticated.
+///
+/// A guest can re-advertise the saved Cast id with a poison A-record.
+/// Early-exit and interface selection must not treat that as a hit.
+final class CastDiscoveryPolicy {
+  /// True when the Cast SDK has sighted [matchId]. NSD-only is not enough.
+  static bool sdkConfirmedMatch({
+    required String? matchId,
+    required Iterable<String> sdkDeviceIds,
+  }) {
+    if (matchId == null || matchId.isEmpty) return false;
+    for (final id in sdkDeviceIds) {
+      if (id == matchId) return true;
+    }
+    return false;
+  }
+}
+
 /// Whether native `RemoteMediaClient.load` will actually run.
 ///
 /// Session-connected (route selected) is not enough — Isha 2026-08-13
@@ -436,11 +454,14 @@ final class FlutterCastPlatform implements CastPlatform {
       );
     }
 
-    // NSD + SDK in parallel. Early-exit when [matchId] has a LAN address so
-    // scheduled prepare at T-20 is not a fixed 8-12s stall.
+    // NSD + SDK in parallel. Early-exit only when the Cast SDK has sighted
+    // [matchId] — an NSD TXT/A-record can be spoofed on the LAN.
     final deadline = DateTime.now().add(budget);
     while (DateTime.now().isBefore(deadline)) {
-      if (matchId != null && hostsById.containsKey(matchId)) {
+      if (CastDiscoveryPolicy.sdkConfirmedMatch(
+        matchId: matchId,
+        sdkDeviceIds: sdkDevices.keys,
+      )) {
         break;
       }
       await Future<void>.delayed(const Duration(milliseconds: 250));
@@ -458,23 +479,28 @@ final class FlutterCastPlatform implements CastPlatform {
 
     final seen = <String, CastReceiver>{};
     for (final entry in sdkDevices.entries) {
-      final host = hostsById[entry.key];
-      if (host == null) continue;
+      // NSD host is a hint only — InterfaceSelector must not fail closed
+      // if it is a poison off-subnet A-record.
+      final host = hostsById[entry.key] ?? InternetAddress.anyIPv4;
       seen[entry.key] = CastReceiver(
         deviceId: entry.key,
         friendlyName: entry.value,
         host: host,
       );
     }
-    for (final entry in hostsById.entries) {
-      seen.putIfAbsent(
-        entry.key,
-        () => CastReceiver(
-          deviceId: entry.key,
-          friendlyName: entry.key,
-          host: entry.value,
-        ),
-      );
+    // Speaker-scan UI may still list NSD-only sightings. Scheduled
+    // connectById (matchId set) requires an SDK-confirmed device.
+    if (matchId == null) {
+      for (final entry in hostsById.entries) {
+        seen.putIfAbsent(
+          entry.key,
+          () => CastReceiver(
+            deviceId: entry.key,
+            friendlyName: entry.key,
+            host: entry.value,
+          ),
+        );
+      }
     }
     return seen.values.toList(growable: false);
   }

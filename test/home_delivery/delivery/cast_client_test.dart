@@ -122,6 +122,39 @@ final class FakeCastPlatform implements CastPlatform {
 }
 
 void main() {
+  group('CastDiscoveryPolicy', () {
+    test('early-exit requires Cast SDK sighting, not NSD-only', () {
+      expect(
+        CastDiscoveryPolicy.sdkConfirmedMatch(
+          matchId: 'cast-home-1',
+          sdkDeviceIds: const [],
+        ),
+        isFalse,
+      );
+      expect(
+        CastDiscoveryPolicy.sdkConfirmedMatch(
+          matchId: 'cast-home-1',
+          sdkDeviceIds: const ['other'],
+        ),
+        isFalse,
+      );
+      expect(
+        CastDiscoveryPolicy.sdkConfirmedMatch(
+          matchId: 'cast-home-1',
+          sdkDeviceIds: const ['cast-home-1'],
+        ),
+        isTrue,
+      );
+      expect(
+        CastDiscoveryPolicy.sdkConfirmedMatch(
+          matchId: null,
+          sdkDeviceIds: const ['cast-home-1'],
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group('CastClient §5.3 / §4.8', () {
     test('matches by device id not friendly name', () async {
       final platform = FakeCastPlatform(
