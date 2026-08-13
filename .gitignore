@@ -1,6 +1,8 @@
 # Miscellaneous
 *.class
-*.lock
+# lockfiles (keep pubspec.lock for app pinning)
+# *.lock
+!pubspec.lock
 *.log
 *.pyc
 *.swp
@@ -117,3 +119,9 @@ app.*.symbols
 !**/ios/**/default.perspectivev3
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 !/dev/ci/**/Gemfile.lock
+# Keep Drift generated sources in git for reproducible CI
+# (run build_runner after schema changes)
+
+.idea/
+*.iml
+

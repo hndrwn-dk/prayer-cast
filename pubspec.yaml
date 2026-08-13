@@ -1,0 +1,67 @@
+name: prayer_cast
+description: Tursina Labs prayer times app — offline adzan cast to home speakers.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.0
+  flutter: '>=3.44.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State — Riverpod providers (not ChangeNotifier). Pinned to 2.6.1 because
+  # 3.x pulls package:test and conflicts with drift_dev/build_runner on
+  # Flutter 3.44.9 (test_api/matcher SDK pins). See Phase 1 notes.
+  flutter_riverpod: 2.6.1
+
+  # Local persistence (spec §6.1)
+  drift: 2.34.3
+  sqlite3: 3.5.1
+  path: 1.9.1
+
+  # Hashing for sessionId (§4.5) and LAN fingerprint (§3.3)
+  crypto: 3.0.7
+
+  # Wired in later phases; pinned now so the module skeleton compiles against them.
+  shelf: 1.4.2
+  nsd: 5.0.1
+  flutter_chrome_cast: 1.4.6
+  # App-shell only: documents path for delivery_log.sqlite (§6.1).
+  path_provider: 2.1.6
+  flutter_localizations:
+    sdk: flutter
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 5.0.0
+  mocktail: 1.0.5
+  drift_dev: 2.34.5
+  build_runner: 2.16.0
+
+# Flutter 3.44.9 pins meta 1.18.0; build_runner/analyzer need ^1.18.3.
+dependency_overrides:
+  meta: 1.18.3
+
+flutter:
+  uses-material-design: true
+  assets:
+    # Real adzan recordings: assets/audio/{voiceId}.mp3 (OPEN TASK — not yet sourced).
+    - assets/audio/
+  fonts:
+    - family: Fraunces
+      fonts:
+        - asset: assets/fonts/Fraunces-Variable.ttf
+    - family: AtkinsonHyperlegible
+      fonts:
+        - asset: assets/fonts/AtkinsonHyperlegible-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/AtkinsonHyperlegible-Italic.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/AtkinsonHyperlegible-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/AtkinsonHyperlegible-BoldItalic.ttf
+          weight: 700
+          style: italic
