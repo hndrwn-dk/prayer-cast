@@ -21,6 +21,55 @@ void main() {
     });
   });
 
+  group('household Cast-id fingerprint / election secret', () {
+    test('matches across phones that saved the same speaker', () {
+      const nest = '5b3609fd-home-group';
+      final a = LanFingerprint.householdFingerprintShort(nest);
+      final b = LanFingerprint.householdFingerprintShort(nest);
+      expect(a, b);
+      expect(a, matches(RegExp(r'^[0-9a-f]{8}$')));
+      expect(
+        LanFingerprint.householdFingerprintShort('other-house'),
+        isNot(a),
+      );
+      expect(
+        LanFingerprint.householdElectionSecret(nest),
+        LanFingerprint.householdElectionSecret(nest),
+      );
+      expect(
+        LanFingerprint.householdElectionSecret(nest),
+        isNot(LanFingerprint.householdElectionSecret('other-house')),
+      );
+    });
+
+    test('shortHashForHome and electionSecret ignore per-install salt',
+        () async {
+      const nest = 'cast-shared-nest';
+      final phoneA = MemoryFingerprintStore(
+        salt: 'salt-phone-a',
+        homeCastId: nest,
+      );
+      final phoneB = MemoryFingerprintStore(
+        salt: 'salt-phone-b',
+        homeCastId: nest,
+      );
+      final fpA = LanFingerprint(
+        browser: FakeMdnsBrowser(const []),
+        store: phoneA,
+      );
+      final fpB = LanFingerprint(
+        browser: FakeMdnsBrowser(const []),
+        store: phoneB,
+      );
+      expect(await fpA.shortHashForHome(), await fpB.shortHashForHome());
+      expect(await fpA.electionSecret(), await fpB.electionSecret());
+      expect(
+        await fpA.electionSecret(),
+        LanFingerprint.householdElectionSecret(nest),
+      );
+    });
+  });
+
   group('LanFingerprint.evaluateSets Jaccard §3.3', () {
     test('matches when J >= 0.4 and overlap >= 2', () {
       final saved = {'a', 'b', 'c', 'd', 'e'};

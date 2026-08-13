@@ -9,6 +9,7 @@ final class FakeCastPlatform implements CastPlatform {
     List<CastReceiver>? devices,
     this.initialVolume = 0.4,
     this.alreadyPlayingContentId,
+    this.alreadyPlayingTitle,
     this.emitPlayingOnLoad = true,
     this.emitPlayingOnCall,
   }) : devices =
@@ -24,6 +25,7 @@ final class FakeCastPlatform implements CastPlatform {
   final List<CastReceiver> devices;
   double initialVolume;
   String? alreadyPlayingContentId;
+  String? alreadyPlayingTitle;
 
   double? lastSetVolume;
   String? loadedContentId;
@@ -75,7 +77,11 @@ final class FakeCastPlatform implements CastPlatform {
   Future<CastMediaSnapshot?> currentMedia() async {
     final id = alreadyPlayingContentId;
     if (id == null) return null;
-    return CastMediaSnapshot(contentId: id, isPlaying: true);
+    return CastMediaSnapshot(
+      contentId: id,
+      title: alreadyPlayingTitle,
+      isPlaying: true,
+    );
   }
 
   @override
@@ -226,6 +232,21 @@ void main() {
       await client.connectById('cast-home-1');
       expect(
         () => client.assertNotAlreadyPlaying(contentId),
+        throwsA(isA<CastAlreadyPlayingFailure>()),
+      );
+    });
+
+    test('§4.8 matches metadata title when contentId is the HTTP URL', () async {
+      const logical = 'adzan:session:makkah';
+      final platform = FakeCastPlatform(
+        alreadyPlayingContentId:
+            'http://192.168.1.20:8080/azan/token/makkah.mp3',
+        alreadyPlayingTitle: logical,
+      );
+      final client = CastClient(platform: platform);
+      await client.connectById('cast-home-1');
+      expect(
+        () => client.assertNotAlreadyPlaying(logical),
         throwsA(isA<CastAlreadyPlayingFailure>()),
       );
     });

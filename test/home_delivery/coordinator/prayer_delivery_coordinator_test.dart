@@ -85,6 +85,28 @@ final class _FakeExactAlarm implements ExactAlarmPlatform {
   Future<void> dispose() => _fireController.close();
 }
 
+final class _CountingNextPrayer implements NextPrayerProvider {
+  _CountingNextPrayer({
+    required this.first,
+    required this.afterFirst,
+    this.onCall,
+  });
+
+  final NextPrayer first;
+  final NextPrayer Function() afterFirst;
+  final void Function()? onCall;
+
+  int calls = 0;
+
+  @override
+  Future<NextPrayer> next({required DateTime after}) async {
+    onCall?.call();
+    calls += 1;
+    if (calls == 1) return first;
+    return afterFirst();
+  }
+}
+
 final class _FakeNextPrayer implements NextPrayerProvider {
   _FakeNextPrayer(this._prayers);
   final List<NextPrayer> _prayers;
@@ -849,6 +871,83 @@ void main() {
     expect(alarm.scheduled.single.prayer, 'maghrib-dryrun');
     expect(alarm.scheduled.single.epochMs, dryWake);
     expect(restarted.scheduledWakeEpochMs, dryWake);
+  });
+
+  test('reschedule failure arms reschedule-retry and skips delivery on that fire',
+      () async {
+    var nextCalls = 0;
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _CountingNextPrayer(
+        first: maghrib,
+        afterFirst: () => throw StateError('offline'),
+        onCall: () => nextCalls += 1,
+      ),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      runDelivery: (request) async {
+        deliveries.add(request);
+        return const DeliveryAttemptResult(
+          sessionId: 'sess',
+          outcome: Outcome.played,
+          role: 'SOLO',
+        );
+      },
+      clock: clock,
+    );
+    await coordinator.start();
+    expect(nextCalls, 1);
+    final wakeMs = alarm.scheduled.single.epochMs;
+    alarm.callOrder.clear();
+
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs + 50,
+        voiceId: 'makkah',
+      ),
+    );
+    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+
+    expect(deliveries, hasLength(1));
+    expect(alarm.scheduled, hasLength(1));
+    expect(
+      alarm.scheduled.single.prayer,
+      PrayerDeliveryCoordinator.rescheduleRetryPrayer,
+    );
+    final retryWake = clock.now()
+        .add(PrayerDeliveryCoordinator.rescheduleRetryDelay)
+        .millisecondsSinceEpoch;
+    expect(alarm.scheduled.single.epochMs, retryWake);
+    expect(alarm.stopForegroundCalls, 1);
+
+    alarm.stopForegroundCalls = 0;
+    final retryEpoch = alarm.scheduled.single.epochMs;
+    clock.advanceTo(
+      DateTime.fromMillisecondsSinceEpoch(retryEpoch, isUtc: true),
+    );
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: PrayerDeliveryCoordinator.rescheduleRetryPrayer,
+        scheduledEpochMs: retryEpoch,
+        firedAtMs: retryEpoch,
+        voiceId: PrayerDeliveryCoordinator.defaultVoiceId,
+      ),
+    );
+    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+
+    expect(deliveries, hasLength(1));
+    expect(
+      alarm.scheduled.single.prayer,
+      PrayerDeliveryCoordinator.rescheduleRetryPrayer,
+    );
   });
 
   test('canonicalPrayerName strips dry-run suffix only', () {

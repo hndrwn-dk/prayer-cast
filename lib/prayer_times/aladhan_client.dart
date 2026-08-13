@@ -20,6 +20,51 @@ final class AladhanDaySchedule {
   final double longitude;
   final List<NextPrayer> slots;
   final String methodName;
+
+  Map<String, Object?> toJson() => {
+        'date': date.toIso8601String(),
+        'timezone': timezone,
+        'latitude': latitude,
+        'longitude': longitude,
+        'methodName': methodName,
+        'slots': [
+          for (final s in slots)
+            {
+              'name': s.name,
+              'scheduledAt': s.scheduledAt.toIso8601String(),
+              'voiceId': s.voiceId,
+            },
+        ],
+      };
+
+  static AladhanDaySchedule fromJson(Map<String, dynamic> json) {
+    final slotsRaw = json['slots'];
+    final slots = <NextPrayer>[];
+    if (slotsRaw is List) {
+      for (final raw in slotsRaw) {
+        if (raw is! Map) continue;
+        final name = raw['name']?.toString() ?? '';
+        final at = DateTime.tryParse(raw['scheduledAt']?.toString() ?? '');
+        if (name.isEmpty || at == null) continue;
+        slots.add(
+          NextPrayer(
+            name: name,
+            scheduledAt: at,
+            voiceId: raw['voiceId']?.toString() ?? 'standard_adhan',
+          ),
+        );
+      }
+    }
+    return AladhanDaySchedule(
+      date: DateTime.tryParse(json['date']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      timezone: json['timezone']?.toString() ?? '',
+      latitude: (json['latitude'] as num?)?.toDouble() ?? 0,
+      longitude: (json['longitude'] as num?)?.toDouble() ?? 0,
+      methodName: json['methodName']?.toString() ?? 'Aladhan',
+      slots: slots,
+    );
+  }
 }
 
 /// Aladhan calculation method (https://aladhan.com/prayer-times-api).

@@ -112,14 +112,13 @@ final class DeliveryOrchestrator {
   Future<DeliveryAttemptResult> run(DeliveryRequest request) async {
     final firedAt = request.firedAt ?? _scheduler.now();
     final scheduled = request.scheduledAzan;
-    final fpShort = LanFingerprint.shortHash(
-      await _fingerprintStore.readHashes(),
-    );
-    // shortHash of empty set is still 8 hex — require onboarding first.
+    final castId = await _fingerprintStore.readHomeCastId();
     final hashes = await _fingerprintStore.readHashes();
-    final homeFp = hashes.isEmpty
-        ? '00000000'
-        : fpShort;
+    // Household fp must match on every phone that saved the same speaker.
+    // shortHash(hashes) is per-install (salted) and broke multi-phone election.
+    final homeFp = (castId != null && castId.isNotEmpty)
+        ? LanFingerprint.householdFingerprintShort(castId)
+        : (hashes.isEmpty ? '00000000' : LanFingerprint.shortHash(hashes));
 
     final sessionId = SessionId.derive(
       prayerName: request.prayerName,
@@ -145,10 +144,10 @@ final class DeliveryOrchestrator {
       );
     }
 
-    // Presence.
-    final snapshot = await _presence.scan();
-    if (snapshot.state == PresenceState.away ||
-        snapshot.state == PresenceState.unknown) {
+    // Presence — §3.6: decide at T−90. Only AWAY suppresses. A cold-start
+    // UNKNOWN after one miss is not away (Nest may still be on the LAN).
+    final snapshot = await _resolvePresence(scheduled);
+    if (snapshot.state == PresenceState.away) {
       return _finish(
         request: request,
         sessionId: sessionId,
@@ -180,7 +179,14 @@ final class DeliveryOrchestrator {
       udpPort: _transport.localEndpoint.port,
     );
 
-    final sharedSecret = await _fingerprintStore.readElectionSecret();
+    var sharedSecret = await _fingerprintStore.readElectionSecret();
+    if (castId != null && castId.isNotEmpty) {
+      final derived = LanFingerprint.householdElectionSecret(castId);
+      if (sharedSecret != derived) {
+        await _fingerprintStore.writeElectionSecret(derived);
+        sharedSecret = derived;
+      }
+    }
     if (sharedSecret == null || sharedSecret.isEmpty) {
       return _finish(
         request: request,
@@ -397,6 +403,32 @@ final class DeliveryOrchestrator {
     _mediaLifetimeTimer = Timer(remaining, () {
       unawaited(_stopMediaServer());
     });
+  }
+
+  /// Scan now; if still UNKNOWN, retry until T−90. Never treat one miss as away.
+  Future<PresenceSnapshot> _resolvePresence(DateTime scheduledAzan) async {
+    var snapshot = await _presence.scan();
+    if (snapshot.state == PresenceState.home ||
+        snapshot.state == PresenceState.away) {
+      return snapshot;
+    }
+
+    final decisionAt = PresenceSchedule.at(
+      scheduledAzan,
+      PresenceSchedule.decisionOffset,
+    );
+    while (_scheduler.now().isBefore(decisionAt)) {
+      final nextTry = _scheduler.now().add(LanFingerprint.browseBudget);
+      final waitUntil =
+          nextTry.isBefore(decisionAt) ? nextTry : decisionAt;
+      await _scheduler.waitUntil(waitUntil);
+      snapshot = await _presence.scan();
+      if (snapshot.state == PresenceState.home ||
+          snapshot.state == PresenceState.away) {
+        return snapshot;
+      }
+    }
+    return snapshot;
   }
 
   Future<void> _watchPlaybackLifetime() async {

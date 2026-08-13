@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:prayer_cast/home_delivery/coordinator/next_prayer_provider.dart';
 
 import 'aladhan_client.dart';
@@ -6,16 +9,20 @@ import 'prayer_prefs.dart';
 /// [NextPrayerProvider] using Aladhan Prayer Times API (global cities).
 ///
 /// Fetches today + tomorrow on demand and picks the next obligatory slot.
-/// Requires network when the in-memory cache is cold.
+/// Successful fetches are written to [scheduleCacheFile] so a cold process
+/// can still arm the next wake offline.
 final class AdhanNextPrayerProvider implements NextPrayerProvider {
   AdhanNextPrayerProvider({
     required PrayerPrefsStore store,
     AladhanClient? client,
+    File? scheduleCacheFile,
   })  : _store = store,
-        _client = client ?? AladhanClient();
+        _client = client ?? AladhanClient(),
+        _scheduleCacheFile = scheduleCacheFile;
 
   final PrayerPrefsStore _store;
   final AladhanClient _client;
+  final File? _scheduleCacheFile;
 
   AladhanDaySchedule? _cachedToday;
   AladhanDaySchedule? _cachedTomorrow;
@@ -74,11 +81,30 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
         '${prefs.methodId}|${prefs.madhabId.name}|${today.toIso8601String()}';
     if (_cacheKey != key || _cachedToday == null || _cachedTomorrow == null) {
       final school = prefs.madhabId.aladhanSchool;
-      final fetchedToday = await _fetch(prefs, today, school);
-      final fetchedTomorrow = await _fetch(prefs, tomorrow, school);
-      _cachedToday = fetchedToday;
-      _cachedTomorrow = fetchedTomorrow;
-      _cacheKey = key;
+      try {
+        final fetchedToday = await _fetch(prefs, today, school);
+        final fetchedTomorrow = await _fetch(prefs, tomorrow, school);
+        _cachedToday = fetchedToday;
+        _cachedTomorrow = fetchedTomorrow;
+        _cacheKey = key;
+        await _writeDiskCache(
+          key,
+          [fetchedToday, fetchedTomorrow],
+          locationKey: _locationKey(prefs),
+        );
+      } catch (e) {
+        final disk = await _readDiskCache();
+        if (disk != null &&
+            disk.days.isNotEmpty &&
+            _diskCovers(disk, prefs: prefs, after: after)) {
+          _cachedToday = disk.days[0];
+          _cachedTomorrow =
+              disk.days.length > 1 ? disk.days[1] : disk.days[0];
+          _cacheKey = key;
+        } else {
+          rethrow;
+        }
+      }
     }
     return [
       _withVoices(_cachedToday!, prefs),
@@ -147,5 +173,71 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
     _cacheKey = null;
     _cachedToday = null;
     _cachedTomorrow = null;
+  }
+
+  static String _locationKey(PrayerPrefs prefs) =>
+      '${prefs.city}|${prefs.country}|${prefs.latitude}|${prefs.longitude}|'
+      '${prefs.methodId}|${prefs.madhabId.name}';
+
+  bool _diskCovers(
+    ({String key, String locationKey, List<AladhanDaySchedule> days}) disk, {
+    required PrayerPrefs prefs,
+    required DateTime after,
+  }) {
+    final loc = _locationKey(prefs);
+    final locationOk =
+        disk.locationKey == loc || disk.key.startsWith('$loc|');
+    if (!locationOk) return false;
+    final localAfter = after.toLocal();
+    return disk.days.any(
+      (d) => d.slots.any((s) => s.scheduledAt.isAfter(localAfter)),
+    );
+  }
+
+  Future<void> _writeDiskCache(
+    String key,
+    List<AladhanDaySchedule> days, {
+    required String locationKey,
+  }) async {
+    final file = _scheduleCacheFile;
+    if (file == null) return;
+    try {
+      await file.parent.create(recursive: true);
+      await file.writeAsString(
+        jsonEncode({
+          'key': key,
+          'locationKey': locationKey,
+          'days': [for (final d in days) d.toJson()],
+        }),
+      );
+    } catch (_) {}
+  }
+
+  Future<({String key, String locationKey, List<AladhanDaySchedule> days})?>
+      _readDiskCache() async {
+    final file = _scheduleCacheFile;
+    if (file == null || !await file.exists()) return null;
+    try {
+      final decoded = jsonDecode(await file.readAsString());
+      if (decoded is! Map) return null;
+      final map = Map<String, dynamic>.from(decoded);
+      final key = map['key']?.toString();
+      final rawDays = map['days'];
+      if (key == null || rawDays is! List) return null;
+      final days = <AladhanDaySchedule>[];
+      for (final raw in rawDays) {
+        if (raw is Map<String, dynamic>) {
+          days.add(AladhanDaySchedule.fromJson(raw));
+        } else if (raw is Map) {
+          days.add(AladhanDaySchedule.fromJson(Map<String, dynamic>.from(raw)));
+        }
+      }
+      if (days.isEmpty) return null;
+      final locationKey =
+          map['locationKey']?.toString() ?? key.split('|').take(6).join('|');
+      return (key: key, locationKey: locationKey, days: days);
+    } catch (_) {
+      return null;
+    }
   }
 }

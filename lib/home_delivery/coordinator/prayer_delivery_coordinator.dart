@@ -91,6 +91,14 @@ final class PrayerDeliveryCoordinator {
   static bool isDryRunPrayer(String prayer) =>
       prayer.endsWith(dryRunPrayerSuffix);
 
+  /// Wake-only retry when the next prayer cannot be resolved (offline cache miss).
+  static const String rescheduleRetryPrayer = 'reschedule-retry';
+
+  static const Duration rescheduleRetryDelay = Duration(minutes: 15);
+
+  static bool isRescheduleRetry(String prayer) =>
+      prayer == rescheduleRetryPrayer;
+
   final ExactAlarmPlatform _exactAlarm;
   final NextPrayerProvider _nextPrayer;
   final DeviceConditionsProvider _deviceConditions;
@@ -284,15 +292,17 @@ final class PrayerDeliveryCoordinator {
 
     try {
       // 1) Run delivery — log failures, do not let them skip reschedule.
-      try {
-        await _deliver(event, azanEpoch: azanEpoch, firedAt: firedAt);
-      } catch (e, st) {
-        _logger.error(
-          'Delivery attempt failed after alarm fire',
-          tag: 'PrayerDeliveryCoordinator',
-          error: e,
-          stackTrace: st,
-        );
+      if (!isRescheduleRetry(event.prayer)) {
+        try {
+          await _deliver(event, azanEpoch: azanEpoch, firedAt: firedAt);
+        } catch (e, st) {
+          _logger.error(
+            'Delivery attempt failed after alarm fire',
+            tag: 'PrayerDeliveryCoordinator',
+            error: e,
+            stackTrace: st,
+          );
+        }
       }
 
       // 2) Reschedule next wake while FGS / wake / Wi-Fi locks are still held.
@@ -300,7 +310,10 @@ final class PrayerDeliveryCoordinator {
         final canSchedule = await _exactAlarm.canScheduleExactAlarms();
         _onPermissionChanged?.call(canSchedule);
         if (canSchedule) {
-          await _scheduleNextAfter(azanEpoch);
+          final after = isRescheduleRetry(event.prayer)
+              ? _clock.now()
+              : azanEpoch;
+          await _scheduleNextAfter(after);
         }
       } catch (e, st) {
         _logger.error(
@@ -309,6 +322,7 @@ final class PrayerDeliveryCoordinator {
           error: e,
           stackTrace: st,
         );
+        await _armRescheduleRetry();
       }
     } finally {
       // 3) Always release FGS locks — even if delivery or reschedule threw.
@@ -413,5 +427,33 @@ final class PrayerDeliveryCoordinator {
       'Unable to find a future wake after $after',
       tag: 'PrayerDeliveryCoordinator',
     );
+    throw StateError('Unable to find a future wake after $after');
+  }
+
+  /// Keep a wake path if Aladhan/cache cannot resolve the next prayer.
+  Future<void> _armRescheduleRetry() async {
+    try {
+      final canSchedule = await _exactAlarm.canScheduleExactAlarms();
+      if (!canSchedule) return;
+      final wake = _clock.now().add(rescheduleRetryDelay);
+      final epochMs = wake.millisecondsSinceEpoch;
+      await _exactAlarm.scheduleNext(
+        epochMs: epochMs,
+        prayer: rescheduleRetryPrayer,
+        voiceId: defaultVoiceId,
+      );
+      _scheduledWakeEpochMs = epochMs;
+      _logger.warn(
+        'Armed $rescheduleRetryPrayer at $epochMs',
+        tag: 'PrayerDeliveryCoordinator',
+      );
+    } catch (e, st) {
+      _logger.error(
+        'Failed to arm reschedule retry',
+        tag: 'PrayerDeliveryCoordinator',
+        error: e,
+        stackTrace: st,
+      );
+    }
   }
 }

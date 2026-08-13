@@ -118,7 +118,7 @@ void main() {
     await db.close();
   });
 
-  String homeFp() => LanFingerprint.shortHash(homeHashes);
+  String homeFp() => LanFingerprint.householdFingerprintShort(castId);
 
   String sessionId() => SessionId.derive(
         prayerName: 'maghrib',
@@ -215,6 +215,30 @@ void main() {
       expect(presence.state, PresenceState.away);
       return presence;
     }
+
+    test('cold-start UNKNOWN after one miss is not AWAY — still casts',
+        () async {
+      final emptyBrowser = FakeMdnsBrowser(const []);
+      final unknownStore = MemoryFingerprintStore(
+        salt: salt,
+        hashes: homeHashes,
+        homeCastId: 'never-matches',
+        electionSecret: 'test-household-election-secret',
+      );
+      final presence = PresenceService(
+        browser: emptyBrowser,
+        store: unknownStore,
+        clock: FakeClock(scheduler.now()),
+      );
+      expect(presence.state, PresenceState.unknown);
+
+      final orch = buildOrchestrator(presence: presence);
+      final future = orch.run(request());
+      await pumpThroughAzan();
+      final result = await future;
+      expect(result.outcome, Outcome.played);
+      expect(castPlatform.loadedContentId, isNotNull);
+    });
 
     test('AWAY → SUPPRESSED_AWAY, no cast', () async {
       final orch = buildOrchestrator(presence: awayPresence());
@@ -343,7 +367,9 @@ void main() {
             host: InternetAddress('192.168.1.50'),
           ),
         ],
-        alreadyPlayingContentId: contentId,
+        alreadyPlayingContentId:
+            'http://192.168.1.20:8080/azan/token/makkah.mp3',
+        alreadyPlayingTitle: contentId,
       );
       final orch = buildOrchestrator(platform: platform);
       final future = orch.run(request());

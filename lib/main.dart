@@ -57,7 +57,10 @@ Future<void> main() async {
   );
 
   const logger = ConsoleLogger();
-  final nextPrayer = AdhanNextPrayerProvider(store: prayerPrefsStore);
+  final nextPrayer = AdhanNextPrayerProvider(
+    store: prayerPrefsStore,
+    scheduleCacheFile: File(p.join(docs.path, 'prayer_schedule_cache.json')),
+  );
   final onboardingHolder = _OnboardingHolder();
   final castTesterHolder = _CastTesterHolder();
   final localPlayerHolder = _LocalPlayerHolder();

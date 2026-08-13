@@ -28,9 +28,14 @@ final class CastMediaSnapshot {
   const CastMediaSnapshot({
     required this.contentId,
     required this.isPlaying,
+    this.title,
   });
 
+  /// Receiver contentId — often the HTTP URL after Xiaomi/loadAdzan.
   final String contentId;
+
+  /// Music metadata title — still `adzan:$sessionId:$voiceId` on load.
+  final String? title;
   final bool isPlaying;
 }
 
@@ -262,14 +267,30 @@ final class CastClient {
     }
   }
 
-  /// §4.8 — abort if the receiver is already playing our adzan contentId.
+  /// §4.8 — abort if the receiver is already playing this session's adzan.
+  ///
+  /// loadAdzan puts the HTTP URL in Cast `contentId` (Xiaomi fetches that
+  /// field). The logical `adzan:$sessionId:$voiceId` is the metadata title.
   Future<void> assertNotAlreadyPlaying(String contentId) async {
     final status = await _platform.currentMedia();
     if (status != null &&
         status.isPlaying &&
-        status.contentId == contentId) {
+        isSameAdzan(logicalId: contentId, status: status)) {
       throw CastAlreadyPlayingFailure(contentId);
     }
+  }
+
+  /// True when [status] is this session's adzan (URL contentId or title).
+  static bool isSameAdzan({
+    required String logicalId,
+    required CastMediaSnapshot status,
+  }) {
+    if (status.contentId == logicalId) return true;
+    final title = status.title;
+    if (title != null && title.isNotEmpty && title == logicalId) {
+      return true;
+    }
+    return false;
   }
 
   /// loadMedia with buffered stream type (§5.3).
@@ -636,8 +657,14 @@ final class FlutterCastPlatform implements CastPlatform {
     final status = cast.GoogleCastRemoteMediaClient.instance.mediaStatus;
     final info = status?.mediaInformation;
     if (status == null || info == null) return null;
+    String? title;
+    final meta = info.metadata;
+    if (meta is cast.GoogleCastMusicMediaMetadata) {
+      title = meta.title;
+    }
     return CastMediaSnapshot(
       contentId: info.contentId,
+      title: title,
       isPlaying: status.playerState == cast.CastMediaPlayerState.playing,
     );
   }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -206,5 +208,37 @@ void main() {
     expect(seen!.queryParameters['latitude'], '1.29');
     expect(seen!.queryParameters['school'], '0');
     expect(seen!.path, isNot(contains('timingsByCity')));
+  });
+
+  test('offline next() reuses disk cache when HTTP fails', () async {
+    final cacheFile = File(
+      '${Directory.systemTemp.path}/prayer_schedule_cache_${DateTime.now().microsecondsSinceEpoch}.json',
+    );
+    addTearDown(() {
+      if (cacheFile.existsSync()) cacheFile.deleteSync();
+    });
+
+    final online = AdhanNextPrayerProvider(
+      store: store,
+      client: client,
+      scheduleCacheFile: cacheFile,
+    );
+    final warmed = await online.next(after: DateTime(2026, 8, 13, 12, 1));
+    expect(warmed.name, 'asr');
+    expect(cacheFile.existsSync(), isTrue);
+
+    final failingClient = AladhanClient(
+      httpClient: MockClient((request) async {
+        throw const SocketException('offline');
+      }),
+    );
+    final offline = AdhanNextPrayerProvider(
+      store: store,
+      client: failingClient,
+      scheduleCacheFile: cacheFile,
+    );
+    final next = await offline.next(after: DateTime(2026, 8, 13, 12, 1));
+    expect(next.name, 'asr');
+    expect(next.scheduledAt.hour, 15);
   });
 }

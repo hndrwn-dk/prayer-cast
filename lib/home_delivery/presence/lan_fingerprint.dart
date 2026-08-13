@@ -132,12 +132,37 @@ final class LanFingerprint {
     return digest.toString().substring(0, 8);
   }
 
+  /// Household `fp` / session material from the saved Cast id.
+  ///
+  /// Per-install LAN salts make [shortHash] of hashes differ on every phone,
+  /// so PeerRegistry filtered everyone out and SessionId diverged. The Cast
+  /// device id is the same on every phone that picked the same speaker.
+  static String householdFingerprintShort(String homeCastId) {
+    final digest = sha256.convert(utf8.encode('prayer-cast-home|$homeCastId'));
+    return digest.toString().substring(0, 8);
+  }
+
+  /// Household election HMAC derived from the same Cast id.
+  ///
+  /// A per-install random secret has no QR/pair path, so CLAIMs failed MAC
+  /// on the other phone. Phones that saved the same speaker converge here.
+  static String householdElectionSecret(String homeCastId) {
+    return sha256
+        .convert(utf8.encode('prayer-cast-election|$homeCastId'))
+        .toString();
+  }
+
   Future<String> shortHashForHome() async {
+    final castId = await _store.readHomeCastId();
+    if (castId != null && castId.isNotEmpty) {
+      return householdFingerprintShort(castId);
+    }
     final hashes = await _store.readHashes();
+    if (hashes.isEmpty) return '00000000';
     return shortHash(hashes);
   }
 
-  /// Household-shared election HMAC secret; create once at onboarding.
+  /// Household-shared election HMAC secret.
   Future<String> electionSecret() => _ensureElectionSecret();
 
   Future<String> _ensureSalt() async {
@@ -149,6 +174,15 @@ final class LanFingerprint {
   }
 
   Future<String> _ensureElectionSecret() async {
+    final castId = await _store.readHomeCastId();
+    if (castId != null && castId.isNotEmpty) {
+      final derived = householdElectionSecret(castId);
+      final existing = await _store.readElectionSecret();
+      if (existing != derived) {
+        await _store.writeElectionSecret(derived);
+      }
+      return derived;
+    }
     final existing = await _store.readElectionSecret();
     if (existing != null && existing.isNotEmpty) return existing;
     final created = _saltGenerator.generate();
