@@ -42,6 +42,9 @@ abstract interface class ExactAlarmPlatform {
 
   Future<void> stopForegroundService();
 
+  /// Currently armed alarm, if any (from native prefs).
+  Future<ScheduledAlarm?> readScheduled();
+
   Stream<AlarmFiredEvent> get onFired;
 }
 
@@ -197,6 +200,36 @@ final class ExactAlarm implements ExactAlarmPlatform {
   }
 
   @override
+  Future<ScheduledAlarm?> readScheduled() async {
+    try {
+      final raw = await _methods.invokeMethod<Object?>('getScheduled');
+      if (raw is! Map) return null;
+      final map = <String, Object?>{
+        for (final e in raw.entries) e.key.toString(): e.value,
+      };
+      final epoch = map['epochMs'];
+      final prayer = map['prayer'];
+      final voiceId = map['voiceId'];
+      if (epoch is! num || prayer is! String) return null;
+      return ScheduledAlarm(
+        epochMs: epoch.toInt(),
+        prayer: prayer,
+        voiceId: voiceId is String ? voiceId : '',
+      );
+    } on MissingPluginException {
+      return null;
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'getScheduled failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+      return null;
+    }
+  }
+
+  @override
   Stream<AlarmFiredEvent> get onFired {
     return _onFired ??= _events.receiveBroadcastStream().map((raw) {
       if (raw is! Map) {
@@ -235,4 +268,17 @@ final class ExactAlarmFailure implements Exception, OutcomeException {
 
   @override
   String toString() => 'ExactAlarmFailure: $message';
+}
+
+/// Snapshot of the alarm currently persisted by the platform plugin.
+final class ScheduledAlarm {
+  const ScheduledAlarm({
+    required this.epochMs,
+    required this.prayer,
+    required this.voiceId,
+  });
+
+  final int epochMs;
+  final String prayer;
+  final String voiceId;
 }

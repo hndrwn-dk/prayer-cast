@@ -25,6 +25,8 @@ void main() {
           return null;
         case 'canScheduleExactAlarms':
           return true;
+        case 'getScheduled':
+          return null;
         default:
           return null;
       }
@@ -52,6 +54,27 @@ void main() {
       'prayer': 'maghrib',
       'voiceId': 'makkah',
     });
+  });
+
+  test('readScheduled maps getScheduled payload', () async {
+    messenger.setMockMethodCallHandler(methodChannel, (call) async {
+      calls.add(call);
+      if (call.method == 'getScheduled') {
+        return {
+          'epochMs': 1_700_000_000_000,
+          'prayer': 'isha-dryrun',
+          'voiceId': 'makkah',
+        };
+      }
+      return null;
+    });
+    final alarm = ExactAlarm();
+    final scheduled = await alarm.readScheduled();
+    expect(calls.single.method, 'getScheduled');
+    expect(scheduled, isNotNull);
+    expect(scheduled!.prayer, 'isha-dryrun');
+    expect(scheduled.epochMs, 1_700_000_000_000);
+    expect(scheduled.voiceId, 'makkah');
   });
 
   test('canScheduleExactAlarms returns platform bool', () async {

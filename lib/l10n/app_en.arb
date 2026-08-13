@@ -1,0 +1,214 @@
+{
+  "@@locale": "en",
+  "appTitle": "Prayer Cast",
+  "homeEyebrow": "Home",
+  "homeHeadline": "Adhan at home,\nonce.",
+  "homeSubhead": "Played on your home speaker only when you are actually home — no account, no GPS.",
+  "nextAdhanEyebrow": "Next adhan",
+  "nextAdhanHero": "{name} · {time}",
+  "@nextAdhanHero": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "time": {"type": "String"}
+    }
+  },
+  "homeDetected": "home detected",
+  "notHome": "not home",
+  "checkingHome": "checking home",
+  "speakerNotSelected": "Speaker not selected yet",
+  "speakerCardEmpty": "No speaker selected",
+  "speakerNamed": "Speaker: {name}",
+  "@speakerNamed": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "speakerLoading": "Speaker…",
+  "prayerNotConfigured": "Prayer times not set yet",
+  "prayerLoading": "Prayer times…",
+  "nextPrayer": "Next: {name} {time}",
+  "@nextPrayer": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "time": {"type": "String"}
+    }
+  },
+  "speakerHome": "Home speaker",
+  "speakerHomeScanHint": "Scan and pick a Cast speaker",
+  "speakerHomeChangeHint": "Change home speaker",
+  "changeHomeSpeaker": "Speaker",
+  "prayerTimes": "Prayer times",
+  "prayerTimesHint": "City, method, and today’s schedule",
+  "deviceEyebrow": "Device",
+  "scheduleEyebrow": "Schedule",
+  "dataOnDeviceOnly": "Data stays only on your phone.",
+  "exactAlarmTitle": "Exact alarm permission needed",
+  "exactAlarmBody": "Without this permission, adhan cannot be scheduled while the phone sleeps.",
+  "exactAlarmOpenSettings": "Open alarm settings",
+  "language": "Language",
+  "languageIndonesian": "Bahasa Indonesia",
+  "languageEnglish": "English",
+  "back": "Back",
+  "save": "Save",
+  "saving": "Saving…",
+  "city": "City",
+  "country": "Country",
+  "prayerFajr": "Fajr",
+  "prayerDhuhr": "Dhuhr",
+  "prayerAsr": "Asr",
+  "prayerMaghrib": "Maghrib",
+  "prayerIsha": "Isha",
+  "madhabShafi": "Asr madhhab · Shafi’i",
+  "madhabHanafi": "Asr madhhab · Hanafi",
+  "madhabAsrOnlyHint": "Only Asr changes. Hanafi Asr is later.",
+  "voiceFajr": "Fajr adhan",
+  "voiceStandard": "Standard adhan",
+  "voiceTestTone": "Test tone",
+  "pillGps": "GPS",
+  "pillManual": "manual",
+  "pillAuto": "auto",
+  "pillFajrOnly": "fajr only",
+  "useCurrentLocation": "Use current location",
+  "detectingLocation": "Detecting location…",
+  "noLocationYet": "No location yet",
+  "changeCityCountry": "Change city / country",
+  "hideCityForm": "Hide city form",
+  "calculationMethod": "Calculation method",
+  "fetchSchedule": "Fetch schedule",
+  "fetchingSchedule": "Fetching schedule…",
+  "todaysSchedule": "Today’s schedule",
+  "scheduleVoiceHint": "Choose how each prayer is delivered, then test",
+  "scheduleEmptyHint": "Tap Fetch schedule or Use current location.",
+  "morePrayers": "+ {count} more times",
+  "@morePrayers": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "hide": "Hide",
+  "locationResolved": "Location: {place}",
+  "@locationResolved": {
+    "placeholders": {
+      "place": {"type": "String"}
+    }
+  },
+  "loadFailed": "Failed to load: {error}",
+  "@loadFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "prayerSaved": "Prayer times saved",
+  "saveFailed": "Failed to save: {error}",
+  "@saveFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "needLocationOrCity": "Use current location, or enter city and country first",
+  "castSent": "{prayer} adhan sent to home speaker ({voice}).",
+  "@castSent": {
+    "placeholders": {
+      "prayer": {"type": "String"},
+      "voice": {"type": "String"}
+    }
+  },
+  "deliveryBeep": "Beep on phone",
+  "deliveryAdhanPhone": "Adhan on phone",
+  "deliveryCast": "Cast",
+  "beepPlayed": "Beep played on this phone.",
+  "adhanPhonePlayed": "{prayer} adhan played on this phone ({voice}).",
+  "@adhanPhonePlayed": {
+    "placeholders": {
+      "prayer": {"type": "String"},
+      "voice": {"type": "String"}
+    }
+  },
+  "phonePlayFailed": "Could not play on this phone: {error}",
+  "@phonePlayFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "locationServiceOff": "Location services are off. Turn on GPS and try again.",
+  "locationDenied": "Location permission denied. Allow location access for automatic detection.",
+  "locationDeniedForever": "Location permission blocked. Open app settings and enable location.",
+  "castBusy": "A test cast is already in progress…",
+  "castNoSpeaker": "Pick a home speaker first in Home speaker.",
+  "castEmptyAudio": "Adhan audio is empty.",
+  "castMediaRejected": "Speaker rejected the media (hits={hits}). Keep phone and speaker on the same Wi‑Fi, not guest/VPN.",
+  "@castMediaRejected": {
+    "placeholders": {
+      "hits": {"type": "int"}
+    }
+  },
+  "castNoFetch": "Speaker did not fetch audio from the phone (0 requests). Check same Wi‑Fi, turn off VPN, and reselect the home speaker.",
+  "castFailed": "Failed to cast to speaker: {error}",
+  "@castFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "speakerSetupTitle": "Home speaker",
+  "speakerSetupIntro": "Group speakers in Google Home first, then pick the group here.",
+  "speakersFound": "{count} speakers found",
+  "@speakersFound": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "reachableNow": "reachable now",
+  "scanAgain": "Scan again",
+  "scanning": "Scanning…",
+  "searchingForSpeakers": "Searching for speakers…",
+  "noSpeakersFoundTitle": "No speakers found",
+  "noSpeakersFoundGuidance": "Make sure your phone and speaker are on the same Wi‑Fi network",
+  "speakerScanRetry": "Try again",
+  "openLocalNetworkSettings": "Open settings",
+  "speakerSaved": "{name} saved as home speaker",
+  "@speakerSaved": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "speakerSaveFailed": "Failed to save speaker: {error}",
+  "@speakerSaveFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "speakerNoneFound": "No Cast speakers on this Wi‑Fi. Make sure your Xiaomi / Google Home speaker is on, on the same Wi‑Fi, and visible in the Google Home app.",
+  "speakerOnlyTvsFound": "Only TVs were found — they are hidden here. Group speakers in Google Home, or turn on a speaker on this Wi‑Fi.",
+  "speakerScanFailed": "Failed to scan speakers. Make sure Wi‑Fi is on and local network permission is allowed.\n{error}",
+  "@speakerScanFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "speakerIpDebug": "IP: {address}",
+  "@speakerIpDebug": {
+    "placeholders": {
+      "address": {"type": "String"}
+    }
+  },
+  "supportOnKofi": "Support on Ko-fi",
+  "@supportOnKofi": {
+    "description": "Tooltip / accessibility label for the home Ko-fi support icon"
+  },
+  "dryRunTitle": "Test scheduled adhan",
+  "dryRunHint": "Runs the real alarm path (wake, presence, then Cast, beep, or phone) — not the speaker test button. Replaces the next alarm until it fires.",
+  "dryRunIn10Minutes": "In 10 minutes",
+  "dryRunIn1Hour": "In 1 hour",
+  "dryRunScheduled": "Test adhan at {time}",
+  "@dryRunScheduled": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "dryRunFailed": "Could not schedule test adhan: {error}",
+  "@dryRunFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  }
+}

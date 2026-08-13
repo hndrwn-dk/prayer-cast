@@ -19,7 +19,7 @@ class AtmosphereBackground extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Color(0xFFEAF3EE),
+                PrayerCastColors.atmosphere,
                 PrayerCastColors.surface,
                 Color(0xFFDCE8E1),
               ],

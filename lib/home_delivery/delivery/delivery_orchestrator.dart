@@ -31,6 +31,8 @@ final class DeliveryRequest {
     required this.homeCastDeviceId,
     required this.playbackVolume,
     required this.deviceConditions,
+    this.contentType = 'audio/mpeg',
+    this.mediaExtension = 'mp3',
     this.firedAt,
   });
 
@@ -38,6 +40,8 @@ final class DeliveryRequest {
   final DateTime scheduledAzan;
   final String voiceId;
   final Uint8List audioBytes;
+  final String contentType;
+  final String mediaExtension;
   final String homeCastDeviceId;
   final double playbackVolume;
   final DeviceConditions deviceConditions;
@@ -63,6 +67,7 @@ final class DeliveryOrchestrator {
     required DeliveryLogDao logDao,
     required Scheduler scheduler,
     HomeDeliveryLogger logger = const SilentLogger(),
+    Duration playbackConfirmTimeout = const Duration(seconds: 20),
   })  : _presence = presence,
         _fingerprintStore = fingerprintStore,
         _identity = identity,
@@ -72,7 +77,8 @@ final class DeliveryOrchestrator {
         _interfaces = interfaces,
         _logDao = logDao,
         _scheduler = scheduler,
-        _logger = logger;
+        _logger = logger,
+        _playbackConfirmTimeout = playbackConfirmTimeout;
 
   /// Alarms more than this late *relative to the wake epoch* (T−120) are OEM
   /// battery kills (§6.2). Must not be measured against azan T — a wake that
@@ -80,8 +86,9 @@ final class DeliveryOrchestrator {
   /// double-cast while another peer is already leading.
   static const Duration alarmMissedThreshold = Duration(seconds: 60);
 
-  /// Media server lifetime cap after T (§5.1).
-  static const Duration mediaServerMaxLifetime = Duration(seconds: 180);
+  /// Media server lifetime cap after T. Match the working test button
+  /// (6 min) — a full adhan is 4–5 min; 180s cut playback off.
+  static const Duration mediaServerMaxLifetime = Duration(minutes: 6);
 
   final PresenceService _presence;
   final FingerprintStore _fingerprintStore;
@@ -93,6 +100,10 @@ final class DeliveryOrchestrator {
   final DeliveryLogDao _logDao;
   final Scheduler _scheduler;
   final HomeDeliveryLogger _logger;
+
+  /// How long onLead waits for PLAYING (or a media-server fetch) before
+  /// treating loadMedia as a silent failure. Matches the manual test button.
+  final Duration _playbackConfirmTimeout;
 
   MediaServer? _mediaServer;
   Timer? _mediaLifetimeTimer;
@@ -150,6 +161,10 @@ final class DeliveryOrchestrator {
       );
     }
 
+    // Load CastContext / MediaRouter during T-120..T-20 so GMS Dynamite
+    // is not first touched at startSession (00:09 dry-run timed out there).
+    unawaited(_cast.warmUp());
+
     final deviceId = await _identity.deviceId();
     final priority = _identity.priority(request.deviceConditions);
     final registry = PeerRegistry(
@@ -199,7 +214,10 @@ final class DeliveryOrchestrator {
     try {
       final electionResult = await election.run(
         onPrepare: () async {
-          final receiver = await _cast.connectById(request.homeCastDeviceId);
+          final receiver = await _cast.connectById(
+            request.homeCastDeviceId,
+            budget: const Duration(seconds: 12),
+          );
           targetId = receiver.deviceId;
           targetName = receiver.friendlyName;
           advertisedHost = await _interfaces.selectFor(receiver.host);
@@ -209,6 +227,8 @@ final class DeliveryOrchestrator {
           final server = MediaServer(
             audioBytes: request.audioBytes,
             voiceId: request.voiceId,
+            contentType: request.contentType,
+            fileExtension: request.mediaExtension,
             logger: _logger,
           );
           await server.start();
@@ -228,13 +248,61 @@ final class DeliveryOrchestrator {
             voiceId: request.voiceId,
           );
           await _cast.assertNotAlreadyPlaying(contentId);
-          final loadStarted = _scheduler.now();
-          await _cast.loadAdzan(
-            contentId: contentId,
-            contentUrl: server.mediaUri(host),
+          // Subscribe before loadMedia — PLAYING may arrive synchronously
+          // in tests, or seconds later on a real receiver.
+          final playingOrDone = _cast.playbackEvents.firstWhere(
+            (e) =>
+                e == CastPlaybackEvent.playing ||
+                e == CastPlaybackEvent.finished,
           );
+          final failed = _cast.playbackEvents.firstWhere(
+            (e) => e == CastPlaybackEvent.error,
+          );
+          // Re-apply volume after media client is ready (same as test button).
+          await _cast.applyPlaybackVolume(request.playbackVolume);
+          final loadStarted = _scheduler.now();
+          final deadline = loadStarted.add(_playbackConfirmTimeout);
+          Object? outcome;
+          while (true) {
+            await _cast.loadAdzan(
+              contentId: contentId,
+              contentUrl: server.mediaUri(host),
+              contentType: request.contentType,
+            );
+            final now = _scheduler.now();
+            if (!now.isBefore(deadline)) {
+              outcome = 'timeout';
+              break;
+            }
+            final retryAt = now.add(const Duration(seconds: 1));
+            final waitUntil = retryAt.isBefore(deadline) ? retryAt : deadline;
+            outcome = await Future.any<Object>([
+              playingOrDone,
+              failed,
+              _scheduler.waitUntil(waitUntil).then<Object>((_) {
+                if (server.hitCount > 0) return 'fetched';
+                if (!_scheduler.now().isBefore(deadline)) return 'timeout';
+                return 'retry';
+              }),
+            ]);
+            if (outcome != 'retry') break;
+            _logger.warn(
+              'Retry loadMedia after 0 fetches (media client may not be ready)',
+              tag: 'DeliveryOrchestrator',
+            );
+          }
           latencyMs =
               _scheduler.now().difference(loadStarted).inMilliseconds;
+          if (outcome == CastPlaybackEvent.error) {
+            throw CastLoadMediaFailure('receiver reported ERROR');
+          }
+          if ((outcome == 'timeout' || outcome == 'retry') &&
+              server.hitCount == 0) {
+            throw CastLoadMediaFailure(
+              'no PLAYING within ${_playbackConfirmTimeout.inSeconds}s '
+              'and speaker fetched 0 bytes',
+            );
+          }
         },
       );
 
@@ -242,9 +310,9 @@ final class DeliveryOrchestrator {
       if (electionResult.outcome != Outcome.played) {
         await _teardownCastAndServer();
       } else {
-        // Playback continues on the receiver; stop HTTP on IDLE/FINISHED or
-        // T+180, whichever first (§5.1). Volume restore on finished.
-        unawaited(_watchPlaybackLifetime(scheduled));
+        // Playback continues on the receiver. Keep HTTP up like the test
+        // button (6 min). Do not endSession — that stops casting.
+        unawaited(_watchPlaybackLifetime());
       }
 
       if (electionResult.clockSkewDetected &&
@@ -315,7 +383,11 @@ final class DeliveryOrchestrator {
 
   void _armMediaLifetime(DateTime scheduled) {
     _mediaLifetimeTimer?.cancel();
-    final deadline = scheduled.add(mediaServerMaxLifetime);
+    final fromT = scheduled.add(mediaServerMaxLifetime);
+    // Late Dart start (BAL delay) must still serve long enough for the
+    // receiver to connect and GET — not tear down at a T+180 already past.
+    final fromNow = _scheduler.now().add(mediaServerMaxLifetime);
+    final deadline = fromT.isAfter(fromNow) ? fromT : fromNow;
     final remaining = deadline.difference(_scheduler.now());
     if (remaining <= Duration.zero) {
       unawaited(_teardownCastAndServer());
@@ -323,21 +395,29 @@ final class DeliveryOrchestrator {
     }
     // Wall timer as a safety net; primary stop is playback event.
     _mediaLifetimeTimer = Timer(remaining, () {
-      unawaited(_teardownCastAndServer());
+      unawaited(_stopMediaServer());
     });
   }
 
-  Future<void> _watchPlaybackLifetime(DateTime scheduled) async {
+  Future<void> _watchPlaybackLifetime() async {
     try {
-      await _cast.playbackEvents.firstWhere(
-        (e) =>
-            e == CastPlaybackEvent.idle || e == CastPlaybackEvent.finished,
-      );
+      await _cast.playbackEvents
+          .firstWhere((e) => e == CastPlaybackEvent.finished)
+          .timeout(mediaServerMaxLifetime);
     } catch (_) {
-      // Stream closed — fall through to teardown.
+      // Timeout, IDLE-only devices, or stream closed — leave session up.
     }
     await _cast.restoreVolume();
-    await _teardownCastAndServer(restoreVolume: false);
+    await _stopMediaServer();
+  }
+
+  Future<void> _stopMediaServer() async {
+    _mediaLifetimeTimer?.cancel();
+    _mediaLifetimeTimer = null;
+    try {
+      await _mediaServer?.stop();
+    } catch (_) {}
+    _mediaServer = null;
   }
 
   Future<void> _teardownCastAndServer({bool restoreVolume = true}) async {

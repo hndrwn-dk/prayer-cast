@@ -17,16 +17,24 @@ final class MediaServer {
   MediaServer({
     required this.audioBytes,
     required this.voiceId,
+    this.contentType = 'audio/mpeg',
+    this.fileExtension = 'mp3',
     HomeDeliveryLogger logger = const SilentLogger(),
     String? pathToken,
   })  : pathToken = pathToken ?? _randomToken(),
         _logger = logger;
 
-  /// Raw MP3 bytes (bundled asset, loaded by the app shell).
+  /// Raw audio bytes (bundled asset, loaded by the app shell).
   final Uint8List audioBytes;
 
-  /// Voice identifier used in the URL path (`{voiceId}.mp3`).
+  /// Voice identifier used in the URL path (`{voiceId}.{ext}`).
   final String voiceId;
+
+  /// MIME type advertised to Cast (`audio/mpeg` or `audio/wav`).
+  final String contentType;
+
+  /// File extension in the media path.
+  final String fileExtension;
 
   /// Per-session path token (§5.1) — random, not guessable on the LAN.
   final String pathToken;
@@ -35,6 +43,7 @@ final class MediaServer {
 
   HttpServer? _server;
   Completer<void>? _stopped;
+  int _hitCount = 0;
 
   /// Ephemeral port once [start] has completed.
   int? get port => _server?.port;
@@ -42,8 +51,11 @@ final class MediaServer {
   /// Whether the server is currently accepting connections.
   bool get isRunning => _server != null;
 
+  /// Successful GET/HEAD hits on the media path (Cast fetch probe).
+  int get hitCount => _hitCount;
+
   /// Public URL path for this session (no host).
-  String get mediaPath => '/azan/$pathToken/$voiceId.mp3';
+  String get mediaPath => '/azan/$pathToken/$voiceId.$fileExtension';
 
   /// Full URL advertised to the Cast receiver.
   Uri mediaUri(InternetAddress host) => Uri(
@@ -95,26 +107,41 @@ final class MediaServer {
   Future<void> get done => _stopped?.future ?? Future<void>.value();
 
   FutureOr<Response> _handler(Request request) {
-    if (request.method != 'GET') {
+    final method = request.method;
+    // Cast receivers often probe with HEAD before GET. Rejecting HEAD with
+    // 405 is a common cause of "loadMedia OK, speaker silent".
+    if (method != 'GET' && method != 'HEAD') {
       return Response(405, body: 'Method Not Allowed');
     }
 
     // shelf exposes path without a leading slash.
     final path = '/${request.url.path}';
     if (path != mediaPath) {
+      _logger.warn(
+        'MediaServer ${method} miss path=$path',
+        tag: 'MediaServer',
+      );
       return Response.notFound('Not Found');
     }
 
     final total = audioBytes.length;
     final rangeHeader = request.headers['range'];
+    final isHead = method == 'HEAD';
 
     if (rangeHeader == null || rangeHeader.isEmpty) {
-      return Response.ok(
-        audioBytes,
+      _hitCount++;
+      _logger.info(
+        'MediaServer $method full bytes=$total hit=$_hitCount',
+        tag: 'MediaServer',
+      );
+      return Response(
+        200,
+        body: isHead ? null : audioBytes,
         headers: {
-          'Content-Type': 'audio/mpeg',
+          'Content-Type': contentType,
           'Accept-Ranges': 'bytes',
           'Content-Length': '$total',
+          'Access-Control-Allow-Origin': '*',
         },
       );
     }
@@ -123,7 +150,7 @@ final class MediaServer {
     if (range == null) {
       return Response(
         416,
-        body: 'Range Not Satisfiable',
+        body: isHead ? null : 'Range Not Satisfiable',
         headers: {
           'Content-Range': 'bytes */$total',
           'Accept-Ranges': 'bytes',
@@ -133,16 +160,22 @@ final class MediaServer {
 
     final (start, end) = range;
     final length = end - start + 1;
-    final slice = Uint8List.sublistView(audioBytes, start, end + 1);
+    final slice = isHead ? null : Uint8List.sublistView(audioBytes, start, end + 1);
+    _hitCount++;
+    _logger.info(
+      'MediaServer $method range=$start-$end/$total hit=$_hitCount',
+      tag: 'MediaServer',
+    );
 
     return Response(
       206,
       body: slice,
       headers: {
-        'Content-Type': 'audio/mpeg',
+        'Content-Type': contentType,
         'Accept-Ranges': 'bytes',
         'Content-Range': 'bytes $start-$end/$total',
         'Content-Length': '$length',
+        'Access-Control-Allow-Origin': '*',
       },
     );
   }

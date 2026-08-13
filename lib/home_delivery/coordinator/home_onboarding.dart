@@ -1,0 +1,115 @@
+import 'dart:convert';
+import 'dart:io';
+
+import '../delivery/cast_client.dart';
+import '../presence/fingerprint_store.dart';
+import '../presence/lan_fingerprint.dart';
+
+/// Result of a Cast LAN scan for speaker setup.
+final class SpeakerScanResult {
+  const SpeakerScanResult({required this.devices});
+
+  final List<CastReceiver> devices;
+
+  Map<String, Object?> toJson() => {
+    'devices': [
+      for (final d in devices)
+        {
+          'deviceId': d.deviceId,
+          'friendlyName': d.friendlyName,
+          'host': d.host.address,
+        },
+    ],
+  };
+
+  String toCacheJson() => jsonEncode(toJson());
+
+  /// Reconstructs receivers from disk. Null means missing or corrupt cache.
+  static SpeakerScanResult? fromCacheJson(String raw) {
+    if (raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final devicesRaw = decoded['devices'];
+      if (devicesRaw is! List) return const SpeakerScanResult(devices: []);
+      final devices = <CastReceiver>[];
+      for (final item in devicesRaw) {
+        if (item is! Map) continue;
+        final id = item['deviceId'];
+        final name = item['friendlyName'];
+        final host = item['host'];
+        if (id is! String || name is! String || host is! String) continue;
+        if (id.isEmpty || host.isEmpty) continue;
+        final address = InternetAddress.tryParse(host);
+        if (address == null) continue;
+        devices.add(
+          CastReceiver(deviceId: id, friendlyName: name, host: address),
+        );
+      }
+      return SpeakerScanResult(devices: devices);
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+/// Saved home speaker snapshot for UI.
+final class SavedHomeSpeaker {
+  const SavedHomeSpeaker({required this.deviceId, this.friendlyName});
+
+  final String deviceId;
+  final String? friendlyName;
+
+  String get displayName {
+    final name = friendlyName?.trim();
+    if (name != null && name.isNotEmpty) return name;
+    return deviceId;
+  }
+}
+
+/// Onboarding: discover Cast targets and persist Signal A + B (§3.2 / §3.3).
+final class HomeOnboarding {
+  HomeOnboarding({
+    required CastPlatform castPlatform,
+    required FingerprintStore store,
+    required LanFingerprint lanFingerprint,
+  }) : _castPlatform = castPlatform,
+       _store = store,
+       _lanFingerprint = lanFingerprint;
+
+  final CastPlatform _castPlatform;
+  final FingerprintStore _store;
+  final LanFingerprint _lanFingerprint;
+
+  static const Duration scanBudget = Duration(seconds: 8);
+
+  Future<SavedHomeSpeaker?> readSavedSpeaker() async {
+    final id = await _store.readHomeCastId();
+    if (id == null || id.isEmpty) return null;
+    final name = await _store.readHomeCastFriendlyName();
+    return SavedHomeSpeaker(deviceId: id, friendlyName: name);
+  }
+
+  Future<SpeakerScanResult> scanSpeakers({Duration budget = scanBudget}) async {
+    final devices = await _castPlatform.discover(budget: budget);
+    return SpeakerScanResult(devices: List<CastReceiver>.from(devices));
+  }
+
+  /// Last successful scan, including a genuine empty list. Null if never scanned.
+  Future<SpeakerScanResult?> readCachedSpeakerScan() async {
+    final raw = await _store.readLastSpeakerScanJson();
+    if (raw == null) return null;
+    return SpeakerScanResult.fromCacheJson(raw);
+  }
+
+  Future<void> writeCachedSpeakerScan(SpeakerScanResult result) async {
+    await _store.writeLastSpeakerScanJson(result.toCacheJson());
+  }
+
+  /// Persist Cast id (Signal A), friendly name, and LAN fingerprint (Signal B).
+  Future<CapturedFingerprint> saveHomeSpeaker(CastReceiver receiver) async {
+    await _store.writeHomeCastId(receiver.deviceId);
+    await _store.writeHomeCastFriendlyName(receiver.friendlyName);
+    return _lanFingerprint.captureHome();
+  }
+}

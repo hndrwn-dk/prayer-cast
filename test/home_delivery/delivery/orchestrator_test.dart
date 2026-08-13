@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -129,6 +130,7 @@ void main() {
     PresenceService? presence,
     NetworkInterfaceSource? ifaces,
     FakeCastPlatform? platform,
+    Duration playbackConfirmTimeout = const Duration(seconds: 20),
   }) {
     return DeliveryOrchestrator(
       presence: presence ??
@@ -147,6 +149,7 @@ void main() {
       interfaces: InterfaceSelector(source: ifaces ?? _LanIfaces()),
       logDao: dao,
       scheduler: scheduler,
+      playbackConfirmTimeout: playbackConfirmTimeout,
     );
   }
 
@@ -184,7 +187,7 @@ void main() {
       expect(result.outcome, Outcome.played);
       expect(result.role, 'SOLO');
       expect(castPlatform.loadedContentId, isNotNull);
-      expect(castPlatform.lastSetVolume, 0.7);
+      expect(castPlatform.initialVolume, 0.4);
 
       final rows = await dao.latest();
       expect(rows, hasLength(1));
@@ -350,6 +353,117 @@ void main() {
     });
 
     test(
+      'does not loadMedia until media client is ready (session is not enough)',
+      () async {
+        // Isha 2026-08-13: hasConnectedSession was true, load was a no-op,
+        // 0 GETs. Scheduled path must wait like the test button.
+        final platform = FakeCastPlatform(
+          devices: [
+            CastReceiver(
+              deviceId: castId,
+              friendlyName: 'Home group speaker',
+              host: InternetAddress('192.168.1.50'),
+            ),
+          ],
+        );
+        final gate = Completer<void>();
+        platform.readyGate = gate;
+        final orch = buildOrchestrator(platform: platform);
+        final future = orch.run(request());
+        await scheduler.pumpUntil(t.subtract(const Duration(seconds: 19)));
+        expect(platform.loadCallCount, 0);
+
+        gate.complete();
+        await pumpThroughAzan();
+        final result = await future;
+        expect(result.outcome, Outcome.played);
+        expect(platform.loadCallCount, greaterThanOrEqualTo(1));
+      },
+    );
+
+    test(
+      'loadMedia without PLAYING or fetch → FAILED_LOAD_MEDIA, not PLAYED',
+      () async {
+        // Maghrib 2026-08-13: native fire was on time, loadMedia returned in
+        // 5ms, log said PLAYED, speaker never GET. Scheduled path must wait
+        // like the manual Cast test button.
+        final platform = FakeCastPlatform(
+          devices: [
+            CastReceiver(
+              deviceId: castId,
+              friendlyName: 'Kitchen Nest',
+              host: InternetAddress('192.168.1.50'),
+            ),
+          ],
+          emitPlayingOnLoad: false,
+        );
+        final orch = buildOrchestrator(
+          platform: platform,
+          playbackConfirmTimeout: const Duration(seconds: 2),
+        );
+        final future = orch.run(request());
+        await scheduler.pumpUntil(t.add(const Duration(seconds: 5)));
+        final result = await future;
+        expect(result.outcome, Outcome.failedLoadMedia);
+        expect(platform.loadCallCount, greaterThanOrEqualTo(2));
+        expect((await dao.latest()).single.outcome, Outcome.failedLoadMedia.code);
+      },
+    );
+
+    test(
+      'retry loadMedia after silent first load → PLAYED',
+      () async {
+        // Isha 2026-08-13: first loadMedia dropped (session not ready),
+        // 0 GETs. Second load after wait must be allowed to succeed.
+        final platform = FakeCastPlatform(
+          devices: [
+            CastReceiver(
+              deviceId: castId,
+              friendlyName: 'Kitchen Nest',
+              host: InternetAddress('192.168.1.50'),
+            ),
+          ],
+          emitPlayingOnCall: 2,
+        );
+        final orch = buildOrchestrator(
+          platform: platform,
+          playbackConfirmTimeout: const Duration(seconds: 2),
+        );
+        final future = orch.run(request());
+        await scheduler.pumpUntil(t.add(const Duration(seconds: 5)));
+        final result = await future;
+        expect(result.outcome, Outcome.played);
+        expect(platform.loadCallCount, 2);
+      },
+    );
+
+    test(
+      'failed load does not restore volume 0',
+      () async {
+        final platform = FakeCastPlatform(
+          devices: [
+            CastReceiver(
+              deviceId: castId,
+              friendlyName: 'Kitchen Nest',
+              host: InternetAddress('192.168.1.50'),
+            ),
+          ],
+          initialVolume: 0.0,
+          emitPlayingOnLoad: false,
+        );
+        final orch = buildOrchestrator(
+          platform: platform,
+          playbackConfirmTimeout: const Duration(seconds: 2),
+        );
+        final future = orch.run(request());
+        await scheduler.pumpUntil(t.add(const Duration(seconds: 5)));
+        final result = await future;
+        expect(result.outcome, Outcome.failedLoadMedia);
+        expect(platform.lastSetVolume, 0.7);
+      },
+    );
+
+    test(
       'MediaServer path token is never equal to sessionId for a delivery',
       () async {
         final orch = buildOrchestrator();
@@ -360,13 +474,11 @@ void main() {
 
         expect(result.outcome, Outcome.played);
         expect(result.sessionId, sid);
-        // contentId stays deterministic and session-scoped (§4.8).
-        expect(
-          castPlatform.loadedContentId,
-          CastClient.contentIdFor(sessionId: sid, voiceId: 'makkah'),
-        );
         final url = castPlatform.loadedUrl;
         expect(url, isNotNull);
+        // Cast contentId must be the fetchable HTTP URL (Xiaomi / some
+        // receivers ignore contentUrl and use contentId as the media URL).
+        expect(castPlatform.loadedContentId, url.toString());
         // /azan/{pathToken}/{voiceId}.mp3 — pathToken must not be sessionId.
         final segments = url!.pathSegments;
         expect(segments.length, 3);

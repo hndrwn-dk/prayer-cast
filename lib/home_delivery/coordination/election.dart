@@ -77,7 +77,7 @@ final class Election {
 
   /// Run the full coordination protocol for this device.
   ///
-  /// [onPrepare] is invoked for the leader at T−5 (HTTP + Cast pre-connect).
+  /// [onPrepare] is invoked for the leader at T−20 (HTTP + Cast pre-connect).
   /// [onLead] is invoked at T+0 when this device should `loadMedia`. When
   /// [onLead] completes successfully the election broadcasts PLAYING. If
   /// [onLead] throws, the device YIELDs.

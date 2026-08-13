@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../prayer_times/prayer_prefs.dart';
 import '../common/clock.dart';
 import '../common/logger.dart';
 import '../delivery/delivery_orchestrator.dart';
@@ -10,7 +11,9 @@ import '../platform/exact_alarm.dart';
 import '../presence/presence_schedule.dart';
 import 'adzan_audio_loader.dart';
 import 'delivery_settings.dart';
+import 'local_prayer_player.dart';
 import 'next_prayer_provider.dart';
+import 'prayer_delivery_mode_source.dart';
 
 /// Whether Android can schedule exact alarms (`SCHEDULE_EXACT_ALARM`).
 ///
@@ -48,6 +51,8 @@ final class PrayerDeliveryCoordinator {
     required Future<DeliveryAttemptResult> Function(DeliveryRequest request)
         runDelivery,
     required Clock clock,
+    PrayerDeliveryModeSource? deliveryModes,
+    LocalPrayerPlayer? localPlayer,
     void Function(bool granted)? onPermissionChanged,
     HomeDeliveryLogger logger = const SilentLogger(),
   })  : _exactAlarm = exactAlarm,
@@ -57,11 +62,34 @@ final class PrayerDeliveryCoordinator {
         _audioLoader = audioLoader,
         _runDelivery = runDelivery,
         _clock = clock,
+        _deliveryModes = deliveryModes ?? const AlwaysCastDeliveryModeSource(),
+        _localPlayer = localPlayer ?? const SilentLocalPrayerPlayer(),
         _onPermissionChanged = onPermissionChanged,
         _logger = logger;
 
   /// Fallback when a fired event has no voiceId (legacy prefs / corruption).
-  static const String defaultVoiceId = 'makkah';
+  static const String defaultVoiceId = 'standard_adhan';
+
+  /// Alarm / log marker so a dry-run is visible without colliding with
+  /// production queries for canonical names (`isha`, `maghrib`, …).
+  static const String dryRunPrayerSuffix = '-dryrun';
+
+  /// Azan-in-10-minutes dry-run. Wake is still T−120.
+  static const Duration dryRunIn10Minutes = Duration(minutes: 10);
+
+  /// Azan-in-1-hour dry-run. Wake is still T−120.
+  static const Duration dryRunIn1Hour = Duration(hours: 1);
+
+  /// Strip [dryRunPrayerSuffix] so mode / voice lookup uses the real slot.
+  static String canonicalPrayerName(String prayer) {
+    if (prayer.endsWith(dryRunPrayerSuffix)) {
+      return prayer.substring(0, prayer.length - dryRunPrayerSuffix.length);
+    }
+    return prayer;
+  }
+
+  static bool isDryRunPrayer(String prayer) =>
+      prayer.endsWith(dryRunPrayerSuffix);
 
   final ExactAlarmPlatform _exactAlarm;
   final NextPrayerProvider _nextPrayer;
@@ -71,6 +99,8 @@ final class PrayerDeliveryCoordinator {
   final Future<DeliveryAttemptResult> Function(DeliveryRequest request)
       _runDelivery;
   final Clock _clock;
+  final PrayerDeliveryModeSource _deliveryModes;
+  final LocalPrayerPlayer _localPlayer;
   final void Function(bool granted)? _onPermissionChanged;
   final HomeDeliveryLogger _logger;
 
@@ -136,6 +166,19 @@ final class PrayerDeliveryCoordinator {
       return;
     }
 
+    final existing = await _exactAlarm.readScheduled();
+    if (existing != null &&
+        isDryRunPrayer(existing.prayer) &&
+        existing.epochMs > _clock.now().millisecondsSinceEpoch) {
+      _scheduledWakeEpochMs = existing.epochMs;
+      _logger.info(
+        'Keeping armed dry-run wake at ${existing.epochMs} '
+        'for ${existing.prayer}',
+        tag: 'PrayerDeliveryCoordinator',
+      );
+      return;
+    }
+
     await _scheduleNextAfter(_clock.now());
   }
 
@@ -143,6 +186,69 @@ final class PrayerDeliveryCoordinator {
     await _fireSub?.cancel();
     _fireSub = null;
     _started = false;
+  }
+
+  /// Arm the same AlarmClock → FGS → [onFired] path as a real prayer, with
+  /// azan at now + [untilAzan] (wake at T−120). Replaces any previously
+  /// scheduled wake, including an earlier dry-run.
+  ///
+  /// Uses the next upcoming prayer's name + voice so Cast/beep/phone mode
+  /// matches that slot. Returns the azan instant for the inline confirmation.
+  Future<DateTime> scheduleDryRun({required Duration untilAzan}) async {
+    if (!_started) {
+      throw StateError('Coordinator not started');
+    }
+    if (_handling) {
+      throw StateError('Delivery already in progress');
+    }
+
+    final canSchedule = await _exactAlarm.canScheduleExactAlarms();
+    _onPermissionChanged?.call(canSchedule);
+    if (!canSchedule) {
+      throw ExactAlarmFailure('SCHEDULE_EXACT_ALARM not granted');
+    }
+
+    final now = _clock.now();
+    final azanEpoch = now.add(untilAzan);
+    final wakeEpochMs =
+        azanEpoch.add(PresenceSchedule.scanOffset).millisecondsSinceEpoch;
+    if (wakeEpochMs <= now.millisecondsSinceEpoch) {
+      throw ArgumentError.value(
+        untilAzan,
+        'untilAzan',
+        'must leave room for T-120 wake',
+      );
+    }
+
+    var name = 'isha';
+    var voiceId = defaultVoiceId;
+    try {
+      final upcoming = await _nextPrayer.next(after: now);
+      final canonical = canonicalPrayerName(upcoming.name);
+      if (canonical.isNotEmpty) name = canonical;
+      if (upcoming.voiceId.isNotEmpty) voiceId = upcoming.voiceId;
+    } catch (e, st) {
+      _logger.warn(
+        'Dry-run falling back to $name / $voiceId',
+        tag: 'PrayerDeliveryCoordinator',
+        error: e,
+        stackTrace: st,
+      );
+    }
+
+    final prayer = '$name$dryRunPrayerSuffix';
+    await _exactAlarm.scheduleNext(
+      epochMs: wakeEpochMs,
+      prayer: prayer,
+      voiceId: voiceId,
+    );
+    _scheduledWakeEpochMs = wakeEpochMs;
+    _logger.info(
+      'Scheduled dry-run wake at $wakeEpochMs for $prayer '
+      '(azan ${azanEpoch.millisecondsSinceEpoch}, voice $voiceId)',
+      tag: 'PrayerDeliveryCoordinator',
+    );
+    return azanEpoch;
   }
 
   Future<void> _onFired(AlarmFiredEvent event) async {
@@ -179,23 +285,7 @@ final class PrayerDeliveryCoordinator {
     try {
       // 1) Run delivery — log failures, do not let them skip reschedule.
       try {
-        final castId = await _settings.homeCastDeviceId();
-        final volume = await _settings.playbackVolume();
-        final voiceId = _resolveVoiceId(event.voiceId);
-        final audio = await _audioLoader.load(voiceId);
-        final conditions = await _deviceConditions.current();
-
-        final request = DeliveryRequest(
-          prayerName: event.prayer,
-          scheduledAzan: azanEpoch,
-          voiceId: voiceId,
-          audioBytes: audio,
-          homeCastDeviceId: castId ?? '',
-          playbackVolume: volume,
-          deviceConditions: conditions,
-          firedAt: firedAt,
-        );
-        await _runDelivery(request);
+        await _deliver(event, azanEpoch: azanEpoch, firedAt: firedAt);
       } catch (e, st) {
         _logger.error(
           'Delivery attempt failed after alarm fire',
@@ -225,6 +315,56 @@ final class PrayerDeliveryCoordinator {
       _handling = false;
       await _exactAlarm.stopForegroundService();
     }
+  }
+
+  /// Branch on per-prayer mode before the Cast orchestrator.
+  ///
+  /// Beep / phone Adhan skip presence and election. Cast keeps the existing
+  /// away → SUPPRESSED_AWAY path with no phone fallback.
+  Future<void> _deliver(
+    AlarmFiredEvent event, {
+    required DateTime azanEpoch,
+    required DateTime firedAt,
+  }) async {
+    final prayerName = canonicalPrayerName(event.prayer);
+    final mode = await _deliveryModes.modeFor(prayerName);
+    if (mode == PrayerDeliveryMode.beep) {
+      _logger.info(
+        'Local beep for ${event.prayer} (skip Cast)',
+        tag: 'PrayerDeliveryCoordinator',
+      );
+      await _localPlayer.playBeep();
+      return;
+    }
+    if (mode == PrayerDeliveryMode.adhanPhone) {
+      final voiceId = _resolveVoiceId(event.voiceId);
+      _logger.info(
+        'Local adhan for ${event.prayer} voice=$voiceId (skip Cast)',
+        tag: 'PrayerDeliveryCoordinator',
+      );
+      await _localPlayer.playAdhan(voiceId: voiceId);
+      return;
+    }
+
+    final castId = await _settings.homeCastDeviceId();
+    final volume = await _settings.playbackVolume();
+    final voiceId = _resolveVoiceId(event.voiceId);
+    final audio = await _audioLoader.load(voiceId);
+    final conditions = await _deviceConditions.current();
+
+    final request = DeliveryRequest(
+      prayerName: event.prayer,
+      scheduledAzan: azanEpoch,
+      voiceId: voiceId,
+      audioBytes: audio.bytes,
+      contentType: audio.contentType,
+      mediaExtension: audio.extension,
+      homeCastDeviceId: castId ?? '',
+      playbackVolume: volume,
+      deviceConditions: conditions,
+      firedAt: firedAt,
+    );
+    await _runDelivery(request);
   }
 
   String _resolveVoiceId(String? voiceId) {

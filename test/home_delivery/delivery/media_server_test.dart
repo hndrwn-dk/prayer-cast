@@ -72,6 +72,23 @@ void main() {
       expect(bytes, audio.sublist(100, 200));
     });
 
+    test('HEAD returns headers without body', () async {
+      await server.start();
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.headUrl(
+        Uri.parse('http://127.0.0.1:${server.port}${server.mediaPath}'),
+      );
+      final response = await request.close();
+      expect(response.statusCode, 200);
+      expect(response.headers.value('content-type'), 'audio/mpeg');
+      expect(response.headers.value('content-length'), '1000');
+      expect(response.headers.value('accept-ranges'), 'bytes');
+      final bytes = await response.fold<List<int>>([], (a, b) => a..addAll(b));
+      expect(bytes, isEmpty);
+      expect(server.hitCount, 1);
+    });
+
     test('wrong path token is 404 (no probing)', () async {
       await server.start();
       final client = HttpClient();

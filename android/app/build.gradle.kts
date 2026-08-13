@@ -47,4 +47,6 @@ flutter {
 dependencies {
     // NotificationCompat + ContextCompat for FGS / alarm receiver (spec §5.5).
     implementation("androidx.core:core-ktx:1.15.0")
+    // Same pin as flutter_chrome_cast — probe RemoteMediaClient readiness.
+    implementation("com.google.android.gms:play-services-cast-framework:21.5.0")
 }

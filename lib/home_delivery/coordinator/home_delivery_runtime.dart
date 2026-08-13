@@ -18,10 +18,17 @@ import '../platform/exact_alarm.dart';
 import '../presence/fingerprint_store.dart';
 import '../presence/mdns_browser.dart';
 import '../presence/presence_service.dart';
+import '../presence/lan_fingerprint.dart';
+import '../../prayer_times/prayer_prefs.dart';
 import 'adzan_audio_loader.dart';
+import 'adzan_cast_tester.dart';
+import 'audioplayers_local_prayer_player.dart';
 import 'delivery_settings.dart';
+import 'home_onboarding.dart';
+import 'local_prayer_player.dart';
 import 'next_prayer_provider.dart';
 import 'prayer_delivery_coordinator.dart';
+import 'prayer_delivery_mode_source.dart';
 
 /// Production wiring for presence → election → cast + alarm schedule.
 ///
@@ -31,15 +38,28 @@ final class HomeDeliveryRuntime {
     required this.coordinator,
     required this.fingerprintStore,
     required this.exactAlarm,
+    required this.castPlatform,
+    required this.lanFingerprint,
+    required this.presence,
+    required this.onboarding,
+    required this.castTester,
+    required this.localPlayer,
   });
 
   final PrayerDeliveryCoordinator coordinator;
   final FingerprintStore fingerprintStore;
   final ExactAlarmPlatform exactAlarm;
+  final CastPlatform castPlatform;
+  final LanFingerprint lanFingerprint;
+  final PresenceService presence;
+  final HomeOnboarding onboarding;
+  final AdzanCastTester castTester;
+  final LocalPrayerPlayer localPlayer;
 
   static Future<HomeDeliveryRuntime> bootstrap({
     required DeliveryDatabase database,
     required NextPrayerProvider nextPrayer,
+    required PrayerPrefsStore prayerPrefs,
     void Function(bool granted)? onPermissionChanged,
     HomeDeliveryLogger logger = const SilentLogger(),
   }) async {
@@ -54,6 +74,11 @@ final class HomeDeliveryRuntime {
     final exactAlarm = ExactAlarm(logger: logger);
     final scheduler = const WallScheduler();
     final browser = NsdMdnsBrowser(logger: logger);
+    final lanFingerprint = LanFingerprint(
+      browser: browser,
+      store: fingerprintStore,
+      logger: logger,
+    );
     final presence = PresenceService(
       browser: browser,
       store: fingerprintStore,
@@ -63,9 +88,24 @@ final class HomeDeliveryRuntime {
     final identity = DeviceIdentity(store: deviceIdStore, logger: logger);
     final discovery = NsdAdzanDiscovery(logger: logger);
     final transport = await UdpUnicastTransport.bind(logger: logger);
-    final castClient = CastClient(
-      platform: FlutterCastPlatform(logger: logger),
+    final castPlatform = FlutterCastPlatform(logger: logger);
+    final castClient = CastClient(platform: castPlatform, logger: logger);
+    final audioLoader = AssetAdzanAudioLoader(logger: logger);
+    final localPlayer = AudioplayersLocalPrayerPlayer(
+      audioLoader: audioLoader,
       logger: logger,
+    );
+    final castTester = AdzanCastTester(
+      castClient: castClient,
+      store: fingerprintStore,
+      audioLoader: audioLoader,
+      interfaces: InterfaceSelector(logger: logger),
+      logger: logger,
+    );
+    final onboarding = HomeOnboarding(
+      castPlatform: castPlatform,
+      store: fingerprintStore,
+      lanFingerprint: lanFingerprint,
     );
     final orchestrator = DeliveryOrchestrator(
       presence: presence,
@@ -85,9 +125,11 @@ final class HomeDeliveryRuntime {
       nextPrayer: nextPrayer,
       deviceConditions: MethodChannelDeviceConditions(logger: logger),
       settings: FingerprintBackedDeliverySettings(fingerprintStore),
-      audioLoader: AssetAdzanAudioLoader(logger: logger),
+      audioLoader: audioLoader,
       runDelivery: orchestrator.run,
       clock: scheduler,
+      deliveryModes: PrefsPrayerDeliveryModeSource(prayerPrefs),
+      localPlayer: localPlayer,
       onPermissionChanged: onPermissionChanged,
       logger: logger,
     );
@@ -96,6 +138,12 @@ final class HomeDeliveryRuntime {
       coordinator: coordinator,
       fingerprintStore: fingerprintStore,
       exactAlarm: exactAlarm,
+      castPlatform: castPlatform,
+      lanFingerprint: lanFingerprint,
+      presence: presence,
+      onboarding: onboarding,
+      castTester: castTester,
+      localPlayer: localPlayer,
     );
   }
 }
@@ -108,30 +156,50 @@ final class FileFingerprintStore implements FingerprintStore {
   MemoryFingerprintStore _memory = MemoryFingerprintStore();
   bool _loaded = false;
 
+  File get _speakerScanFile =>
+      File('${_file.parent.path}/home_speaker_scan.json');
+
   Future<void> _ensureLoaded() async {
     if (_loaded) return;
     _loaded = true;
-    if (!await _file.exists()) return;
-    try {
-      final text = await _file.readAsString();
-      // Minimal line format: salt\ncastId\nhash1,hash2,...
-      final lines = text.split('\n');
-      final salt = lines.isNotEmpty && lines[0].isNotEmpty ? lines[0] : null;
-      final castId = lines.length > 1 && lines[1].isNotEmpty ? lines[1] : null;
-      final hashes = lines.length > 2 && lines[2].isNotEmpty
-          ? lines[2].split(',').where((e) => e.isNotEmpty).toSet()
-          : <String>{};
-      final electionSecret =
-          lines.length > 3 && lines[3].isNotEmpty ? lines[3] : null;
-      _memory = MemoryFingerprintStore(
-        salt: salt,
-        hashes: hashes,
-        homeCastId: castId,
-        electionSecret: electionSecret,
-      );
-    } catch (_) {
-      _memory = MemoryFingerprintStore();
+    String? salt;
+    String? castId;
+    var hashes = <String>{};
+    String? electionSecret;
+    String? friendlyName;
+    String? scanJson;
+    if (await _file.exists()) {
+      try {
+        final text = await _file.readAsString();
+        // Minimal line format: salt\ncastId\nhash1,hash2,...
+        final lines = text.split('\n');
+        salt = lines.isNotEmpty && lines[0].isNotEmpty ? lines[0] : null;
+        castId = lines.length > 1 && lines[1].isNotEmpty ? lines[1] : null;
+        hashes = lines.length > 2 && lines[2].isNotEmpty
+            ? lines[2].split(',').where((e) => e.isNotEmpty).toSet()
+            : <String>{};
+        electionSecret = lines.length > 3 && lines[3].isNotEmpty
+            ? lines[3]
+            : null;
+        friendlyName = lines.length > 4 && lines[4].isNotEmpty
+            ? lines[4]
+            : null;
+      } catch (_) {}
     }
+    if (await _speakerScanFile.exists()) {
+      try {
+        final text = (await _speakerScanFile.readAsString()).trim();
+        if (text.isNotEmpty) scanJson = text;
+      } catch (_) {}
+    }
+    _memory = MemoryFingerprintStore(
+      salt: salt,
+      hashes: hashes,
+      homeCastId: castId,
+      homeCastFriendlyName: friendlyName,
+      electionSecret: electionSecret,
+      lastSpeakerScanJson: scanJson,
+    );
   }
 
   Future<void> _persist() async {
@@ -140,7 +208,22 @@ final class FileFingerprintStore implements FingerprintStore {
     final castId = await _memory.readHomeCastId() ?? '';
     final hashes = (await _memory.readHashes()).join(',');
     final electionSecret = await _memory.readElectionSecret() ?? '';
-    await _file.writeAsString('$salt\n$castId\n$hashes\n$electionSecret\n');
+    final friendlyName = await _memory.readHomeCastFriendlyName() ?? '';
+    await _file.writeAsString(
+      '$salt\n$castId\n$hashes\n$electionSecret\n$friendlyName\n',
+    );
+  }
+
+  Future<void> _persistSpeakerScan() async {
+    await _file.parent.create(recursive: true);
+    final json = await _memory.readLastSpeakerScanJson();
+    if (json == null || json.isEmpty) {
+      if (await _speakerScanFile.exists()) {
+        await _speakerScanFile.delete();
+      }
+      return;
+    }
+    await _speakerScanFile.writeAsString(json);
   }
 
   @override
@@ -183,6 +266,19 @@ final class FileFingerprintStore implements FingerprintStore {
   }
 
   @override
+  Future<String?> readHomeCastFriendlyName() async {
+    await _ensureLoaded();
+    return _memory.readHomeCastFriendlyName();
+  }
+
+  @override
+  Future<void> writeHomeCastFriendlyName(String name) async {
+    await _ensureLoaded();
+    await _memory.writeHomeCastFriendlyName(name);
+    await _persist();
+  }
+
+  @override
   Future<String?> readElectionSecret() async {
     await _ensureLoaded();
     return _memory.readElectionSecret();
@@ -193,6 +289,19 @@ final class FileFingerprintStore implements FingerprintStore {
     await _ensureLoaded();
     await _memory.writeElectionSecret(secret);
     await _persist();
+  }
+
+  @override
+  Future<String?> readLastSpeakerScanJson() async {
+    await _ensureLoaded();
+    return _memory.readLastSpeakerScanJson();
+  }
+
+  @override
+  Future<void> writeLastSpeakerScanJson(String json) async {
+    await _ensureLoaded();
+    await _memory.writeLastSpeakerScanJson(json);
+    await _persistSpeakerScan();
   }
 }
 

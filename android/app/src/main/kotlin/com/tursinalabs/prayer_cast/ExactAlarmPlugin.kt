@@ -66,6 +66,20 @@ class ExactAlarmPlugin(
                 context.stopService(intent)
                 result.success(null)
             }
+            "getScheduled" -> {
+                val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                if (!prefs.contains(KEY_EPOCH)) {
+                    result.success(null)
+                    return
+                }
+                result.success(
+                    mapOf(
+                        "epochMs" to prefs.getLong(KEY_EPOCH, 0L),
+                        "prayer" to (prefs.getString(KEY_PRAYER, "") ?: ""),
+                        "voiceId" to (prefs.getString(KEY_VOICE_ID, "") ?: ""),
+                    ),
+                )
+            }
             else -> result.notImplemented()
         }
     }

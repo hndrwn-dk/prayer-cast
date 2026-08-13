@@ -16,4 +16,5 @@ abstract final class PrayerCastColors {
   static const Color quiet = Color(0xFF5C6B63);
   static const Color surface = Color(0xFFF3F7F4);
   static const Color surfaceRaised = Color(0xFFFAFCFA);
+  static const Color atmosphere = Color(0xFFEAF3EE);
 }

@@ -36,7 +36,7 @@ abstract interface class NextPrayerProvider {
 final class StaticNextPrayerProvider implements NextPrayerProvider {
   StaticNextPrayerProvider({
     List<NextPrayer>? sequence,
-    this.voiceId = 'makkah',
+    this.voiceId = 'standard_adhan',
     DateTime? anchor,
   })  : _sequence = sequence,
         _anchor = anchor;
@@ -68,7 +68,8 @@ final class StaticNextPrayerProvider implements NextPrayerProvider {
         NextPrayer(
           name: names[i],
           scheduledAt: base.add(Duration(minutes: 2 * (i + 1))),
-          voiceId: voiceId,
+          // Subuh uses fajr recording; other prayers use [voiceId] (standard).
+          voiceId: names[i] == 'fajr' ? 'fajr_adhan' : voiceId,
         ),
     ];
   }

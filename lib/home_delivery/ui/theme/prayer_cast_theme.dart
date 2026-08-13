@@ -190,4 +190,307 @@ abstract final class PrayerCastTheme {
       ),
     );
   }
+
+  /// Dark forest surfaces for Home, Speaker, and Prayer times.
+  ///
+  /// Every ColorScheme slot is a [PrayerCastColors] token so Material 3
+  /// does not fall back to purple.
+  static ThemeData forest() {
+    const textTheme = TextTheme(
+      displayLarge: TextStyle(
+        fontFamily: displayFont,
+        fontSize: 48,
+        fontWeight: FontWeight.w300,
+        height: 1.05,
+        letterSpacing: -0.8,
+        color: PrayerCastColors.surfaceRaised,
+        fontVariations: [FontVariation('wght', 300)],
+      ),
+      displayMedium: TextStyle(
+        fontFamily: displayFont,
+        fontSize: 36,
+        fontWeight: FontWeight.w500,
+        height: 1.1,
+        color: PrayerCastColors.surfaceRaised,
+        fontVariations: [FontVariation('wght', 500)],
+      ),
+      displaySmall: TextStyle(
+        fontFamily: displayFont,
+        fontSize: 28,
+        fontWeight: FontWeight.w500,
+        height: 1.15,
+        color: PrayerCastColors.surfaceRaised,
+        fontVariations: [FontVariation('wght', 500)],
+      ),
+      headlineMedium: TextStyle(
+        fontFamily: displayFont,
+        fontSize: 22,
+        fontWeight: FontWeight.w500,
+        height: 1.2,
+        letterSpacing: -0.2,
+        color: PrayerCastColors.surfaceRaised,
+        fontVariations: [FontVariation('wght', 500)],
+      ),
+      titleLarge: TextStyle(
+        fontFamily: displayFont,
+        fontSize: 22,
+        fontWeight: FontWeight.w500,
+        height: 1.25,
+        color: PrayerCastColors.surfaceRaised,
+        fontVariations: [FontVariation('wght', 500)],
+      ),
+      titleMedium: TextStyle(
+        fontFamily: bodyFont,
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        height: 1.35,
+        color: PrayerCastColors.surfaceRaised,
+      ),
+      bodyLarge: TextStyle(
+        fontFamily: bodyFont,
+        fontSize: 18,
+        fontWeight: FontWeight.w400,
+        height: 1.45,
+        color: PrayerCastColors.mist,
+      ),
+      bodyMedium: TextStyle(
+        fontFamily: bodyFont,
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
+        height: 1.45,
+        color: PrayerCastColors.mistDeep,
+      ),
+      bodySmall: TextStyle(
+        fontFamily: bodyFont,
+        fontSize: 14,
+        fontWeight: FontWeight.w400,
+        height: 1.4,
+        color: PrayerCastColors.mistDeep,
+      ),
+      labelLarge: TextStyle(
+        fontFamily: bodyFont,
+        fontSize: 17,
+        fontWeight: FontWeight.w700,
+        height: 1.2,
+        color: PrayerCastColors.surfaceRaised,
+      ),
+      labelMedium: TextStyle(
+        fontFamily: bodyFont,
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+        letterSpacing: 1.8,
+        color: PrayerCastColors.mistDeep,
+      ),
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: PrayerCastColors.ink,
+      canvasColor: PrayerCastColors.canopyDeep,
+      colorScheme: const ColorScheme.dark(
+        primary: PrayerCastColors.leaf,
+        onPrimary: PrayerCastColors.surfaceRaised,
+        primaryContainer: PrayerCastColors.canopy,
+        onPrimaryContainer: PrayerCastColors.mist,
+        secondary: PrayerCastColors.dawn,
+        onSecondary: PrayerCastColors.ink,
+        secondaryContainer: PrayerCastColors.canopy,
+        onSecondaryContainer: PrayerCastColors.dawnSoft,
+        tertiary: PrayerCastColors.dawn,
+        onTertiary: PrayerCastColors.ink,
+        error: PrayerCastColors.danger,
+        onError: PrayerCastColors.surfaceRaised,
+        errorContainer: PrayerCastColors.dangerSoft,
+        onErrorContainer: PrayerCastColors.danger,
+        surface: PrayerCastColors.ink,
+        onSurface: PrayerCastColors.surfaceRaised,
+        onSurfaceVariant: PrayerCastColors.mistDeep,
+        outline: PrayerCastColors.inkSoft,
+        outlineVariant: PrayerCastColors.canopy,
+        inverseSurface: PrayerCastColors.mist,
+        onInverseSurface: PrayerCastColors.ink,
+        inversePrimary: PrayerCastColors.canopy,
+        surfaceContainerLowest: PrayerCastColors.ink,
+        surfaceContainerLow: PrayerCastColors.ink,
+        surfaceContainer: PrayerCastColors.canopyDeep,
+        surfaceContainerHigh: PrayerCastColors.canopyDeep,
+        surfaceContainerHighest: PrayerCastColors.inkSoft,
+      ),
+      textTheme: textTheme,
+      appBarTheme: const AppBarTheme(
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: PrayerCastColors.mist,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+        titleTextStyle: TextStyle(
+          fontFamily: displayFont,
+          fontSize: 22,
+          fontWeight: FontWeight.w500,
+          color: PrayerCastColors.surfaceRaised,
+          fontVariations: [FontVariation('wght', 500)],
+        ),
+        iconTheme: IconThemeData(color: PrayerCastColors.mist, size: 26),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: const WidgetStatePropertyAll(Size(64, minTap)),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+          ),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          backgroundColor: const WidgetStatePropertyAll(PrayerCastColors.canopy),
+          foregroundColor:
+              const WidgetStatePropertyAll(PrayerCastColors.surfaceRaised),
+          textStyle: const WidgetStatePropertyAll(
+            TextStyle(
+              fontFamily: bodyFont,
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          elevation: const WidgetStatePropertyAll(0),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: const WidgetStatePropertyAll(Size(64, minTap)),
+          foregroundColor: const WidgetStatePropertyAll(PrayerCastColors.mist),
+          side: const WidgetStatePropertyAll(
+            BorderSide(color: PrayerCastColors.inkSoft, width: 1.2),
+          ),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          textStyle: const WidgetStatePropertyAll(
+            TextStyle(
+              fontFamily: bodyFont,
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+          foregroundColor: const WidgetStatePropertyAll(PrayerCastColors.mist),
+          textStyle: const WidgetStatePropertyAll(
+            TextStyle(
+              fontFamily: bodyFont,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: PrayerCastColors.canopyDeep,
+        labelStyle: const TextStyle(
+          fontFamily: bodyFont,
+          fontSize: 14,
+          color: PrayerCastColors.mistDeep,
+        ),
+        hintStyle: const TextStyle(
+          fontFamily: bodyFont,
+          color: PrayerCastColors.quiet,
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: PrayerCastColors.inkSoft),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: PrayerCastColors.inkSoft),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: PrayerCastColors.dawn, width: 1.4),
+        ),
+      ),
+      dropdownMenuTheme: const DropdownMenuThemeData(
+        menuStyle: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(PrayerCastColors.canopyDeep),
+        ),
+      ),
+      popupMenuTheme: const PopupMenuThemeData(
+        color: PrayerCastColors.canopyDeep,
+        textStyle: TextStyle(
+          fontFamily: bodyFont,
+          fontSize: 16,
+          color: PrayerCastColors.surfaceRaised,
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: PrayerCastColors.canopyDeep,
+        contentTextStyle: const TextStyle(
+          fontFamily: bodyFont,
+          fontSize: 16,
+          color: PrayerCastColors.surfaceRaised,
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: PrayerCastColors.inkSoft,
+        thickness: 1,
+        space: 1,
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: PrayerCastColors.leaf,
+        circularTrackColor: PrayerCastColors.inkSoft,
+      ),
+    );
+  }
+
+  static TextStyle editorialEyebrow(Color color) => TextStyle(
+        fontFamily: bodyFont,
+        fontSize: 10,
+        fontWeight: FontWeight.w500,
+        letterSpacing: 2.4,
+        height: 1.2,
+        color: color,
+      );
+
+  static const TextStyle heroTime = TextStyle(
+    fontFamily: displayFont,
+    fontSize: 72,
+    fontWeight: FontWeight.w300,
+    letterSpacing: -2.4,
+    height: 0.92,
+    color: PrayerCastColors.surfaceRaised,
+    fontVariations: [FontVariation('wght', 300)],
+  );
+
+  static InputDecoration darkField(String? label) {
+    return InputDecoration(
+      labelText: label,
+      filled: true,
+      fillColor: PrayerCastColors.canopyDeep,
+      labelStyle: const TextStyle(
+        fontFamily: bodyFont,
+        fontSize: 14,
+        color: PrayerCastColors.mistDeep,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: PrayerCastColors.inkSoft),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: PrayerCastColors.inkSoft),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: PrayerCastColors.dawn, width: 1.4),
+      ),
+    );
+  }
 }

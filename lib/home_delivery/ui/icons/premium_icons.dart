@@ -7,6 +7,15 @@ abstract final class PremiumIcons {
   static Widget speaker({double size = 24, Color? color}) =>
       _Icon(size: size, color: color, paint: _paintSpeaker);
 
+  static Widget tv({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintTv);
+
+  static Widget check({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintCheck);
+
+  static Widget refresh({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintRefresh);
+
   static Widget moon({double size = 24, Color? color}) =>
       _Icon(size: size, color: color, paint: _paintMoon);
 
@@ -51,6 +60,10 @@ abstract final class PremiumIcons {
 
   static Widget prohibit({double size = 24, Color? color}) =>
       _Icon(size: size, color: color, paint: _paintProhibit);
+
+  /// Coffee cup (legacy Ko-fi mark; unused by support UI).
+  static Widget coffee({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintCoffee);
 }
 
 typedef _PaintFn = void Function(Canvas canvas, Size size, Color color);
@@ -130,6 +143,46 @@ void _paintSpeaker(Canvas canvas, Size size, Color color) {
     false,
     p,
   );
+}
+
+void _paintTv(Canvas canvas, Size size, Color color) {
+  final s = size.shortestSide;
+  final p = _stroke(color);
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(
+      Rect.fromLTWH(s * 0.14, s * 0.22, s * 0.72, s * 0.48),
+      const Radius.circular(4),
+    ),
+    p,
+  );
+  canvas.drawLine(Offset(s * 0.34, s * 0.78), Offset(s * 0.66, s * 0.78), p);
+  canvas.drawLine(Offset(s * 0.50, s * 0.70), Offset(s * 0.50, s * 0.78), p);
+}
+
+void _paintCheck(Canvas canvas, Size size, Color color) {
+  final s = size.shortestSide;
+  final p = _stroke(color, width: 2.2);
+  canvas.drawLine(Offset(s * 0.22, s * 0.52), Offset(s * 0.42, s * 0.72), p);
+  canvas.drawLine(Offset(s * 0.42, s * 0.72), Offset(s * 0.78, s * 0.30), p);
+}
+
+void _paintRefresh(Canvas canvas, Size size, Color color) {
+  final s = size.shortestSide;
+  final p = _stroke(color, width: 2.0);
+  final c = Offset(s * 0.5, s * 0.5);
+  canvas.drawArc(
+    Rect.fromCircle(center: c, radius: s * 0.30),
+    -math.pi * 0.85,
+    math.pi * 1.45,
+    false,
+    p,
+  );
+  final tip = Offset(
+    c.dx + math.cos(-math.pi * 0.85) * s * 0.30,
+    c.dy + math.sin(-math.pi * 0.85) * s * 0.30,
+  );
+  canvas.drawLine(tip, Offset(tip.dx - s * 0.12, tip.dy - s * 0.02), p);
+  canvas.drawLine(tip, Offset(tip.dx - s * 0.02, tip.dy + s * 0.12), p);
 }
 
 void _paintMoon(Canvas canvas, Size size, Color color) {
@@ -304,4 +357,43 @@ void _paintProhibit(Canvas canvas, Size size, Color color) {
   final p = _stroke(color);
   canvas.drawCircle(Offset(s * 0.5, s * 0.5), s * 0.34, p);
   canvas.drawLine(Offset(s * 0.28, s * 0.28), Offset(s * 0.72, s * 0.72), p);
+}
+
+void _paintCoffee(Canvas canvas, Size size, Color color) {
+  final s = size.shortestSide;
+  final p = _stroke(color);
+  // Cup body
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(
+      Rect.fromLTWH(s * 0.22, s * 0.36, s * 0.48, s * 0.40),
+      const Radius.circular(4),
+    ),
+    p,
+  );
+  // Handle
+  canvas.drawArc(
+    Rect.fromLTWH(s * 0.62, s * 0.42, s * 0.22, s * 0.24),
+    -math.pi / 2.2,
+    math.pi,
+    false,
+    p,
+  );
+  // Saucer
+  canvas.drawLine(Offset(s * 0.18, s * 0.80), Offset(s * 0.74, s * 0.80), p);
+  // Steam
+  final steam = _stroke(color, width: 1.5);
+  canvas.drawArc(
+    Rect.fromLTWH(s * 0.32, s * 0.14, s * 0.12, s * 0.18),
+    math.pi * 0.15,
+    math.pi * 0.7,
+    false,
+    steam,
+  );
+  canvas.drawArc(
+    Rect.fromLTWH(s * 0.48, s * 0.12, s * 0.12, s * 0.18),
+    math.pi * 0.15,
+    math.pi * 0.7,
+    false,
+    steam,
+  );
 }

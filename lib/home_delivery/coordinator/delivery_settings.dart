@@ -11,7 +11,8 @@ abstract interface class DeliverySettings {
   Future<double> playbackVolume();
 }
 
-/// Reads Cast id from [FingerprintStore]; volume is a fixed default.
+/// Reads Cast id from [FingerprintStore]. [defaultVolume] is only used
+/// when the speaker is muted — an audible receiver volume is left as-is.
 final class FingerprintBackedDeliverySettings implements DeliverySettings {
   FingerprintBackedDeliverySettings(
     this._store, {

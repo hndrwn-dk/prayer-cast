@@ -4,10 +4,15 @@ Expected layout:
 
 ```
 assets/audio/{voiceId}.mp3
+assets/audio/{voiceId}.wav
 ```
 
-Example: `assets/audio/makkah.mp3`
+Bundled voices:
 
-**OPEN TASK:** Real adzan recordings are not bundled yet. Until they land,
-`AssetAdzanAudioLoader` falls back to a silent MPEG test tone so the delivery
-pipeline can be wired. Do not ship that fallback as production audio.
+| voiceId | File | Used for |
+|---------|------|----------|
+| `fajr_adhan` | `fajr_adhan.mp3` | Subuh (default) |
+| `standard_adhan` | `standard_adhan.mp3` | Dzuhur, Asar, Maghrib, Isya (default) |
+| `makkah` | `makkah.wav` | Short test tone (optional) |
+
+Defaults: Subuh → `fajr_adhan`; other prayers → `standard_adhan`.

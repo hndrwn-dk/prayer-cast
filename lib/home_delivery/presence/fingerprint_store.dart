@@ -23,10 +23,23 @@ abstract interface class FingerprintStore {
 
   Future<void> writeHomeCastId(String castId);
 
+  /// Friendly name for UI only — matching always uses [readHomeCastId].
+  Future<String?> readHomeCastFriendlyName();
+
+  Future<void> writeHomeCastFriendlyName(String name);
+
   /// Household-shared election HMAC secret (never broadcast in TXT).
   Future<String?> readElectionSecret();
 
   Future<void> writeElectionSecret(String secret);
+
+  /// Compact JSON of the last Speaker Setup scan, or null if never scanned.
+  ///
+  /// Empty JSON (`{"devices":[]}`) is a real result and must not be treated
+  /// as a cache miss — that would rescan on every launch after a genuine empty.
+  Future<String?> readLastSpeakerScanJson();
+
+  Future<void> writeLastSpeakerScanJson(String json);
 }
 
 /// In-memory store for unit tests.
@@ -35,16 +48,22 @@ final class MemoryFingerprintStore implements FingerprintStore {
     String? salt,
     Set<String>? hashes,
     String? homeCastId,
+    String? homeCastFriendlyName,
     String? electionSecret,
-  })  : _salt = salt,
-        _hashes = hashes == null ? {} : Set<String>.from(hashes),
-        _homeCastId = homeCastId,
-        _electionSecret = electionSecret;
+    String? lastSpeakerScanJson,
+  }) : _salt = salt,
+       _hashes = hashes == null ? {} : Set<String>.from(hashes),
+       _homeCastId = homeCastId,
+       _homeCastFriendlyName = homeCastFriendlyName,
+       _electionSecret = electionSecret,
+       _lastSpeakerScanJson = lastSpeakerScanJson;
 
   String? _salt;
   Set<String> _hashes;
   String? _homeCastId;
+  String? _homeCastFriendlyName;
   String? _electionSecret;
+  String? _lastSpeakerScanJson;
 
   @override
   Future<String?> readSalt() async => _salt;
@@ -67,9 +86,23 @@ final class MemoryFingerprintStore implements FingerprintStore {
   Future<void> writeHomeCastId(String castId) async => _homeCastId = castId;
 
   @override
+  Future<String?> readHomeCastFriendlyName() async => _homeCastFriendlyName;
+
+  @override
+  Future<void> writeHomeCastFriendlyName(String name) async =>
+      _homeCastFriendlyName = name;
+
+  @override
   Future<String?> readElectionSecret() async => _electionSecret;
 
   @override
   Future<void> writeElectionSecret(String secret) async =>
       _electionSecret = secret;
+
+  @override
+  Future<String?> readLastSpeakerScanJson() async => _lastSpeakerScanJson;
+
+  @override
+  Future<void> writeLastSpeakerScanJson(String json) async =>
+      _lastSpeakerScanJson = json;
 }

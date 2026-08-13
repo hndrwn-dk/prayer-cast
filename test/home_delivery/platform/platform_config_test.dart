@@ -23,11 +23,14 @@ void main() {
     expect(manifest, contains('.AdzanForegroundService'));
     expect(manifest, contains('.BootReceiver'));
     expect(manifest, contains('android.intent.action.BOOT_COMPLETED'));
+    expect(manifest, contains('ACCESS_COARSE_LOCATION'));
+    expect(manifest, contains('ACCESS_FINE_LOCATION'));
   });
 
-  test('Info.plist has local network, Bonjour, and audio background mode', () {
+  test('Info.plist has local network, Bonjour, audio, and location usage', () {
     final plist = File('ios/Runner/Info.plist').readAsStringSync();
     expect(plist, contains('NSLocalNetworkUsageDescription'));
+    expect(plist, contains('NSLocationWhenInUseUsageDescription'));
     expect(
       plist,
       contains(

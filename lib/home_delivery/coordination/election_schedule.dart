@@ -14,8 +14,9 @@ final class ElectionSchedule {
   /// T−20 s — LEAD window ends; leader begins prepare.
   static const Duration leadEnd = Duration(seconds: -20);
 
-  /// T−5 s — leader starts HTTP server / pre-connects Cast (§3.6 / §5.1).
-  static const Duration prepare = Duration(seconds: -5);
+  /// T−20 s — leader starts HTTP server / pre-connects Cast (§3.6 / §5.1).
+  /// Was T−5; 8–12s discover overran T and loadMedia raced the media client.
+  static const Duration prepare = Duration(seconds: -20);
 
   /// T+0 — loadMedia + PLAYING.
   static const Duration azan = Duration.zero;

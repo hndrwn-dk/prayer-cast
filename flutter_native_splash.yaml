@@ -1,0 +1,8 @@
+# Generates native splash screens from assets/icons/.
+# Run: dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#E1F5EE"
+  image: assets/icons/splash_logo_transparent_1200.png
+  android_12:
+    color: "#E1F5EE"
+    image: assets/icons/splash_logo_transparent_1200.png

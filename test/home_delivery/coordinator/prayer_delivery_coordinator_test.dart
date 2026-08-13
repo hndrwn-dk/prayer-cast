@@ -7,13 +7,16 @@ import 'package:prayer_cast/home_delivery/common/logger.dart';
 import 'package:prayer_cast/home_delivery/coordination/device_identity.dart';
 import 'package:prayer_cast/home_delivery/coordinator/adzan_audio_loader.dart';
 import 'package:prayer_cast/home_delivery/coordinator/delivery_settings.dart';
+import 'package:prayer_cast/home_delivery/coordinator/local_prayer_player.dart';
 import 'package:prayer_cast/home_delivery/coordinator/next_prayer_provider.dart';
 import 'package:prayer_cast/home_delivery/coordinator/prayer_delivery_coordinator.dart';
+import 'package:prayer_cast/home_delivery/coordinator/prayer_delivery_mode_source.dart';
 import 'package:prayer_cast/home_delivery/delivery/delivery_orchestrator.dart';
 import 'package:prayer_cast/home_delivery/logging/outcome.dart';
 import 'package:prayer_cast/home_delivery/platform/device_conditions.dart';
 import 'package:prayer_cast/home_delivery/platform/exact_alarm.dart';
 import 'package:prayer_cast/home_delivery/presence/presence_schedule.dart';
+import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 
 final class _FakeClock implements Clock {
   _FakeClock(this._now);
@@ -66,6 +69,17 @@ final class _FakeExactAlarm implements ExactAlarmPlatform {
     stopForegroundCalls += 1;
   }
 
+  @override
+  Future<ScheduledAlarm?> readScheduled() async {
+    if (scheduled.isEmpty) return null;
+    final s = scheduled.single;
+    return ScheduledAlarm(
+      epochMs: s.epochMs,
+      prayer: s.prayer,
+      voiceId: s.voiceId,
+    );
+  }
+
   void emit(AlarmFiredEvent event) => _fireController.add(event);
 
   Future<void> dispose() => _fireController.close();
@@ -98,8 +112,11 @@ final class _FakeSettings implements DeliverySettings {
 
 final class _FakeAudio implements AdzanAudioLoader {
   @override
-  Future<Uint8List> load(String voiceId) async =>
-      Uint8List.fromList(List<int>.filled(32, 1));
+  Future<AdzanAudioData> load(String voiceId) async => AdzanAudioData(
+        bytes: Uint8List.fromList(List<int>.filled(32, 1)),
+        contentType: 'audio/mpeg',
+        extension: 'mp3',
+      );
 }
 
 final class _FakeConditions implements DeviceConditionsProvider {
@@ -130,6 +147,35 @@ final class _RecordingLogger implements HomeDeliveryLogger {
 
   @override
   void error(String message, {String? tag, Object? error, StackTrace? stackTrace}) {}
+}
+
+final class _FakeModes implements PrayerDeliveryModeSource {
+  _FakeModes(this.mode);
+  PrayerDeliveryMode mode;
+  String? lastPrayerName;
+
+  @override
+  Future<PrayerDeliveryMode> modeFor(String prayerName) async {
+    lastPrayerName = prayerName;
+    return mode;
+  }
+}
+
+final class _FakeLocalPlayer implements LocalPrayerPlayer {
+  final calls = <String>[];
+
+  @override
+  Future<void> playBeep() async => calls.add('beep');
+
+  @override
+  Future<void> playAdhan({
+    required String voiceId,
+    bool waitUntilDone = true,
+  }) async =>
+      calls.add('adhan:$voiceId');
+
+  @override
+  Future<void> stop() async => calls.add('stop');
 }
 
 void main() {
@@ -552,5 +598,266 @@ void main() {
     final afterMaghrib =
         await provider.next(after: maghrib.scheduledAt);
     expect(afterMaghrib.name, 'isha');
+  });
+
+  test('cast mode still calls orchestrator (away suppression stays there)',
+      () async {
+    final local = _FakeLocalPlayer();
+    final deliveryDone = Completer<void>();
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      deliveryModes: _FakeModes(PrayerDeliveryMode.cast),
+      localPlayer: local,
+      runDelivery: (request) async {
+        deliveries.add(request);
+        deliveryDone.complete();
+        return const DeliveryAttemptResult(
+          sessionId: 'sess',
+          outcome: Outcome.suppressedAway,
+          role: null,
+        );
+      },
+      clock: clock,
+    );
+    await coordinator.start();
+    final wakeMs = alarm.scheduled.single.epochMs;
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
+    );
+    await deliveryDone.future;
+    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+
+    expect(deliveries, hasLength(1));
+    expect(local.calls, isEmpty);
+  });
+
+  test('beep mode plays locally and does not call Cast', () async {
+    final local = _FakeLocalPlayer();
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      deliveryModes: _FakeModes(PrayerDeliveryMode.beep),
+      localPlayer: local,
+      runDelivery: (request) async {
+        deliveries.add(request);
+        return const DeliveryAttemptResult(
+          sessionId: 'sess',
+          outcome: Outcome.played,
+          role: 'SOLO',
+        );
+      },
+      clock: clock,
+    );
+    await coordinator.start();
+    final wakeMs = alarm.scheduled.single.epochMs;
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
+    );
+    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+
+    expect(deliveries, isEmpty);
+    expect(local.calls, ['beep']);
+    expect(alarm.stopForegroundCalls, 1);
+  });
+
+  test('adhanPhone mode plays local voice and does not call Cast', () async {
+    final local = _FakeLocalPlayer();
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      deliveryModes: _FakeModes(PrayerDeliveryMode.adhanPhone),
+      localPlayer: local,
+      runDelivery: (request) async {
+        deliveries.add(request);
+        return const DeliveryAttemptResult(
+          sessionId: 'sess',
+          outcome: Outcome.played,
+          role: 'SOLO',
+        );
+      },
+      clock: clock,
+    );
+    await coordinator.start();
+    final wakeMs = alarm.scheduled.single.epochMs;
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
+    );
+    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+
+    expect(deliveries, isEmpty);
+    expect(local.calls, ['adhan:makkah']);
+    expect(alarm.stopForegroundCalls, 1);
+  });
+
+  test('scheduleDryRun 10 minutes arms wake at now+10m + scanOffset', () async {
+    final coordinator = buildCoordinator();
+    await coordinator.start();
+
+    final azanAt = await coordinator.scheduleDryRun(
+      untilAzan: PrayerDeliveryCoordinator.dryRunIn10Minutes,
+    );
+
+    expect(azanAt, t0.add(PrayerDeliveryCoordinator.dryRunIn10Minutes));
+    final expectedWake = azanAt
+        .add(PresenceSchedule.scanOffset)
+        .millisecondsSinceEpoch;
+    expect(alarm.scheduled, hasLength(1));
+    expect(alarm.scheduled.single.epochMs, expectedWake);
+    expect(alarm.scheduled.single.prayer, 'maghrib-dryrun');
+    expect(alarm.scheduled.single.voiceId, 'makkah');
+    expect(coordinator.scheduledWakeEpochMs, expectedWake);
+  });
+
+  test('scheduleDryRun 1 hour arms wake at now+1h + scanOffset', () async {
+    final coordinator = buildCoordinator();
+    await coordinator.start();
+
+    final azanAt = await coordinator.scheduleDryRun(
+      untilAzan: PrayerDeliveryCoordinator.dryRunIn1Hour,
+    );
+
+    expect(azanAt, t0.add(PrayerDeliveryCoordinator.dryRunIn1Hour));
+    final expectedWake = azanAt
+        .add(PresenceSchedule.scanOffset)
+        .millisecondsSinceEpoch;
+    expect(alarm.scheduled.single.epochMs, expectedWake);
+    expect(alarm.scheduled.single.prayer, 'maghrib-dryrun');
+    expect(coordinator.scheduledWakeEpochMs, expectedWake);
+  });
+
+  test('scheduleDryRun replaces a previous dry-run alarm', () async {
+    final coordinator = buildCoordinator();
+    await coordinator.start();
+
+    await coordinator.scheduleDryRun(
+      untilAzan: PrayerDeliveryCoordinator.dryRunIn10Minutes,
+    );
+    final secondAzan = await coordinator.scheduleDryRun(
+      untilAzan: PrayerDeliveryCoordinator.dryRunIn1Hour,
+    );
+
+    expect(alarm.scheduled, hasLength(1));
+    expect(
+      alarm.scheduled.single.epochMs,
+      secondAzan.add(PresenceSchedule.scanOffset).millisecondsSinceEpoch,
+    );
+    expect(alarm.scheduled.single.prayer, 'maghrib-dryrun');
+  });
+
+  test('dry-run fire uses canonical prayer mode then reschedules real next',
+      () async {
+    final modes = _FakeModes(PrayerDeliveryMode.cast);
+    final deliveryDone = Completer<void>();
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      deliveryModes: modes,
+      runDelivery: (request) async {
+        deliveries.add(request);
+        deliveryDone.complete();
+        return const DeliveryAttemptResult(
+          sessionId: 'sess',
+          outcome: Outcome.played,
+          role: 'SOLO',
+        );
+      },
+      clock: clock,
+    );
+    await coordinator.start();
+    final azanAt = await coordinator.scheduleDryRun(
+      untilAzan: PrayerDeliveryCoordinator.dryRunIn10Minutes,
+    );
+    final wakeMs = alarm.scheduled.single.epochMs;
+
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib-dryrun',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
+    );
+    await deliveryDone.future;
+    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+
+    expect(modes.lastPrayerName, 'maghrib');
+    expect(deliveries, hasLength(1));
+    expect(deliveries.single.prayerName, 'maghrib-dryrun');
+    expect(deliveries.single.scheduledAzan, azanAt);
+    expect(deliveries.single.voiceId, 'makkah');
+    expect(alarm.stopForegroundCalls, 1);
+    expect(alarm.scheduled.single.prayer, 'maghrib');
+    expect(alarm.scheduled.single.voiceId, 'makkah');
+  });
+
+  test('start keeps a future dry-run instead of replacing with next prayer',
+      () async {
+    final coordinator = buildCoordinator();
+    await coordinator.start();
+    final azanAt = await coordinator.scheduleDryRun(
+      untilAzan: PrayerDeliveryCoordinator.dryRunIn10Minutes,
+    );
+    final dryWake = azanAt
+        .add(PresenceSchedule.scanOffset)
+        .millisecondsSinceEpoch;
+    expect(alarm.scheduled.single.prayer, 'maghrib-dryrun');
+
+    final restarted = buildCoordinator();
+    await restarted.start();
+
+    expect(alarm.scheduled, hasLength(1));
+    expect(alarm.scheduled.single.prayer, 'maghrib-dryrun');
+    expect(alarm.scheduled.single.epochMs, dryWake);
+    expect(restarted.scheduledWakeEpochMs, dryWake);
+  });
+
+  test('canonicalPrayerName strips dry-run suffix only', () {
+    expect(
+      PrayerDeliveryCoordinator.canonicalPrayerName('isha-dryrun'),
+      'isha',
+    );
+    expect(PrayerDeliveryCoordinator.canonicalPrayerName('isha'), 'isha');
+    expect(PrayerDeliveryCoordinator.isDryRunPrayer('isha-dryrun'), isTrue);
+    expect(PrayerDeliveryCoordinator.isDryRunPrayer('isha'), isFalse);
   });
 }

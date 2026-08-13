@@ -16,8 +16,8 @@ final class PresenceSchedule {
   /// T−30 s — open coordination window (§4).
   static const Duration coordinationOffset = Duration(seconds: -30);
 
-  /// T−5 s — leader starts HTTP server / pre-connects Cast.
-  static const Duration prepareOffset = Duration(seconds: -5);
+  /// T−20 s — leader starts HTTP server / pre-connects Cast.
+  static const Duration prepareOffset = Duration(seconds: -20);
 
   /// Cached presence results older than this are stale (§3.6).
   static const Duration cacheTtl = Duration(minutes: 10);
