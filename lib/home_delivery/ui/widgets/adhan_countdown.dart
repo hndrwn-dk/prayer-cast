@@ -23,15 +23,17 @@ final class AdhanCountdown {
   static bool isDue(Duration remaining) => remaining <= Duration.zero;
 }
 
-/// Live "in 52:18" line under the next-adhan hero time.
+/// Live "Dhuhr in 52:18" line under the next-adhan hero time.
 class AdhanCountdownLabel extends StatefulWidget {
   const AdhanCountdownLabel({
     super.key,
     required this.scheduledAt,
+    this.prayerName,
     this.now,
   });
 
   final DateTime scheduledAt;
+  final String? prayerName;
   final DateTime Function()? now;
 
   static const ValueKey<String> keyName = ValueKey<String>(
@@ -64,19 +66,38 @@ class _AdhanCountdownLabelState extends State<AdhanCountdownLabel> {
     final now = widget.now?.call() ?? DateTime.now();
     final remaining = widget.scheduledAt.difference(now);
     final l10n = context.l10n;
-    final text = AdhanCountdown.isDue(remaining)
+    final countdown = AdhanCountdown.isDue(remaining)
         ? l10n.adhanCountdownNow
         : l10n.adhanCountdownIn(AdhanCountdown.clock(remaining));
-    return Text(
-      text,
-      key: AdhanCountdownLabel.keyName,
-      style: const TextStyle(
-        fontFamily: PrayerCastTheme.bodyFont,
-        fontSize: 16,
-        fontWeight: FontWeight.w400,
-        letterSpacing: 0.4,
-        color: PrayerCastColors.mist,
+    final name = widget.prayerName?.trim();
+    return Text.rich(
+      TextSpan(
+        children: [
+          if (name != null && name.isNotEmpty)
+            TextSpan(
+              text: name,
+              style: const TextStyle(
+                fontFamily: PrayerCastTheme.displayFont,
+                fontSize: 22,
+                fontWeight: FontWeight.w400,
+                fontStyle: FontStyle.italic,
+                letterSpacing: 0.2,
+                color: PrayerCastColors.mist,
+              ),
+            ),
+          TextSpan(
+            text: name != null && name.isNotEmpty ? ' $countdown' : countdown,
+            style: const TextStyle(
+              fontFamily: PrayerCastTheme.bodyFont,
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              letterSpacing: 0.4,
+              color: PrayerCastColors.mist,
+            ),
+          ),
+        ],
       ),
+      key: AdhanCountdownLabel.keyName,
     );
   }
 }

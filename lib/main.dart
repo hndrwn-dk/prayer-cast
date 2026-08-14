@@ -610,7 +610,13 @@ class _NextAdhanJewel extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(time!, style: PrayerCastTheme.heroTime),
           ),
-          if (prayerName != null) ...[
+          if (scheduledAt != null) ...[
+            const SizedBox(height: 8),
+            AdhanCountdownLabel(
+              scheduledAt: scheduledAt!,
+              prayerName: prayerName,
+            ),
+          ] else if (prayerName != null) ...[
             const SizedBox(height: 8),
             Text(
               prayerName!,
@@ -623,10 +629,6 @@ class _NextAdhanJewel extends StatelessWidget {
                 color: PrayerCastColors.mist,
               ),
             ),
-          ],
-          if (scheduledAt != null) ...[
-            const SizedBox(height: 10),
-            AdhanCountdownLabel(scheduledAt: scheduledAt!),
           ],
         ] else
           Text(
@@ -665,33 +667,36 @@ class _PlaceAndPresence extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    const placeStyle = TextStyle(
+      fontFamily: PrayerCastTheme.bodyFont,
+      fontSize: 14,
+      letterSpacing: 0.15,
+      height: 1.45,
+      color: PrayerCastColors.mist,
+    );
+    const countryStyle = TextStyle(
+      fontFamily: PrayerCastTheme.bodyFont,
+      fontSize: 14,
+      height: 1.45,
+      color: PrayerCastColors.mistDeep,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (city != null)
           Text(
-            city!,
+            '${l10n.city}: $city',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontFamily: PrayerCastTheme.bodyFont,
-              fontSize: 14,
-              letterSpacing: 0.15,
-              height: 1.45,
-              color: PrayerCastColors.mist,
-            ),
+            style: placeStyle,
           ),
         if (country != null)
           Text(
-            country!,
+            '${l10n.country}: $country',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontFamily: PrayerCastTheme.bodyFont,
-              fontSize: 14,
-              height: 1.45,
-              color: PrayerCastColors.mistDeep,
-            ),
+            style: countryStyle,
           ),
         const SizedBox(height: 28),
         Row(

@@ -171,11 +171,11 @@ void main() {
     expect(find.text('ADZAN BERIKUTNYA'), findsOneWidget);
     expect(find.text('Isya · 20:25'), findsNothing);
     expect(find.text('20:25'), findsOneWidget);
-    expect(find.text('Isya'), findsOneWidget);
     expect(find.byKey(AdhanCountdownLabel.keyName), findsOneWidget);
-    expect(find.text('sekarang'), findsOneWidget);
+    expect(find.textContaining('Isya sekarang'), findsOneWidget);
     expect(find.text('Singapore, Singapore'), findsNothing);
-    expect(find.text('Singapore'), findsNWidgets(2));
+    expect(find.text('Kota: Singapore'), findsOneWidget);
+    expect(find.text('Negara: Singapore'), findsOneWidget);
   });
 
   testWidgets('home colophon scrolls on a short phone without overflow', (

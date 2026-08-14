@@ -285,6 +285,46 @@ void main() {
     });
   });
 
+  group('CastSdkDeviceWait', () {
+    test('waits until the SDK lists the saved device', () async {
+      var polls = 0;
+      final match = await CastSdkDeviceWait.untilPresent<String>(
+        deviceId: 'cast-home-1',
+        devices: () {
+          polls += 1;
+          return polls >= 3 ? ['cast-home-1'] : const <String>[];
+        },
+        idOf: (id) => id,
+        delay: (_) async {},
+      );
+      expect(match, 'cast-home-1');
+      expect(polls, 3);
+    });
+
+    test('throws vanished when the SDK never lists the device', () async {
+      var t = DateTime.utc(2026, 8, 14, 5, 43);
+      await expectLater(
+        () => CastSdkDeviceWait.untilPresent<String>(
+          deviceId: 'e42afc3cd44438e2ded41c07eb515fd1',
+          devices: () => const [],
+          idOf: (id) => id,
+          timeout: const Duration(seconds: 1),
+          now: () => t,
+          delay: (_) async {
+            t = t.add(const Duration(seconds: 1));
+          },
+        ),
+        throwsA(
+          isA<CastConnectFailure>().having(
+            (e) => e.toString(),
+            'message',
+            contains('vanished before connect'),
+          ),
+        ),
+      );
+    });
+  });
+
   group('CastSessionConnect retry', () {
     test('retries startSession once when session never connected', () async {
       var starts = 0;

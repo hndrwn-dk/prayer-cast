@@ -108,6 +108,38 @@ final class CastDiscoveryPolicy {
   }
 }
 
+/// MediaRouter can lag NSD at cold wake. Fajr 2026-08-14: mDNS had the
+/// Bedroom speaker (Signal A HOME) but `devices` was empty at connect.
+final class CastSdkDeviceWait {
+  static const Duration timeout = Duration(seconds: 12);
+  static const Duration poll = Duration(milliseconds: 250);
+
+  static Future<T> untilPresent<T>({
+    required String deviceId,
+    required Iterable<T> Function() devices,
+    required String Function(T device) idOf,
+    Duration timeout = CastSdkDeviceWait.timeout,
+    Duration poll = CastSdkDeviceWait.poll,
+    DateTime Function()? now,
+    Future<void> Function(Duration delay)? delay,
+  }) async {
+    final clock = now ?? DateTime.now;
+    final sleep = delay ?? Future<void>.delayed;
+    final deadline = clock().add(timeout);
+    while (true) {
+      for (final device in devices()) {
+        if (idOf(device) == deviceId) return device;
+      }
+      if (!clock().isBefore(deadline)) {
+        throw CastConnectFailure(
+          'Device $deviceId vanished before connect',
+        );
+      }
+      await sleep(poll);
+    }
+  }
+}
+
 /// Whether native `RemoteMediaClient.load` will actually run.
 ///
 /// Session-connected (route selected) is not enough — Isha 2026-08-13
@@ -527,23 +559,15 @@ final class FlutterCastPlatform implements CastPlatform {
       await cast.GoogleCastDiscoveryManager.instance.startDiscovery();
     } catch (_) {}
 
-    final devices = cast.GoogleCastDiscoveryManager.instance.devices;
-    cast.GoogleCastDevice? match;
-    for (final d in devices) {
-      if (d.deviceID == receiver.deviceId) {
-        match = d;
-        break;
-      }
-    }
-    if (match == null) {
-      throw CastConnectFailure(
-        'Device ${receiver.deviceId} vanished before connect',
-      );
-    }
-    final device = match;
+    final discovery = cast.GoogleCastDiscoveryManager.instance;
+    final match = await CastSdkDeviceWait.untilPresent(
+      deviceId: receiver.deviceId,
+      devices: () => discovery.devices,
+      idOf: (d) => d.deviceID,
+    );
     final mgr = cast.GoogleCastSessionManager.instance;
     await CastSessionConnect.run(
-      startSession: () => mgr.startSessionWithDevice(device),
+      startSession: () => mgr.startSessionWithDevice(match),
       waitUntilReady: (timeout) => waitUntilReady(timeout: timeout),
       sessionConnected: () async =>
           mgr.hasConnectedSession || await _isSessionConnected(),
