@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Play Store Phase 3: the app process must not open cleartext HTTP.
+
+  Android network-security-config cannot whitelist RFC1918 CIDR. Domain
+  entries are hostnames (or exact IP literals), not 10.0.0.0/8. A fake
+  domain-config of "192.168.0.0" would not match http://192.168.1.5/...
+  and must not be shipped as a pretend LAN allowlist.
+
+  The only HTTP URL in this app is the on-device MediaServer advertised
+  to Cast as contentId (http://<LAN-IPv4>:<port>/azan/<token>/<voice>.mp3).
+  The Cast receiver fetches that URL. The phone does not HttpClient-GET
+  it (Aladhan, Ko-fi, privacy policy, and geocoding are HTTPS).
+
+  Therefore base-config cleartext is false. No user CAs. No debug-overrides
+  that reopen the internet.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

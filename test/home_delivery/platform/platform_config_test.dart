@@ -18,13 +18,107 @@ void main() {
           .hasMatch(manifest),
       isFalse,
     );
-    expect(manifest, contains('foregroundServiceType="mediaPlayback"'));
     expect(manifest, contains('.AdzanAlarmReceiver'));
     expect(manifest, contains('.AdzanForegroundService'));
     expect(manifest, contains('.BootReceiver'));
     expect(manifest, contains('android.intent.action.BOOT_COMPLETED'));
     expect(manifest, contains('ACCESS_COARSE_LOCATION'));
-    expect(manifest, contains('ACCESS_FINE_LOCATION'));
+    expect(manifest, contains('Not used for speaker scan'));
+    expect(manifest, contains('NEARBY_WIFI_DEVICES'));
+    expect(manifest, contains('neverForLocation'));
+
+    final fineGrant = RegExp(
+      r'<uses-permission\s+android:name="android\.permission\.ACCESS_FINE_LOCATION"\s*/>',
+    );
+    expect(fineGrant.hasMatch(manifest), isFalse);
+    final fineBlock = RegExp(
+      r'<uses-permission[^>]*ACCESS_FINE_LOCATION[^>]*/?>',
+    ).firstMatch(manifest);
+    expect(fineBlock, isNotNull);
+    expect(fineBlock!.group(0), contains('tools:node="remove"'));
+  });
+
+  test('AdzanForegroundService is specialUse; Cast SDK stays mediaPlayback',
+      () {
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+
+    expect(
+      manifest,
+      contains('android.permission.FOREGROUND_SERVICE_SPECIAL_USE'),
+    );
+    expect(
+      manifest,
+      contains('android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK'),
+    );
+    expect(
+      manifest,
+      contains('android.permission.USE_FULL_SCREEN_INTENT'),
+    );
+
+    final adzan = _serviceBlock(manifest, '.AdzanForegroundService');
+    expect(adzan, contains('android:foregroundServiceType="specialUse"'));
+    expect(adzan, isNot(contains('mediaPlayback')));
+    expect(
+      adzan,
+      contains('android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE'),
+    );
+    expect(adzan, contains('This service does not play media.'));
+
+    final receiver = _receiverBlock(manifest, '.AdzanAlarmReceiver');
+    expect(receiver, contains('android:exported="false"'));
+
+    final cast = _serviceBlock(
+      manifest,
+      'com.google.android.gms.cast.framework.media.MediaNotificationService',
+    );
+    expect(cast, contains('android:foregroundServiceType="mediaPlayback"'));
+    expect(cast, isNot(contains('specialUse')));
+
+    final serviceKt = File(
+      'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/'
+      'AdzanForegroundService.kt',
+    ).readAsStringSync();
+    expect(serviceKt, contains('FOREGROUND_SERVICE_TYPE_SPECIAL_USE'));
+    expect(
+      serviceKt,
+      isNot(contains('FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK')),
+    );
+    expect(serviceKt, contains('PrayerCastFlutter.ensureStarted'));
+    expect(serviceKt, contains('START_REDELIVER_INTENT'));
+    expect(serviceKt, isNot(contains('MediaPlayer')));
+    expect(serviceKt, isNot(contains('AudioTrack')));
+    expect(serviceKt, isNot(contains('MediaSession')));
+  });
+
+  test('AndroidManifest does not enable global cleartext HTTP', () {
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    expect(
+      manifest,
+      contains('android:networkSecurityConfig="@xml/network_security_config"'),
+    );
+    expect(
+      RegExp(r'android:usesCleartextTraffic\s*=\s*"true"').hasMatch(manifest),
+      isFalse,
+    );
+
+    final config = File(
+      'android/app/src/main/res/xml/network_security_config.xml',
+    );
+    expect(config.existsSync(), isTrue);
+    final xml = config.readAsStringSync();
+    expect(
+      RegExp(
+        r'<base-config[^>]*cleartextTrafficPermitted\s*=\s*"false"',
+      ).hasMatch(xml),
+      isTrue,
+    );
+    expect(
+      RegExp(r'cleartextTrafficPermitted\s*=\s*"true"').hasMatch(xml),
+      isFalse,
+    );
+    expect(xml, isNot(contains('src="user"')));
   });
 
   test('Info.plist has local network, Bonjour, audio, and location usage', () {
@@ -42,4 +136,23 @@ void main() {
     expect(plist, contains('UIBackgroundModes'));
     expect(plist, contains('<string>audio</string>'));
   });
+}
+
+String _serviceBlock(String manifest, String androidName) {
+  return _componentBlock(manifest, 'service', androidName);
+}
+
+String _receiverBlock(String manifest, String androidName) {
+  return _componentBlock(manifest, 'receiver', androidName);
+}
+
+String _componentBlock(String manifest, String tag, String androidName) {
+  final escaped = RegExp.escape(androidName);
+  final pattern = RegExp(
+    '<$tag\\b[^>]*android:name="$escaped"[^>]*(?:/>|>.*?</$tag>)',
+    dotAll: true,
+  );
+  final match = pattern.firstMatch(manifest);
+  expect(match, isNotNull, reason: 'missing <$tag android:name="$androidName">');
+  return match!.group(0)!;
 }

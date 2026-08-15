@@ -86,10 +86,13 @@ class ExactAlarmPlugin(
 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
         eventSink = events
-        // Deliver any pending fire that arrived before Dart listened.
-        pendingFire?.let {
+        // Deliver any pending fire that arrived before Dart listened
+        // (in-memory, or persisted across a process restart within grace).
+        val fire = pendingFire ?: readPersistedPendingFire(context)
+        fire?.let {
             events?.success(it)
             pendingFire = null
+            clearPersistedPendingFire(context)
         }
     }
 
@@ -109,9 +112,12 @@ class ExactAlarmPlugin(
             "firedAtMs" to firedAtMs,
             "voiceId" to voiceId,
         )
+        persistPendingFire(context, payload)
         val sink = eventSink
         if (sink != null) {
             sink.success(payload)
+            pendingFire = null
+            clearPersistedPendingFire(context)
         } else {
             pendingFire = payload
         }
@@ -127,6 +133,8 @@ class ExactAlarmPlugin(
         const val KEY_PRAYER = "prayer"
         const val KEY_EPOCH = "epoch"
         const val KEY_VOICE_ID = "voiceId"
+        const val RESCHEDULE_RETRY_PRAYER = "reschedule-retry"
+        private const val RESCHEDULE_RETRY_DELAY_MS = 15_000L
         private const val REQ_FIRE = 1001
         private const val REQ_SHOW = 1002
 
@@ -151,20 +159,67 @@ class ExactAlarmPlugin(
         }
 
         fun emitFromBackground(
+            context: Context,
             prayer: String,
             scheduledEpochMs: Long,
             firedAtMs: Long,
             voiceId: String,
         ) {
+            val payload = mapOf(
+                "prayer" to prayer,
+                "scheduledEpochMs" to scheduledEpochMs,
+                "firedAtMs" to firedAtMs,
+                "voiceId" to voiceId,
+            )
+            persistPendingFire(context, payload)
             instance?.emitAlarmFired(prayer, scheduledEpochMs, firedAtMs, voiceId)
-                ?: run {
-                    pendingFire = mapOf(
-                        "prayer" to prayer,
-                        "scheduledEpochMs" to scheduledEpochMs,
-                        "firedAtMs" to firedAtMs,
-                        "voiceId" to voiceId,
-                    )
-                }
+                ?: run { pendingFire = payload }
+        }
+
+        private const val KEY_PENDING_PRAYER = "pending_prayer"
+        private const val KEY_PENDING_EPOCH = "pending_epoch"
+        private const val KEY_PENDING_FIRED = "pending_fired"
+        private const val KEY_PENDING_VOICE = "pending_voice"
+
+        @JvmStatic
+        fun persistPendingFire(context: Context, payload: Map<String, Any>) {
+            val prayer = payload["prayer"] as? String ?: return
+            val epoch = (payload["scheduledEpochMs"] as? Number)?.toLong() ?: return
+            val fired = (payload["firedAtMs"] as? Number)?.toLong() ?: return
+            val voice = payload["voiceId"] as? String ?: ""
+            context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_PENDING_PRAYER, prayer)
+                .putLong(KEY_PENDING_EPOCH, epoch)
+                .putLong(KEY_PENDING_FIRED, fired)
+                .putString(KEY_PENDING_VOICE, voice)
+                .apply()
+        }
+
+        @JvmStatic
+        fun readPersistedPendingFire(context: Context): Map<String, Any>? {
+            val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val prayer = prefs.getString(KEY_PENDING_PRAYER, null) ?: return null
+            if (!prefs.contains(KEY_PENDING_EPOCH) || !prefs.contains(KEY_PENDING_FIRED)) {
+                return null
+            }
+            return mapOf(
+                "prayer" to prayer,
+                "scheduledEpochMs" to prefs.getLong(KEY_PENDING_EPOCH, 0L),
+                "firedAtMs" to prefs.getLong(KEY_PENDING_FIRED, 0L),
+                "voiceId" to (prefs.getString(KEY_PENDING_VOICE, "") ?: ""),
+            )
+        }
+
+        @JvmStatic
+        fun clearPersistedPendingFire(context: Context) {
+            context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY_PENDING_PRAYER)
+                .remove(KEY_PENDING_EPOCH)
+                .remove(KEY_PENDING_FIRED)
+                .remove(KEY_PENDING_VOICE)
+                .apply()
         }
 
         /**
@@ -236,8 +291,9 @@ class ExactAlarmPlugin(
          * Re-arm from persisted prefs if the wake epoch is still in the future.
          * Returns true when an alarm was armed.
          *
-         * If the epoch already passed (device was off through the prayer), do
-         * nothing — [PrayerDeliveryCoordinator.start] reschedules on next launch.
+         * If the epoch already passed (device was off through the prayer, or
+         * Dart never rescheduled), [armRescheduleRetry] starts a Dart
+         * reschedule without waiting for the user to open the app.
          */
         @JvmStatic
         fun rearmFromPrefsIfFuture(context: Context): Boolean {
@@ -252,6 +308,25 @@ class ExactAlarmPlugin(
             val voiceId = prefs.getString(KEY_VOICE_ID, null) ?: ""
             return try {
                 armAlarmClock(context, epochMs, prayer, voiceId)
+                true
+            } catch (_: SecurityException) {
+                false
+            } catch (_: Exception) {
+                false
+            }
+        }
+
+        /**
+         * AlarmClock a few seconds out named `reschedule-retry`. The fire
+         * starts FGS + Dart, which skips delivery and arms the next real
+         * prayer. Used when reboot / package-replace prefs are already past.
+         */
+        @JvmStatic
+        fun armRescheduleRetry(context: Context): Boolean {
+            if (!canScheduleExactAlarms(context)) return false
+            val epochMs = System.currentTimeMillis() + RESCHEDULE_RETRY_DELAY_MS
+            return try {
+                armAlarmClock(context, epochMs, RESCHEDULE_RETRY_PRAYER, "")
                 true
             } catch (_: SecurityException) {
                 false

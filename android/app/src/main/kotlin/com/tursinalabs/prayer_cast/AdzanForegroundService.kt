@@ -11,33 +11,51 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.wifi.WifiManager
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 
 /**
- * Foreground service (type mediaPlayback) holding PARTIAL_WAKE_LOCK and
+ * Foreground service (type specialUse) holding PARTIAL_WAKE_LOCK and
  * WifiLock(WIFI_MODE_FULL_HIGH_PERF) for the delivery window (spec §5.5).
  *
- * WHY: Without the high-perf Wi-Fi lock, mDNS discovery fails intermittently
- * when the screen is off — the number one cause of "works when holding the
- * phone, fails overnight".
+ * Play-honest type: this service does not play audio. It holds CPU/Wi-Fi
+ * locks and launches [MainActivity] so Dart can Cast adhan to the home
+ * speaker, or play beep / phone adhan via audioplayers. mediaPlayback
+ * would be a type mismatch (Play takedown). Cast SDK
+ * MediaNotificationService stays mediaPlayback.
  *
- * Dart delivery runs inside [MainActivity]. On API 34+ a raw
- * [startActivity] from this FGS is BAL-blocked while another app is visible,
- * so the engine never starts. Launch via full-screen intent + a PendingIntent
- * created with BAL creator opt-in instead.
+ * WHY locks: Without the high-perf Wi-Fi lock, mDNS discovery fails
+ * intermittently when the screen is off — the number one cause of
+ * "works when holding the phone, fails overnight".
+ *
+ * Dart delivery runs in a cached [FlutterEngine] started from this
+ * service. On API 34+ a raw [startActivity] from this FGS is BAL-blocked
+ * (Pixel same-UID PendingIntent → BAL_BLOCK), so waiting for [MainActivity]
+ * misses azan and replays when the user later opens the app.
+ * Still try full-screen intent + PendingIntent BAL opt-in for lockscreen UX.
+ * specialUse is API 34+; older platforms startForeground without a type.
  */
 class AdzanForegroundService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
+    private val timeoutHandler = Handler(Looper.getMainLooper())
+    private val stopAfterWindow = Runnable {
+        Log.w(TAG, "Delivery window elapsed without Dart stop — stopping FGS")
+        releaseLocks()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            timeoutHandler.removeCallbacks(stopAfterWindow)
             releaseLocks()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -60,33 +78,54 @@ class AdzanForegroundService : Service() {
             firedAtMs = firedAtMs,
         )
         val notification = buildNotification(prayer, launchPi)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
                 NOTIFICATION_ID,
                 notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
             )
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
 
         acquireLocks()
+        timeoutHandler.removeCallbacks(stopAfterWindow)
+        timeoutHandler.postDelayed(stopAfterWindow, DELIVERY_WINDOW_MS)
 
-        ExactAlarmPlugin.emitFromBackground(prayer, scheduledEpochMs, firedAtMs, voiceId)
+        if (scheduledEpochMs > 0L) {
+            ExactAlarmPlugin.emitFromBackground(
+                this,
+                prayer,
+                scheduledEpochMs,
+                firedAtMs,
+                voiceId,
+            )
+        }
 
         // Full-screen intent covers lockscreen / screen-off. PendingIntent.send
-        // with creator BAL opt-in covers "another app is in the foreground".
+        // with creator + sender BAL opt-in is still blocked on Pixel / API 36
+        // when sender and creator share a UID (sameUid → BAL_BLOCK). Dart
+        // therefore starts in this process via [PrayerCastFlutter.ensureStarted].
         try {
-            launchPi.send()
+            val sendOpts = ActivityOptions.makeBasic()
+            applyBalSenderMode(sendOpts)
+            launchPi.send(this, 0, null, null, null, null, sendOpts.toBundle())
         } catch (e: PendingIntent.CanceledException) {
             Log.w(TAG, "delivery activity PendingIntent canceled; startActivity fallback", e)
             startActivity(deliveryActivityIntent(prayer, scheduledEpochMs, voiceId, firedAtMs))
         }
 
-        return START_STICKY
+        try {
+            PrayerCastFlutter.ensureStarted(this)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start FlutterEngine for adzan delivery", e)
+        }
+
+        return START_REDELIVER_INTENT
     }
 
     override fun onDestroy() {
+        timeoutHandler.removeCallbacks(stopAfterWindow)
         releaseLocks()
         super.onDestroy()
     }
@@ -168,11 +207,7 @@ class AdzanForegroundService : Service() {
     ): PendingIntent {
         val launch = deliveryActivityIntent(prayer, scheduledEpochMs, voiceId, firedAtMs)
         val options = ActivityOptions.makeBasic()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            options.setPendingIntentCreatorBackgroundActivityStartMode(
-                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED,
-            )
-        }
+        applyBalCreatorMode(options)
         return PendingIntent.getActivity(
             this,
             REQ_LAUNCH,
@@ -196,6 +231,30 @@ class AdzanForegroundService : Service() {
             .build()
     }
 
+    private fun applyBalCreatorMode(options: ActivityOptions) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            options.setPendingIntentCreatorBackgroundActivityStartMode(
+                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_ALWAYS,
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            options.setPendingIntentCreatorBackgroundActivityStartMode(
+                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED,
+            )
+        }
+    }
+
+    private fun applyBalSenderMode(options: ActivityOptions) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            options.setPendingIntentBackgroundActivityStartMode(
+                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_ALWAYS,
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            options.setPendingIntentBackgroundActivityStartMode(
+                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED,
+            )
+        }
+    }
+
     companion object {
         const val ACTION_START = "com.tursinalabs.prayer_cast.ACTION_START_FGS"
         const val ACTION_STOP = "com.tursinalabs.prayer_cast.ACTION_STOP_FGS"
@@ -203,5 +262,6 @@ class AdzanForegroundService : Service() {
         private const val CHANNEL_ID = "adzan_delivery_alarm"
         private const val NOTIFICATION_ID = 42
         private const val REQ_LAUNCH = 1003
+        private const val DELIVERY_WINDOW_MS = 10 * 60 * 1000L
     }
 }

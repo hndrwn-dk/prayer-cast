@@ -309,7 +309,9 @@ Google Home app to create a group, rather than trying to sync ourselves.
 - Permission: `SCHEDULE_EXACT_ALARM` (request at runtime).
   Do **not** ship `USE_EXACT_ALARM` without checking Play policy — it is scoped to
   alarm-clock and calendar apps and a rejection will block your release.
-- On fire: start a foreground service (`mediaPlayback` type) holding:
+- On fire: start a foreground service (`specialUse` type — not
+  `mediaPlayback`; the service holds locks and launches the activity, it
+  does not play audio) holding:
   - `PARTIAL_WAKE_LOCK`
   - `WifiLock(WIFI_MODE_FULL_HIGH_PERF)` — **without this, mDNS discovery fails
     intermittently when the screen is off.** This is the number one cause of

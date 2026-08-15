@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Local network / NSD (presence + peer discovery). -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -6,15 +7,33 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
-    <!-- Prayer-time location (Waktu sholat → Gunakan lokasi saya). -->
+    <!-- Optional prayer-city only. Coarse is enough for reverse-geocode
+         and Aladhan. Not used to decide if the user is home (LAN
+         fingerprint). Not used for speaker scan. Do not request on
+         launch or in the background. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Do not declare FINE. Libraries must not re-add it for Cast/NSD. -->
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        tools:node="remove" />
+
+    <!-- Speaker scan on API 33+. neverForLocation: Wi-Fi is not a
+         location source. Requested at scan time only.
+         API 32 and below: ACCESS_WIFI_STATE + multicast; Scan does
+         not prompt for location. -->
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation" />
 
     <!-- Exact alarm — request at runtime. Do NOT add USE_EXACT_ALARM (spec §5.5). -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
-    <!-- Foreground service wake path for adzan delivery. -->
+    <!-- Foreground service wake path for adzan delivery.
+         AdzanForegroundService is specialUse (locks + launch activity; it
+         does not play media). MEDIA_PLAYBACK stays for Cast SDK
+         MediaNotificationService only. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -24,11 +43,16 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.TURN_SCREEN_ON" />
 
+    <!-- Cleartext is off for the app process (targetSdk 28+ default, plus
+         network-security-config). Cast still plays: MediaServer serves
+         http://<LAN-IP>:<port>/... and the speaker fetches it; the phone
+         never HttpClient-GETs that URL. Do not set usesCleartextTraffic
+         true — Android cannot CIDR-whitelist RFC1918 in domain-config. -->
     <application
         android:label="Prayer Cast"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
+        android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -60,13 +84,22 @@
             android:enabled="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
+        <!-- Play-honest type: wake locks + launch MainActivity for the
+             exact-alarm azan path. Not mediaPlayback — this service never
+             starts a player. Cast SDK MediaNotificationService below stays
+             mediaPlayback. Play Console text: docs/play-fgs.md -->
         <service
             android:name=".AdzanForegroundService"
             android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Exact-alarm prayer wake: hold CPU and high-perf Wi-Fi locks and launch MainActivity so Dart can Cast adhan to the home speaker or play beep/phone adhan. This service does not play media." />
+        </service>
 
         <!-- Required by flutter_chrome_cast / Google Cast SDK. -->
         <meta-data
