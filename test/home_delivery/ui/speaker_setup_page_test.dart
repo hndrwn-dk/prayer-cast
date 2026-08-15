@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prayer_cast/home_delivery/coordinator/home_onboarding.dart';
 import 'package:prayer_cast/home_delivery/delivery/cast_client.dart';
+import 'package:prayer_cast/home_delivery/platform/nearby_wifi_scan_permission.dart';
 import 'package:prayer_cast/home_delivery/presence/fingerprint_store.dart';
 import 'package:prayer_cast/home_delivery/presence/lan_fingerprint.dart';
 import 'package:prayer_cast/home_delivery/ui/home_setup_providers.dart';
@@ -266,6 +267,31 @@ void main() {
     expect(find.byKey(const ValueKey('speaker_empty_state')), findsNothing);
   });
 
+  testWidgets('shows group delay hint and marks group rows', (tester) async {
+    await _pumpPage(
+      tester,
+      overrides: [
+        speakerDiscoveryProvider.overrideWith(
+          (ref) async => SpeakerScanResult(
+            devices: [
+              _speaker(),
+              _speaker(id: 'group-1', name: 'Home group speaker'),
+            ],
+          ),
+        ),
+      ],
+    );
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('speaker_group_delay_hint')), findsOneWidget);
+    expect(
+      find.textContaining('Cast groups (Xiaomi, mixed brands'),
+      findsOneWidget,
+    );
+    expect(find.text('May start late'), findsOneWidget);
+    expect(find.text('reachable now'), findsOneWidget);
+  });
+
   testWidgets(
     'disk cache shows list immediately without scanning or discover',
     (tester) async {
@@ -374,5 +400,66 @@ void main() {
     expect(find.text('Nest Mini Kitchen'), findsOneWidget);
     expect(find.byKey(const ValueKey('speaker_list')), findsOneWidget);
     expect(find.byKey(const ValueKey('speaker_error_state')), findsNothing);
+  });
+
+  testWidgets(
+    'API 33 nearby-wifi denied shows error and settings, no discover',
+    (tester) async {
+      var requested = false;
+      final cast = FakeCastPlatform(devices: [_speaker()]);
+      final onboarding = _onboarding(cast: cast);
+
+      await _pumpPage(
+        tester,
+        overrides: [
+          homeOnboardingProvider.overrideWith((ref) => onboarding),
+          nearbyWifiScanPermissionProvider.overrideWithValue(
+            NearbyWifiScanPermission(
+              isAndroid: true,
+              androidSdkInt: 33,
+              ensureAndroidGranted: () async {
+                requested = true;
+                return false;
+              },
+            ),
+          ),
+        ],
+      );
+      await tester.pump();
+
+      expect(requested, isTrue);
+      expect(cast.discoverCalls, 0);
+      expect(find.byKey(const ValueKey('speaker_error_state')), findsOneWidget);
+      expect(find.text('Open settings'), findsOneWidget);
+    },
+  );
+
+  testWidgets('API 32 scan does not request nearby-wifi or location',
+      (tester) async {
+    var requested = false;
+    final cast = FakeCastPlatform(devices: [_speaker()]);
+    final onboarding = _onboarding(cast: cast);
+
+    await _pumpPage(
+      tester,
+      overrides: [
+        homeOnboardingProvider.overrideWith((ref) => onboarding),
+        nearbyWifiScanPermissionProvider.overrideWithValue(
+          NearbyWifiScanPermission(
+            isAndroid: true,
+            androidSdkInt: 32,
+            ensureAndroidGranted: () async {
+              requested = true;
+              return false;
+            },
+          ),
+        ),
+      ],
+    );
+    await tester.pump();
+
+    expect(requested, isFalse);
+    expect(cast.discoverCalls, 1);
+    expect(find.text('Nest Mini Kitchen'), findsOneWidget);
   });
 }

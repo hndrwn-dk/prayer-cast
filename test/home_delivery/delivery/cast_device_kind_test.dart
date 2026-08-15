@@ -33,6 +33,16 @@ void main() {
     });
   });
 
+  group('looksLikeCastGroup', () {
+    test('matches Google Home / Cast group names', () {
+      expect(looksLikeCastGroup('Home group speaker'), isTrue);
+      expect(looksLikeCastGroup('Speaker group'), isTrue);
+      expect(looksLikeCastGroup('Living Room group'), isTrue);
+      expect(looksLikeCastGroup('Bedroom speaker'), isFalse);
+      expect(looksLikeCastGroup('Mi Smart Speaker'), isFalse);
+    });
+  });
+
   group('filterSpeakerCastTargets', () {
     test('filters to speakers only and preserves order', () {
       final names = [

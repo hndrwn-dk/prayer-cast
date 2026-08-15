@@ -100,6 +100,16 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                 child: Text(l10n.speakerSetupIntro, style: text.bodyLarge),
               ),
               Padding(
+                padding: const EdgeInsets.fromLTRB(28, 4, 28, 8),
+                child: Text(
+                  l10n.speakerGroupDelayHint,
+                  key: const ValueKey('speaker_group_delay_hint'),
+                  style: text.bodyMedium?.copyWith(
+                    color: PrayerCastColors.mistDeep,
+                  ),
+                ),
+              ),
+              Padding(
                 padding: const EdgeInsets.fromLTRB(28, 8, 16, 8),
                 child: Row(
                   children: [
@@ -428,6 +438,12 @@ class _SpeakerTile extends StatelessWidget {
         : PrayerCastColors.inkSoft;
     final borderWidth = highlight ? 1.4 : 1.0;
     final dimOthers = !enabled && !saving && !savedJustNow;
+    final group = looksLikeCastGroup(receiver.friendlyName);
+    final statusText = saving
+        ? l10n.saving
+        : group
+            ? l10n.speakerGroupMayDelay
+            : l10n.reachableNow;
 
     return Opacity(
       opacity: dimOthers ? 0.45 : 1,
@@ -460,7 +476,7 @@ class _SpeakerTile extends StatelessWidget {
                     Text(receiver.friendlyName, style: text.titleMedium),
                     const SizedBox(height: 2),
                     Text(
-                      saving ? l10n.saving : l10n.reachableNow,
+                      statusText,
                       style: text.bodyMedium?.copyWith(
                         color: saving
                             ? PrayerCastColors.dawnSoft

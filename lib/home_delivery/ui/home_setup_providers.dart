@@ -1,8 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../coordinator/home_onboarding.dart';
+import '../platform/nearby_wifi_scan_permission.dart';
 import '../presence/presence_service.dart';
 import '../presence/presence_state.dart';
+
+/// Android 13+ nearby-Wi-Fi grant before Cast / NSD scan. Not location.
+final nearbyWifiScanPermissionProvider =
+    Provider<NearbyWifiScanPermission>((ref) {
+  return const NearbyWifiScanPermission();
+});
 
 /// Injected by the app shell after [HomeDeliveryRuntime.bootstrap].
 final homeOnboardingProvider = Provider<HomeOnboarding>((ref) {
@@ -42,6 +49,11 @@ final speakerDiscoveryProvider = FutureProvider<SpeakerScanResult>((ref) async {
   }
 
   try {
+    final allowed =
+        await ref.read(nearbyWifiScanPermissionProvider).ensureGranted();
+    if (!allowed) {
+      throw StateError('local network permission denied');
+    }
     final result = await onboarding.scanSpeakers(
       budget: HomeOnboarding.scanBudget,
     );

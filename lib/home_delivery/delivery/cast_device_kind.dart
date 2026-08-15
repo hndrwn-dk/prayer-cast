@@ -32,6 +32,13 @@ bool looksLikeTvCastTarget(String friendlyName) {
   return false;
 }
 
+/// True when [friendlyName] looks like a Google Home / Cast speaker group.
+bool looksLikeCastGroup(String friendlyName) {
+  final n = friendlyName.toLowerCase().trim();
+  if (n.isEmpty) return false;
+  return RegExp(r'\bgroup\b').hasMatch(n);
+}
+
 /// Speakers / groups suitable for home adhan delivery.
 List<T> filterSpeakerCastTargets<T>(
   Iterable<T> devices,
