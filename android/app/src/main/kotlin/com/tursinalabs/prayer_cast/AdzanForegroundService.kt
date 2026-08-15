@@ -22,11 +22,11 @@ import androidx.core.app.NotificationCompat
  * Foreground service (type specialUse) holding PARTIAL_WAKE_LOCK and
  * WifiLock(WIFI_MODE_FULL_HIGH_PERF) for the delivery window (spec §5.5).
  *
- * Play-honest type: this service does not play audio. It holds CPU/Wi-Fi
- * locks and launches [MainActivity] so Dart can Cast adhan to the home
- * speaker, or play beep / phone adhan via audioplayers. mediaPlayback
- * would be a type mismatch (Play takedown). Cast SDK
- * MediaNotificationService stays mediaPlayback.
+ * Play-honest type: a scheduled alarm wake, not user-initiated playback.
+ * It holds CPU/Wi-Fi locks and runs the delivery so Dart can Cast adhan to
+ * the home speaker; beep / phone adhan modes play a short alarm sound via
+ * audioplayers in this process. mediaPlayback would be a type mismatch
+ * (Play takedown). Cast SDK MediaNotificationService stays mediaPlayback.
  *
  * WHY locks: Without the high-perf Wi-Fi lock, mDNS discovery fails
  * intermittently when the screen is off — the number one cause of

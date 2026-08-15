@@ -4,10 +4,11 @@
 Apps targeting Android 14+ must declare each FGS type on **Monitor and
 improve → App content**.
 
-`AdzanForegroundService` is **specialUse**. It does not play audio. It
-holds a partial wake lock and a high-perf Wi-Fi lock, posts an
-alarm-category notification with a full-screen intent, and starts
-`MainActivity` so Dart can Cast adhan (HOME) or play beep / phone adhan.
+`AdzanForegroundService` is **specialUse**: a scheduled alarm wake, not
+user-initiated playback. It holds a partial wake lock and a high-perf Wi-Fi
+lock, posts an alarm-category notification with a full-screen intent, and
+runs the delivery in a headless Flutter engine started in the service
+process, so Dart Casts adhan (HOME) without waiting for `MainActivity`.
 
 Google Cast SDK `MediaNotificationService` stays **mediaPlayback**.
 
@@ -125,13 +126,38 @@ notification while the speaker is playing.
 Exact-alarm prayer wake: hold CPU and high-perf Wi-Fi locks and launch MainActivity so Dart can Cast adhan to the home speaker or play beep/phone adhan. This service does not play media.
 ```
 
+## Console form answers
+
+The "Foreground service permissions" form lists the permissions and asks
+which tasks need them:
+
+- `FOREGROUND_SERVICE_MEDIA_PLAYBACK` — check **Media playback**. Not
+  "Show picture in picture", not "Other".
+- `FOREGROUND_SERVICE_SPECIAL_USE` — check **Other** (the only option),
+  then paste the specialUse description above.
+
 ## Full-screen intent (keep; already required)
 
-`USE_FULL_SCREEN_INTENT` stays. On Pixel / API 34+, background
-`startActivity` from the FGS is BAL-blocked unless the notification
-uses a full-screen intent (and the PendingIntent has creator BAL
-opt-in). Declare this as **alarm** core functionality on App content
-so the permission can be granted by default.
+`USE_FULL_SCREEN_INTENT` stays for lockscreen / screen-off presentation.
+
+Console form answers:
+
+- **Core functionality:** Alarm clock
+- **Pre-granted at installation:** Yes
+
+**Description:**
+
+```
+Prayer Cast schedules an exact alarm for each of the five daily prayers
+and uses a full-screen intent so the adhan surfaces on a locked,
+screen-off phone at prayer time.
+```
+
+Answering No means users must grant it themselves, and full-screen
+notifications degrade to a 60-second floating window. Delivery itself no
+longer depends on this permission: Dart runs inside the foreground
+service, so if the pre-grant review ever stalls a release, No does not
+stop the adhan.
 
 ## Manual smoke (no device install from this change)
 
