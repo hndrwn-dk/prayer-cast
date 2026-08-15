@@ -10,9 +10,62 @@ lock, posts an alarm-category notification with a full-screen intent, and
 runs the delivery in a headless Flutter engine started in the service
 process, so Dart Casts adhan (HOME) without waiting for `MainActivity`.
 
-Google Cast SDK `MediaNotificationService` stays **mediaPlayback**.
+Google Cast SDK `MediaNotificationService` is declared **mediaPlayback**,
+but see [Verified: the Cast media notification does not
+appear](#verified-the-cast-media-notification-does-not-appear) — as of
+1.0.0+1 that service never actually starts.
 
 Do not declare `USE_EXACT_ALARM`. The app uses `SCHEDULE_EXACT_ALARM` only.
+
+## Verified: the Cast media notification does not appear
+
+Checked 2026-08-15 against `play-services-cast-framework` 21.5.0 and
+`flutter_chrome_cast` 1.4.6, plus a Pixel 8 Pro running the current build.
+
+`CastContextMethodChannel.setSharedInstance` in `flutter_chrome_cast` never
+calls `CastOptions.Builder.setCastMediaOptions(...)`, so `build()` falls back
+to the SDK's static default. Disassembling `CastOptions.<clinit>` shows that
+default is:
+
+```java
+new CastMediaOptions.Builder()
+    .setMediaSessionEnabled(false)
+    .setNotificationOptions(null)
+    .build()
+```
+
+A bare `new CastMediaOptions.Builder()` would enable both, but this static
+fallback explicitly turns them off. `MediaNotificationService`
+`.isNotificationOptionsValid(CastOptions)` returns false as soon as
+`getNotificationOptions()` is null, so the Cast SDK never starts the service.
+
+Device corroboration: the package has exactly one notification channel,
+`adzan_delivery_alarm`. Channels persist once created, so the absence of a
+Cast media channel proves `MediaNotificationService` has never posted.
+
+Consequence: `FOREGROUND_SERVICE_MEDIA_PLAYBACK` is declared for a service
+that never runs. Any "casting" indicator visible during adhan is posted by
+Google Play services or Google Home, not by Prayer Cast, and must not be
+presented as this app's mediaPlayback service in a Play review video.
+
+The merged-manifest report shows both the
+`FOREGROUND_SERVICE_MEDIA_PLAYBACK` permission and the
+`MediaNotificationService` `<service>` are added by the app's own manifest,
+not merged from the Cast library, so dropping them is a plain deletion and
+needs no `tools:node="remove"`. Plain `FOREGROUND_SERVICE` is merged from the
+library and stays regardless.
+
+## Verified: notifications are a runtime permission the app never requests
+
+`POST_NOTIFICATIONS` is declared in the manifest, but nothing in `lib/`
+requests it — `permission_handler` is wired only to the nearby-Wi-Fi scan. On
+API 33+ that leaves it denied, and a denied app cannot show the
+`AdzanForegroundService` notification at all: the post is enqueued and
+dropped. Delivery still works; the notification is simply invisible.
+
+Until the app asks at runtime, granting it means
+**Settings → Apps → Prayer Cast → Notifications**. Any demo recording of the
+specialUse notification depends on this being granted first.
 
 ## specialUse — copy into Play Console
 
@@ -78,17 +131,29 @@ that step before the service was killed.
 
 **Demo video (record this):**
 
-1. Open Prayer Cast. Grant exact-alarm and notification permission.
+1. Open Prayer Cast. Grant exact-alarm permission, and grant
+   notifications from **Settings → Apps → Prayer Cast →
+   Notifications** — the app does not prompt for it.
 2. Save a home speaker, or set one prayer to beep.
-3. Use the in-app next-alarm test so a wake fires soon.
+3. Use the in-app next-alarm test so a wake fires soon. It replaces
+   the next armed alarm, so do not use it when a real prayer is
+   being relied on.
 4. Lock the phone / turn the screen off.
-5. Show the "Menyiapkan adzan" notification and the app coming to
-   the foreground.
+5. Show the notification — title "Menyiapkan adzan", body the prayer
+   wire value (e.g. `dhuhr`) — and the app coming to the foreground.
 6. Cast path: speaker plays; phone stays silent unless that prayer
    is beep or phone adhan.
-7. Show the ongoing FGS notification during the wake window.
+7. Show the ongoing FGS notification during the wake window, then
+   disappearing after delivery.
 
 ## mediaPlayback — Cast SDK only
+
+> Not true of 1.0.0+1. The service never starts — see [Verified: the Cast
+> media notification does not
+> appear](#verified-the-cast-media-notification-does-not-appear). The copy
+> below is what was submitted for 1.0.0+1 and is kept so the docs match the
+> uploaded AAB. Either drop the declaration or supply real
+> `NotificationOptions` at the next version bump.
 
 **Foreground service type:** `mediaPlayback`
 
@@ -114,8 +179,12 @@ may still continue; the phone would lose the standard Cast media
 notification.
 ```
 
-**Demo video:** same Cast delivery as above; show the Cast media
-notification while the speaker is playing.
+**Demo video:** there is nothing to film for this type in 1.0.0+1. Do not
+point at a system casting chip and call it this service. Resolve the
+declaration instead — either remove `FOREGROUND_SERVICE_MEDIA_PLAYBACK` and
+the `MediaNotificationService` `<service>` from the app manifest, or give the
+Cast SDK a `CastMediaOptions` with non-null `NotificationOptions` via an
+app-owned `OptionsProvider` so the notification genuinely exists.
 
 ## Manifest property (already in the APK)
 
@@ -132,7 +201,8 @@ The "Foreground service permissions" form lists the permissions and asks
 which tasks need them:
 
 - `FOREGROUND_SERVICE_MEDIA_PLAYBACK` — check **Media playback**. Not
-  "Show picture in picture", not "Other".
+  "Show picture in picture", not "Other". Only while the permission is still
+  declared; the goal is to stop declaring it.
 - `FOREGROUND_SERVICE_SPECIAL_USE` — check **Other** (the only option),
   then paste the specialUse description above.
 
@@ -166,7 +236,10 @@ Do not `flutter install` or adb-install over a live debug APK.
 After the user sideloads a matching-signature build and opens the app
 once:
 
-- Alarm still fires at T−120; FGS notification appears.
+- Alarm still fires at T−120; FGS notification appears — only if
+  notifications are allowed for the app. Check with
+  `adb shell cmd appops get com.tursinalabs.prayer_cast POST_NOTIFICATION`;
+  `ignore` means the notification is enqueued and dropped.
 - Cast-only + HOME: speaker plays; phone silent.
 - Cast-only + AWAY: phone silent (no fallback) unless that prayer is
   beep or phone adhan.
