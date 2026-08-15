@@ -27,6 +27,7 @@
   "deviceEyebrow": "Perangkat",
   "scheduleEyebrow": "Jadwal",
   "dataOnDeviceOnly": "Data hanya tersimpan di ponsel Anda.",
+  "privacyPolicy": "Kebijakan privasi",
   "exactAlarmTitle": "Izin alarm tepat waktu diperlukan",
   "exactAlarmBody": "Tanpa izin ini, adzan tidak bisa dijadwalkan saat ponsel tidur.",
   "exactAlarmOpenSettings": "Buka pengaturan alarm",
@@ -59,6 +60,9 @@
   "changeCityCountry": "Ubah kota / negara",
   "hideCityForm": "Sembunyikan form kota",
   "calculationMethod": "Metode perhitungan",
+  "methodKemenag": "Kemenag (Indonesia)",
+  "madhabKemenagHint": "Kemenag menerbitkan Asar; pengaturan madzhab tidak mengubahnya.",
+  "kemenagFallback": "Kemenag tidak tersedia ({reason}). Memakai Aladhan MUIS.",
   "fetchSchedule": "Ambil jadwal",
   "fetchingSchedule": "Mengambil jadwal…",
   "todaysSchedule": "Jadwal hari ini",
@@ -89,6 +93,8 @@
   "castFailed": "Gagal cast ke speaker: {error}",
   "speakerSetupTitle": "Speaker rumah",
   "speakerSetupIntro": "Kelompokkan speaker di Google Home dulu, lalu pilih grupnya di sini.",
+  "speakerGroupDelayHint": "Grup Cast (Xiaomi, merek campur, dan sebagian merek lain) sering memulai adzan terlambat atau tidak berbunyi. Agar tepat waktu, pilih satu speaker di ruangan yang harus mendengar.",
+  "speakerGroupMayDelay": "Bisa mulai terlambat",
   "speakersFound": "{count} speaker ditemukan",
   "reachableNow": "dapat dijangkau sekarang",
   "scanAgain": "Pindai ulang",
@@ -110,5 +116,9 @@
   "dryRunIn10Minutes": "Dalam 10 menit",
   "dryRunIn1Hour": "Dalam 1 jam",
   "dryRunScheduled": "Uji adzan pukul {time}",
-  "dryRunFailed": "Tidak bisa menjadwalkan uji adzan: {error}"
+  "dryRunFailed": "Tidak bisa menjadwalkan uji adzan: {error}",
+  "locationDisclosureTitle": "Lokasi bersifat opsional",
+  "locationDisclosureBody": "GPS bersifat opsional. Hanya dipakai untuk mengisi kota dan negara agar Prayer Cast bisa mengambil waktu sholat.\n\nLokasi tidak dipakai untuk menentukan apakah Anda di rumah. Deteksi rumah memakai sidik LAN / Wi-Fi di ponsel ini.\n\nLokasi tetap di perangkat, kecuali dikirim ke Aladhan dan geocoder sistem, seperti dijelaskan di kebijakan privasi.\n\nAnda bisa mengetik kota dan negara.",
+  "locationDisclosureContinue": "Lanjutkan",
+  "locationDisclosureTypeCity": "Ketik kota saja"
 }

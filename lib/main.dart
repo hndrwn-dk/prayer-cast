@@ -39,6 +39,7 @@ import 'package:prayer_cast/prayer_times/adhan_next_prayer_provider.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 import 'package:prayer_cast/prayer_times/prayer_times_providers.dart';
 import 'package:prayer_cast/prayer_times/ui/prayer_settings_page.dart';
+import 'package:prayer_cast/support/open_support_url.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
@@ -366,6 +367,8 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                           child: ColophonFootnote(
                             message: l10n.dataOnDeviceOnly,
                             versionLine: 'version: $kAppVersion',
+                            privacyTooltip: l10n.privacyPolicy,
+                            onPrivacyTap: () => openPrivacyPolicyUrl(context),
                           ),
                         ),
                       ),

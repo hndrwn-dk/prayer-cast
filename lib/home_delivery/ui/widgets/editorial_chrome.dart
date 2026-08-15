@@ -205,12 +205,17 @@ class ColophonFootnote extends StatelessWidget {
     super.key,
     required this.message,
     required this.versionLine,
+    required this.onPrivacyTap,
+    required this.privacyTooltip,
   });
 
   final String message;
   final String versionLine;
+  final VoidCallback onPrivacyTap;
+  final String privacyTooltip;
 
   static const Key dividerKey = ValueKey<String>('home_colophon_divider');
+  static const Key privacyLinkKey = ValueKey<String>('privacy_policy_link');
 
   /// Mist hairline on ink — visible pembatas without a light strip.
   static Color get dividerColor =>
@@ -234,14 +239,24 @@ class ColophonFootnote extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  message,
-                  style: const TextStyle(
-                    fontFamily: PrayerCastTheme.displayFont,
-                    fontSize: 11,
-                    fontStyle: FontStyle.italic,
-                    height: 1.35,
-                    color: PrayerCastColors.mistDeep,
+                Tooltip(
+                  message: privacyTooltip,
+                  child: GestureDetector(
+                    key: privacyLinkKey,
+                    onTap: onPrivacyTap,
+                    child: Text(
+                      message,
+                      style: const TextStyle(
+                        fontFamily: PrayerCastTheme.displayFont,
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                        height: 1.35,
+                        color: PrayerCastColors.mistDeep,
+                        decoration: TextDecoration.underline,
+                        decorationColor: PrayerCastColors.mistDeep,
+                        decorationThickness: 1,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 3),

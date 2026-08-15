@@ -260,6 +260,12 @@ abstract class AppLocalizations {
   /// **'Data stays only on your phone.'**
   String get dataOnDeviceOnly;
 
+  /// Tooltip / accessibility label for the home privacy policy link
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy'**
+  String get privacyPolicy;
+
   /// No description provided for @exactAlarmTitle.
   ///
   /// In en, this message translates to:
@@ -452,6 +458,24 @@ abstract class AppLocalizations {
   /// **'Calculation method'**
   String get calculationMethod;
 
+  /// No description provided for @methodKemenag.
+  ///
+  /// In en, this message translates to:
+  /// **'Kemenag (Indonesia)'**
+  String get methodKemenag;
+
+  /// No description provided for @madhabKemenagHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Kemenag publishes Asr; the madhhab setting does not change it.'**
+  String get madhabKemenagHint;
+
+  /// No description provided for @kemenagFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Kemenag unavailable ({reason}). Using Aladhan MUIS.'**
+  String kemenagFallback(String reason);
+
   /// No description provided for @fetchSchedule.
   ///
   /// In en, this message translates to:
@@ -632,6 +656,18 @@ abstract class AppLocalizations {
   /// **'Group speakers in Google Home first, then pick the group here.'**
   String get speakerSetupIntro;
 
+  /// No description provided for @speakerGroupDelayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Cast groups (Xiaomi, mixed brands, and some others) often start adhan late or stay silent. For on-time playback, pick a single speaker in the room that must hear it.'**
+  String get speakerGroupDelayHint;
+
+  /// No description provided for @speakerGroupMayDelay.
+  ///
+  /// In en, this message translates to:
+  /// **'May start late'**
+  String get speakerGroupMayDelay;
+
   /// No description provided for @speakersFound.
   ///
   /// In en, this message translates to:
@@ -763,6 +799,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not schedule test adhan: {error}'**
   String dryRunFailed(String error);
+
+  /// No description provided for @locationDisclosureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Location is optional'**
+  String get locationDisclosureTitle;
+
+  /// No description provided for @locationDisclosureBody.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS is optional. It is used only to fill city and country so Prayer Cast can fetch prayer times.\n\nIt is not used to decide whether you are home. Home uses the Wi-Fi / LAN fingerprint on this phone.\n\nLocation stays on this device except when sent to Aladhan and the system geocoder, as described in the privacy policy.\n\nYou can type city and country instead.'**
+  String get locationDisclosureBody;
+
+  /// No description provided for @locationDisclosureContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get locationDisclosureContinue;
+
+  /// No description provided for @locationDisclosureTypeCity.
+  ///
+  /// In en, this message translates to:
+  /// **'Type city instead'**
+  String get locationDisclosureTypeCity;
 }
 
 class _AppLocalizationsDelegate

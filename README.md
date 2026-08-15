@@ -9,8 +9,9 @@ See [ADZAN_HOME_DELIVERY_SPEC.md](./ADZAN_HOME_DELIVERY_SPEC.md) for the
 
 ## What it does
 
-- **Prayer times** from Aladhan (city or GPS). Singapore MUIS is method 11.
-  Hanafi vs Shafi'i changes **Asr only** (Hanafi is later).
+- **Prayer times** from Aladhan (city or GPS). Indonesia auto-uses Kemenag
+  jadwal via myQuran (city id, not coordinates). Singapore MUIS is method 11.
+  Hanafi vs Shafi'i changes **Asr only** on Aladhan (Hanafi is later).
 - **Home speaker** — scan the LAN, pick a Cast target (groups from Google
   Home). The last scan is cached on disk; reopen does not rescan until you
   tap refresh.
@@ -55,6 +56,36 @@ Do not use `flutter install` unless you intend a release build — it can
 pick a stale `app-release.apk` and uninstall the app (data wipe). After any
 install, open the app once so the next prayer alarm re-arms.
 
+## Release signing (Play)
+
+Release builds use an **upload keystore**, not debug keys. Play App Signing
+keeps the app signing key; this repo only needs the upload key.
+
+1. Copy `android/key.properties.example` to `android/key.properties`.
+2. Create `android/upload-keystore.jks` (once; keep it forever):
+
+```bash
+keytool -genkeypair -v -storetype JKS \
+  -keystore android/upload-keystore.jks \
+  -alias upload -keyalg RSA -keysize 2048 -validity 10000
+```
+
+3. Fill `storePassword`, `keyPassword`, `keyAlias`, and `storeFile` in
+   `android/key.properties`. `storeFile` is relative to `android/app/`
+   (`../upload-keystore.jks`).
+
+`key.properties`, `*.jks`, and `*.keystore` are gitignored. Back up the
+JKS and both passwords offline. Losing them means you cannot update the
+Play listing unless Play App Signing is already enabled with a recoverable
+upload key.
+
+```bash
+flutter build appbundle --release
+```
+
+Do not install that AAB/APK over the debug build on a phone that already
+has live alarms — different signatures will force an uninstall.
+
 ## Tests
 
 ```bash
@@ -64,7 +95,31 @@ flutter test
 Focused areas: Cast session / volume, delivery orchestrator, speaker setup
 states, prayer prefs and settings, Home widget shell.
 
+## Play listing
+
+Play Console **privacy policy URL** must be the Prayer Cast page, not the
+generic studio policy at `/privacy`:
+
+https://tursinalabs.com/privacy/prayer-cast
+
+Store listing copy (short/full description, screenshots, feature graphic):
+[docs/play-store-listing.md](./docs/play-store-listing.md).
+
+Data safety form answers: [docs/play-data-safety.md](./docs/play-data-safety.md).
+
+Foreground service Play answers: [docs/play-fgs.md](./docs/play-fgs.md).
+
+Cleartext HTTP is disabled for the app process
+(`usesCleartextTraffic` is not set; `network_security_config.xml` keeps
+`base-config` cleartext false). The on-device media server still advertises
+`http://<LAN-IP>:<port>/...` because the Cast speaker fetches that URL;
+the phone does not. Aladhan, myQuran (Indonesia Kemenag), Ko-fi, the
+privacy policy, and geocoding are HTTPS. Android cannot CIDR-whitelist RFC1918 in `domain-config`, so a
+global or fake-IP allowlist is not used.
+
 ## License / data
 
 Prayer prefs, home speaker id, and delivery logs stay on the device.
 Adzan audio is bundled under `assets/audio/`.
+See [docs/play-data-safety.md](./docs/play-data-safety.md) for what leaves
+the device toward Aladhan, myQuran, geocoder, and Google Cast.

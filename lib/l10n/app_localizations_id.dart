@@ -99,6 +99,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get dataOnDeviceOnly => 'Data hanya tersimpan di ponsel Anda.';
 
   @override
+  String get privacyPolicy => 'Kebijakan privasi';
+
+  @override
   String get exactAlarmTitle => 'Izin alarm tepat waktu diperlukan';
 
   @override
@@ -195,6 +198,18 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get calculationMethod => 'Metode perhitungan';
+
+  @override
+  String get methodKemenag => 'Kemenag (Indonesia)';
+
+  @override
+  String get madhabKemenagHint =>
+      'Kemenag menerbitkan Asar; pengaturan madzhab tidak mengubahnya.';
+
+  @override
+  String kemenagFallback(String reason) {
+    return 'Kemenag tidak tersedia ($reason). Memakai Aladhan MUIS.';
+  }
 
   @override
   String get fetchSchedule => 'Ambil jadwal';
@@ -312,6 +327,13 @@ class AppLocalizationsId extends AppLocalizations {
       'Kelompokkan speaker di Google Home dulu, lalu pilih grupnya di sini.';
 
   @override
+  String get speakerGroupDelayHint =>
+      'Grup Cast (Xiaomi, merek campur, dan sebagian merek lain) sering memulai adzan terlambat atau tidak berbunyi. Agar tepat waktu, pilih satu speaker di ruangan yang harus mendengar.';
+
+  @override
+  String get speakerGroupMayDelay => 'Bisa mulai terlambat';
+
+  @override
   String speakersFound(int count) {
     return '$count speaker ditemukan';
   }
@@ -394,4 +416,17 @@ class AppLocalizationsId extends AppLocalizations {
   String dryRunFailed(String error) {
     return 'Tidak bisa menjadwalkan uji adzan: $error';
   }
+
+  @override
+  String get locationDisclosureTitle => 'Lokasi bersifat opsional';
+
+  @override
+  String get locationDisclosureBody =>
+      'GPS bersifat opsional. Hanya dipakai untuk mengisi kota dan negara agar Prayer Cast bisa mengambil waktu sholat.\n\nLokasi tidak dipakai untuk menentukan apakah Anda di rumah. Deteksi rumah memakai sidik LAN / Wi-Fi di ponsel ini.\n\nLokasi tetap di perangkat, kecuali dikirim ke Aladhan dan geocoder sistem, seperti dijelaskan di kebijakan privasi.\n\nAnda bisa mengetik kota dan negara.';
+
+  @override
+  String get locationDisclosureContinue => 'Lanjutkan';
+
+  @override
+  String get locationDisclosureTypeCity => 'Ketik kota saja';
 }

@@ -49,6 +49,10 @@
   "deviceEyebrow": "Device",
   "scheduleEyebrow": "Schedule",
   "dataOnDeviceOnly": "Data stays only on your phone.",
+  "privacyPolicy": "Privacy policy",
+  "@privacyPolicy": {
+    "description": "Tooltip / accessibility label for the home privacy policy link"
+  },
   "exactAlarmTitle": "Exact alarm permission needed",
   "exactAlarmBody": "Without this permission, adhan cannot be scheduled while the phone sleeps.",
   "exactAlarmOpenSettings": "Open alarm settings",
@@ -81,6 +85,14 @@
   "changeCityCountry": "Change city / country",
   "hideCityForm": "Hide city form",
   "calculationMethod": "Calculation method",
+  "methodKemenag": "Kemenag (Indonesia)",
+  "madhabKemenagHint": "Kemenag publishes Asr; the madhhab setting does not change it.",
+  "kemenagFallback": "Kemenag unavailable ({reason}). Using Aladhan MUIS.",
+  "@kemenagFallback": {
+    "placeholders": {
+      "reason": {"type": "String"}
+    }
+  },
   "fetchSchedule": "Fetch schedule",
   "fetchingSchedule": "Fetching schedule…",
   "todaysSchedule": "Today’s schedule",
@@ -158,6 +170,8 @@
   },
   "speakerSetupTitle": "Home speaker",
   "speakerSetupIntro": "Group speakers in Google Home first, then pick the group here.",
+  "speakerGroupDelayHint": "Cast groups (Xiaomi, mixed brands, and some others) often start adhan late or stay silent. For on-time playback, pick a single speaker in the room that must hear it.",
+  "speakerGroupMayDelay": "May start late",
   "speakersFound": "{count} speakers found",
   "@speakersFound": {
     "placeholders": {
@@ -217,5 +231,9 @@
     "placeholders": {
       "error": {"type": "String"}
     }
-  }
+  },
+  "locationDisclosureTitle": "Location is optional",
+  "locationDisclosureBody": "GPS is optional. It is used only to fill city and country so Prayer Cast can fetch prayer times.\n\nIt is not used to decide whether you are home. Home uses the Wi-Fi / LAN fingerprint on this phone.\n\nLocation stays on this device except when sent to Aladhan and the system geocoder, as described in the privacy policy.\n\nYou can type city and country instead.",
+  "locationDisclosureContinue": "Continue",
+  "locationDisclosureTypeCity": "Type city instead"
 }

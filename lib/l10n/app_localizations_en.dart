@@ -99,6 +99,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dataOnDeviceOnly => 'Data stays only on your phone.';
 
   @override
+  String get privacyPolicy => 'Privacy policy';
+
+  @override
   String get exactAlarmTitle => 'Exact alarm permission needed';
 
   @override
@@ -194,6 +197,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get calculationMethod => 'Calculation method';
+
+  @override
+  String get methodKemenag => 'Kemenag (Indonesia)';
+
+  @override
+  String get madhabKemenagHint =>
+      'Kemenag publishes Asr; the madhhab setting does not change it.';
+
+  @override
+  String kemenagFallback(String reason) {
+    return 'Kemenag unavailable ($reason). Using Aladhan MUIS.';
+  }
 
   @override
   String get fetchSchedule => 'Fetch schedule';
@@ -311,6 +326,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Group speakers in Google Home first, then pick the group here.';
 
   @override
+  String get speakerGroupDelayHint =>
+      'Cast groups (Xiaomi, mixed brands, and some others) often start adhan late or stay silent. For on-time playback, pick a single speaker in the room that must hear it.';
+
+  @override
+  String get speakerGroupMayDelay => 'May start late';
+
+  @override
   String speakersFound(int count) {
     return '$count speakers found';
   }
@@ -393,4 +415,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String dryRunFailed(String error) {
     return 'Could not schedule test adhan: $error';
   }
+
+  @override
+  String get locationDisclosureTitle => 'Location is optional';
+
+  @override
+  String get locationDisclosureBody =>
+      'GPS is optional. It is used only to fill city and country so Prayer Cast can fetch prayer times.\n\nIt is not used to decide whether you are home. Home uses the Wi-Fi / LAN fingerprint on this phone.\n\nLocation stays on this device except when sent to Aladhan and the system geocoder, as described in the privacy policy.\n\nYou can type city and country instead.';
+
+  @override
+  String get locationDisclosureContinue => 'Continue';
+
+  @override
+  String get locationDisclosureTypeCity => 'Type city instead';
 }

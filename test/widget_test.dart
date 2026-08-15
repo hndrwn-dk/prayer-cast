@@ -9,6 +9,7 @@ import 'package:prayer_cast/home_delivery/ui/widgets/adhan_countdown.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
 import 'package:prayer_cast/main.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
+import 'package:prayer_cast/support/open_support_url.dart';
 
 const _privacyLine = 'Data hanya tersimpan di ponsel Anda.';
 const _prayerTimesSlab = ValueKey<String>('home_prayer_times_slab');
@@ -70,6 +71,13 @@ void _expectHairlineImmediatelyAboveFootnotes(WidgetTester tester) {
 }
 
 void main() {
+  setUp(() {
+    debugLaunchExternalUrl = (_) async => true;
+  });
+  tearDown(() {
+    debugLaunchExternalUrl = null;
+  });
+
   testWidgets('app shell loads speaker and prayer entry points', (tester) async {
     final db = DeliveryDatabase.memory();
     addTearDown(db.close);
