@@ -57,7 +57,9 @@ unlinked_spec.ds
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties
+**/android/.upload-key-backup.txt
 *.jks
+*.keystore
 
 # iOS/XCode related
 **/ios/**/*.mode1v3
@@ -125,3 +127,6 @@ app.*.symbols
 .idea/
 *.iml
 
+
+# Device dry-run captures (logcat, pulled prefs/sqlite) — never commit.
+.dryrun-observe/
