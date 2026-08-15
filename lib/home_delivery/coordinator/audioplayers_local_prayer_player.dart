@@ -7,7 +7,8 @@ import 'adzan_audio_loader.dart';
 import 'local_prayer_player.dart';
 
 /// Android-first local player using the alarm stream so prayer wakes are
-/// audible while the existing mediaPlayback FGS is up.
+/// audible after MainActivity starts. AdzanForegroundService is specialUse
+/// and does not play audio itself.
 final class AudioplayersLocalPrayerPlayer implements LocalPrayerPlayer {
   AudioplayersLocalPrayerPlayer({
     required this._audioLoader,

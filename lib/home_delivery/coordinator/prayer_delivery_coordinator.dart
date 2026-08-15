@@ -6,6 +6,9 @@ import '../../prayer_times/prayer_prefs.dart';
 import '../common/clock.dart';
 import '../common/logger.dart';
 import '../delivery/delivery_orchestrator.dart';
+import '../delivery/delivery_timing.dart';
+import '../logging/delivery_log_dao.dart';
+import '../logging/outcome.dart';
 import '../platform/device_conditions.dart';
 import '../platform/exact_alarm.dart';
 import '../presence/presence_schedule.dart';
@@ -53,6 +56,7 @@ final class PrayerDeliveryCoordinator {
     required Clock clock,
     PrayerDeliveryModeSource? deliveryModes,
     LocalPrayerPlayer? localPlayer,
+    DeliveryLogDao? logDao,
     void Function(bool granted)? onPermissionChanged,
     HomeDeliveryLogger logger = const SilentLogger(),
   })  : _exactAlarm = exactAlarm,
@@ -64,6 +68,7 @@ final class PrayerDeliveryCoordinator {
         _clock = clock,
         _deliveryModes = deliveryModes ?? const AlwaysCastDeliveryModeSource(),
         _localPlayer = localPlayer ?? const SilentLocalPrayerPlayer(),
+        _logDao = logDao,
         _onPermissionChanged = onPermissionChanged,
         _logger = logger;
 
@@ -109,6 +114,7 @@ final class PrayerDeliveryCoordinator {
   final Clock _clock;
   final PrayerDeliveryModeSource _deliveryModes;
   final LocalPrayerPlayer _localPlayer;
+  final DeliveryLogDao? _logDao;
   final void Function(bool granted)? _onPermissionChanged;
   final HomeDeliveryLogger _logger;
 
@@ -340,6 +346,23 @@ final class PrayerDeliveryCoordinator {
     required DateTime azanEpoch,
     required DateTime firedAt,
   }) async {
+    final now = _clock.now();
+    if (DeliveryTiming.isTooLate(scheduledAzan: azanEpoch, now: now)) {
+      final late = now.difference(azanEpoch);
+      _logger.warn(
+        'Skipping stale ${event.prayer}: dart now is ${late.inSeconds}s after '
+        'azan (grace ${DeliveryTiming.graceAfterAzan.inMinutes}m)',
+        tag: 'PrayerDeliveryCoordinator',
+      );
+      await _logStaleMiss(
+        event: event,
+        azanEpoch: azanEpoch,
+        now: now,
+        late: late,
+      );
+      return;
+    }
+
     final prayerName = canonicalPrayerName(event.prayer);
     final mode = await _deliveryModes.modeFor(prayerName);
     if (mode == PrayerDeliveryMode.beep) {
@@ -381,6 +404,34 @@ final class PrayerDeliveryCoordinator {
     await _runDelivery(request);
   }
 
+  Future<void> _logStaleMiss({
+    required AlarmFiredEvent event,
+    required DateTime azanEpoch,
+    required DateTime now,
+    required Duration late,
+  }) async {
+    final dao = _logDao;
+    if (dao == null) return;
+    try {
+      await dao.insertAttempt(
+        sessionId: 'stale-${event.scheduledEpochMs}',
+        prayer: event.prayer,
+        scheduledAtMs: azanEpoch.millisecondsSinceEpoch,
+        firedAtMs: now.millisecondsSinceEpoch,
+        outcome: Outcome.failedAlarmMissed,
+        detail: 'dart started ${late.inSeconds}s after azan '
+            '(grace ${DeliveryTiming.graceAfterAzan.inMinutes}m)',
+      );
+    } catch (e, st) {
+      _logger.warn(
+        'Failed to log stale miss for ${event.prayer}',
+        tag: 'PrayerDeliveryCoordinator',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
   String _resolveVoiceId(String? voiceId) {
     if (voiceId != null && voiceId.isNotEmpty) return voiceId;
     _logger.warn(
@@ -398,9 +449,34 @@ final class PrayerDeliveryCoordinator {
       final wakeEpochMs = prayer.scheduledAt
           .add(PresenceSchedule.scanOffset)
           .millisecondsSinceEpoch;
+      final now = _clock.now();
+      final nowMs = now.millisecondsSinceEpoch;
 
-      // Do not arm a wake that is already in the past.
-      if (wakeEpochMs <= _clock.now().millisecondsSinceEpoch) {
+      // Wake already past: still arm it when AlarmManager will fire
+      // immediately and delivery is still eligible (package replace /
+      // late open inside T−120..T, within the 60s OEM window).
+      // Otherwise skip — opening after Isha+5 must not blast the speaker.
+      if (wakeEpochMs <= nowMs) {
+        final wakeLate = Duration(milliseconds: nowMs - wakeEpochMs);
+        final stillEligible = !DeliveryTiming.isTooLate(
+              scheduledAzan: prayer.scheduledAt,
+              now: now,
+            ) &&
+            wakeLate <= DeliveryOrchestrator.alarmMissedThreshold;
+        if (stillEligible) {
+          _logger.warn(
+            'Next wake $wakeEpochMs already past by ${wakeLate.inSeconds}s '
+            'but still eligible — arming to fire immediately',
+            tag: 'PrayerDeliveryCoordinator',
+          );
+          await _exactAlarm.scheduleNext(
+            epochMs: wakeEpochMs,
+            prayer: prayer.name,
+            voiceId: prayer.voiceId,
+          );
+          _scheduledWakeEpochMs = wakeEpochMs;
+          return;
+        }
         _logger.warn(
           'Next wake $wakeEpochMs already past — advancing further',
           tag: 'PrayerDeliveryCoordinator',

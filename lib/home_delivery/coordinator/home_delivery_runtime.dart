@@ -130,6 +130,7 @@ final class HomeDeliveryRuntime {
       clock: scheduler,
       deliveryModes: PrefsPrayerDeliveryModeSource(prayerPrefs),
       localPlayer: localPlayer,
+      logDao: DeliveryLogDao(database),
       onPermissionChanged: onPermissionChanged,
       logger: logger,
     );

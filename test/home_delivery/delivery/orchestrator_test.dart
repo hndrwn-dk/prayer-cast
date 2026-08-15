@@ -333,6 +333,32 @@ void main() {
       },
     );
 
+    test(
+      'now 50 minutes after azan with on-time firedAt → FAILED_ALARM_MISSED',
+      () async {
+        scheduler.advanceTo(t.add(const Duration(minutes: 50)));
+        final orch = buildOrchestrator();
+        final result = await orch.run(request());
+        expect(result.outcome, Outcome.failedAlarmMissed);
+        expect(castPlatform.loadedContentId, isNull);
+        expect(castPlatform.loadCallCount, 0);
+        final row = (await dao.latest()).single;
+        expect(row.outcome, Outcome.failedAlarmMissed.code);
+        expect(row.detail, contains('after azan'));
+      },
+    );
+
+    test('now 3 minutes after azan is within grace and still delivers',
+        () async {
+      scheduler.advanceTo(t.add(const Duration(minutes: 3)));
+      final orch = buildOrchestrator();
+      final future = orch.run(request());
+      await pumpThroughAzan();
+      final result = await future;
+      expect(result.outcome, Outcome.played);
+      expect(castPlatform.loadedContentId, isNotNull);
+    });
+
     test('fire 20s after wake is still eligible for delivery', () async {
       final orch = buildOrchestrator();
       final wakeAt = PresenceSchedule.at(t, PresenceSchedule.scanOffset);

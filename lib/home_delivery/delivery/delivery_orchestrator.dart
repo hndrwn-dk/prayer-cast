@@ -18,6 +18,7 @@ import '../presence/presence_schedule.dart';
 import '../presence/presence_service.dart';
 import '../presence/presence_state.dart';
 import 'cast_client.dart';
+import 'delivery_timing.dart';
 import 'interface_selector.dart';
 import 'media_server.dart';
 
@@ -141,6 +142,24 @@ final class DeliveryOrchestrator {
         peerCount: null,
         outcome: Outcome.failedAlarmMissed,
         detail: 'fired ${wakeLateness.inSeconds}s after wake',
+      );
+    }
+
+    // Dart start time, not native firedAt. pendingFire keeps the alarm's
+    // firedAt; opening the app 50 minutes later must not Cast.
+    final now = _scheduler.now();
+    if (DeliveryTiming.isTooLate(scheduledAzan: scheduled, now: now)) {
+      final late = now.difference(scheduled);
+      return _finish(
+        request: request,
+        sessionId: sessionId,
+        firedAt: firedAt,
+        presence: null,
+        role: null,
+        peerCount: null,
+        outcome: Outcome.failedAlarmMissed,
+        detail: 'dart started ${late.inSeconds}s after azan '
+            '(grace ${DeliveryTiming.graceAfterAzan.inMinutes}m)',
       );
     }
 
