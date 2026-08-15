@@ -33,6 +33,48 @@ void main() {
     expect(read.voicesByPrayer['fajr'], 'fajr_adhan');
   });
 
+  test('FilePrayerPrefsStore round-trips administrativeArea', () async {
+    final dir = await Directory.systemTemp.createTemp('prayer_prefs_admin_');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/prefs.txt');
+    final store = FilePrayerPrefsStore(file);
+
+    await store.write(
+      const PrayerPrefs(
+        city: 'Menteng',
+        country: 'Indonesia',
+        methodId: -1,
+        madhabId: PrayerMadhabId.shafi,
+        voiceId: 'standard_adhan',
+        configured: true,
+        latitude: -6.186,
+        longitude: 106.833,
+        administrativeArea: 'Jakarta Pusat',
+        voicesByPrayer: {'fajr': 'fajr_adhan'},
+        deliveryByPrayer: {'fajr': 'cast'},
+      ),
+    );
+
+    final read = await store.read();
+    expect(read.city, 'Menteng');
+    expect(read.administrativeArea, 'Jakarta Pusat');
+    expect(read.deliveryFor('fajr'), PrayerDeliveryMode.cast);
+  });
+
+  test('FilePrayerPrefsStore reads legacy file without admin area', () async {
+    final dir = await Directory.systemTemp.createTemp('prayer_prefs_noadmin_');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/prefs.txt');
+    await file.writeAsString(
+      'Menteng\nIndonesia\n-1\nshafi\nstandard_adhan\n1\n'
+      'fajr=fajr_adhan\n-6.186\n106.833\nfajr=cast\n',
+    );
+    final read = await FilePrayerPrefsStore(file).read();
+    expect(read.city, 'Menteng');
+    expect(read.administrativeArea, isEmpty);
+    expect(read.deliveryFor('fajr'), PrayerDeliveryMode.cast);
+  });
+
   test('FilePrayerPrefsStore reads legacy file without coords', () async {
     final dir = await Directory.systemTemp.createTemp('prayer_prefs_legacy_');
     addTearDown(() => dir.delete(recursive: true));
@@ -57,10 +99,16 @@ void main() {
       configured: true,
       latitude: 1.3,
       longitude: 103.8,
+      administrativeArea: 'Jakarta Pusat',
     );
     final cleared = prefs.copyWith(city: 'C', clearCoordinates: true);
     expect(cleared.city, 'C');
     expect(cleared.hasCoordinates, isFalse);
+    expect(cleared.administrativeArea, 'Jakarta Pusat');
+
+    final clearedAdmin = prefs.copyWith(clearAdministrativeArea: true);
+    expect(clearedAdmin.administrativeArea, isEmpty);
+    expect(clearedAdmin.hasCoordinates, isTrue);
   });
 
   test('missing deliveryByPrayer defaults every prayer to cast', () async {
@@ -113,6 +161,19 @@ void main() {
     final reread = await store.read();
     expect(reread.deliveryFor('asr'), PrayerDeliveryMode.beep);
     expect(reread.deliveryFor('dhuhr'), PrayerDeliveryMode.adhanPhone);
+  });
+
+  test('legacy indonesian method string maps to Kemenag not MUIS 11', () async {
+    final dir = await Directory.systemTemp.createTemp('prayer_prefs_id_');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/prefs.txt');
+    await file.writeAsString(
+      'Jakarta\nindonesian\nindonesian\nshafi\nstandard_adhan\n1\n'
+      'fajr=fajr_adhan\n',
+    );
+    final read = await FilePrayerPrefsStore(file).read();
+    expect(read.country, 'Indonesia');
+    expect(read.methodId, -1);
   });
 
   test('unknown delivery wire values fall back to cast', () async {

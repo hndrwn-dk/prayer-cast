@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'adzan_voices.dart';
 import 'aladhan_client.dart';
+import 'indonesia_location.dart';
 
 /// How a prayer is delivered when the alarm fires.
 ///
@@ -56,6 +57,7 @@ final class PrayerPrefs {
     this.deliveryByPrayer = const {},
     this.latitude,
     this.longitude,
+    this.administrativeArea = '',
   });
 
   /// City name for Aladhan `timingsByCity` (e.g. London, Tokyo, Singapore).
@@ -64,7 +66,8 @@ final class PrayerPrefs {
   /// Country name / ISO (e.g. UK, Japan, Singapore).
   final String country;
 
-  /// Aladhan method id (see [AladhanMethods]).
+  /// Calculation method id: [kemenagMethodId] (-1) or an Aladhan id
+  /// (see [AladhanMethods]).
   final int methodId;
 
   final PrayerMadhabId madhabId;
@@ -84,6 +87,13 @@ final class PrayerPrefs {
 
   /// GPS longitude when the user used “Gunakan lokasi saya”.
   final double? longitude;
+
+  /// Kabupaten/kota (or province) from reverse geocode.
+  ///
+  /// Kemenag ids are kabupaten/kota, not kelurahan. GPS `city` can be a
+  /// kelurahan; this hint is used only for local city matching and is
+  /// never sent to myQuran.
+  final String administrativeArea;
 
   /// True once the user has saved settings at least once.
   final bool configured;
@@ -118,7 +128,9 @@ final class PrayerPrefs {
     Map<String, String>? deliveryByPrayer,
     double? latitude,
     double? longitude,
+    String? administrativeArea,
     bool clearCoordinates = false,
+    bool clearAdministrativeArea = false,
   }) {
     return PrayerPrefs(
       city: city ?? this.city,
@@ -131,6 +143,9 @@ final class PrayerPrefs {
       deliveryByPrayer: deliveryByPrayer ?? this.deliveryByPrayer,
       latitude: clearCoordinates ? null : (latitude ?? this.latitude),
       longitude: clearCoordinates ? null : (longitude ?? this.longitude),
+      administrativeArea: clearAdministrativeArea
+          ? ''
+          : (administrativeArea ?? this.administrativeArea),
     );
   }
 
@@ -200,6 +215,7 @@ final class MemoryPrayerPrefsStore implements PrayerPrefsStore {
 /// latitude (optional)
 /// longitude (optional)
 /// fajr=cast,dhuhr=beep,... (optional; missing = all cast)
+/// administrativeArea (optional; kabupaten/kota match hint)
 /// ```
 final class FilePrayerPrefsStore implements PrayerPrefsStore {
   FilePrayerPrefsStore(this._file);
@@ -232,6 +248,8 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
       final deliveryByPrayer = lines.length > 9
           ? _parseDelivery(lines[9])
           : const <String, String>{};
+      final administrativeArea =
+          lines.length > 10 ? lines[10].trim() : '';
       return PrayerPrefs(
         city: city,
         country: country,
@@ -243,6 +261,7 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
         deliveryByPrayer: deliveryByPrayer,
         latitude: latitude,
         longitude: longitude,
+        administrativeArea: administrativeArea,
       );
     } catch (_) {
       return PrayerPrefs.defaults;
@@ -270,7 +289,8 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
       '$voices\n'
       '$latLine\n'
       '$lngLine\n'
-      '$delivery\n',
+      '$delivery\n'
+      '${prefs.administrativeArea}\n',
     );
   }
 
@@ -332,7 +352,7 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
     final asInt = int.tryParse(raw);
     if (asInt != null) return asInt;
     return switch (raw) {
-      'indonesian' => 11, // closest public Aladhan method for SEA
+      'indonesian' => kemenagMethodId,
       'muslimWorldLeague' => 3,
       'singapore' => 11,
       'egyptian' => 5,

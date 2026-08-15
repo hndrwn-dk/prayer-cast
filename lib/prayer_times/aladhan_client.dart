@@ -12,6 +12,7 @@ final class AladhanDaySchedule {
     required this.longitude,
     required this.slots,
     required this.methodName,
+    this.sourceKey = 'aladhan',
   });
 
   final DateTime date;
@@ -21,12 +22,16 @@ final class AladhanDaySchedule {
   final List<NextPrayer> slots;
   final String methodName;
 
+  /// `kemenag` or `aladhan` — kept in the disk cache so ID/SG do not collide.
+  final String sourceKey;
+
   Map<String, Object?> toJson() => {
         'date': date.toIso8601String(),
         'timezone': timezone,
         'latitude': latitude,
         'longitude': longitude,
         'methodName': methodName,
+        'sourceKey': sourceKey,
         'slots': [
           for (final s in slots)
             {
@@ -62,6 +67,7 @@ final class AladhanDaySchedule {
       latitude: (json['latitude'] as num?)?.toDouble() ?? 0,
       longitude: (json['longitude'] as num?)?.toDouble() ?? 0,
       methodName: json['methodName']?.toString() ?? 'Aladhan',
+      sourceKey: json['sourceKey']?.toString() ?? 'aladhan',
       slots: slots,
     );
   }
@@ -75,9 +81,13 @@ final class AladhanMethod {
   final String label;
 }
 
-/// Common Aladhan methods for the settings dropdown.
+/// Common calculation methods for the settings dropdown.
+///
+/// [kemenagMethodId] (-1) is not an Aladhan method — it selects the
+/// Kemenag / myQuran city jadwal path.
 abstract final class AladhanMethods {
   static const List<AladhanMethod> common = [
+    AladhanMethod(id: -1, label: 'Kemenag (Indonesia)'),
     AladhanMethod(id: 11, label: 'MUIS (Singapore)'),
     AladhanMethod(id: 3, label: 'Muslim World League'),
     AladhanMethod(id: 2, label: 'ISNA (North America)'),
@@ -214,6 +224,7 @@ final class AladhanClient {
       latitude: (meta['latitude'] as num?)?.toDouble() ?? 0,
       longitude: (meta['longitude'] as num?)?.toDouble() ?? 0,
       methodName: methodName,
+      sourceKey: 'aladhan',
       slots: [
         slot('fajr', 'Fajr'),
         slot('dhuhr', 'Dhuhr'),

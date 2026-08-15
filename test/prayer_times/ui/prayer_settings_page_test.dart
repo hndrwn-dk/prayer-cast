@@ -21,9 +21,13 @@ import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/l10n/app_localizations.dart';
 import 'package:prayer_cast/prayer_times/adhan_next_prayer_provider.dart';
 import 'package:prayer_cast/prayer_times/aladhan_client.dart';
+import 'package:prayer_cast/prayer_times/location_resolver.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 import 'package:prayer_cast/prayer_times/prayer_times_providers.dart';
+import 'package:prayer_cast/prayer_times/ui/location_disclosure.dart';
 import 'package:prayer_cast/prayer_times/ui/prayer_settings_page.dart';
+import 'package:prayer_cast/support/app_links.dart';
+import 'package:prayer_cast/support/open_support_url.dart';
 
 void main() {
   Future<void> pumpTile(
@@ -176,12 +180,125 @@ void main() {
     );
     expect(find.text('Save'), findsOneWidget);
   });
+
+  testWidgets('location disclosure appears before resolve when not granted',
+      (tester) async {
+    final resolver = _FakeLocationResolver();
+    await _pumpSettings(tester, locationResolver: resolver);
+
+    await tester.tap(find.text('Use current location'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(LocationDisclosureDialog.dialogKey), findsOneWidget);
+    expect(find.text('Location is optional'), findsOneWidget);
+    expect(find.textContaining('GPS is optional'), findsOneWidget);
+    expect(
+      find.textContaining('not used to decide whether you are home'),
+      findsOneWidget,
+    );
+    expect(find.text('Privacy policy'), findsOneWidget);
+    expect(resolver.resolveCalls, 0);
+  });
+
+  testWidgets('location disclosure Continue then resolves city', (tester) async {
+    final resolver = _FakeLocationResolver();
+    await _pumpSettings(tester, locationResolver: resolver);
+
+    await tester.tap(find.text('Use current location'));
+    await tester.pump();
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(LocationDisclosureDialog.continueKey));
+    await tester.tap(find.byKey(LocationDisclosureDialog.continueKey));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(LocationDisclosureDialog.dialogKey), findsNothing);
+    expect(resolver.resolveCalls, 1);
+    expect(find.text('Location: Jakarta, Indonesia'), findsOneWidget);
+  });
+
+  testWidgets('location disclosure Type city skips GPS and opens the form',
+      (tester) async {
+    final resolver = _FakeLocationResolver();
+    await _pumpSettings(tester, locationResolver: resolver);
+
+    await tester.tap(find.text('Use current location'));
+    await tester.pump();
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(LocationDisclosureDialog.typeCityKey));
+    await tester.tap(find.byKey(LocationDisclosureDialog.typeCityKey));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(LocationDisclosureDialog.dialogKey), findsNothing);
+    expect(resolver.resolveCalls, 0);
+    expect(find.text('Hide city form'), findsOneWidget);
+    expect(find.text('City'), findsOneWidget);
+  });
+
+  testWidgets('already-granted location skips disclosure', (tester) async {
+    final resolver = _FakeLocationResolver(granted: true);
+    await _pumpSettings(tester, locationResolver: resolver);
+
+    await tester.tap(find.text('Use current location'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(LocationDisclosureDialog.dialogKey), findsNothing);
+    expect(resolver.resolveCalls, 1);
+    expect(find.text('Location: Jakarta, Indonesia'), findsOneWidget);
+  });
+
+  testWidgets('location disclosure privacy link opens the policy URL',
+      (tester) async {
+    final launched = <Uri>[];
+    debugLaunchExternalUrl = (uri) async {
+      launched.add(uri);
+      return true;
+    };
+    addTearDown(() => debugLaunchExternalUrl = null);
+
+    final resolver = _FakeLocationResolver();
+    await _pumpSettings(tester, locationResolver: resolver);
+
+    await tester.tap(find.text('Use current location'));
+    await tester.pump();
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(LocationDisclosureDialog.privacyKey));
+    await tester.tap(find.byKey(LocationDisclosureDialog.privacyKey));
+    await tester.pump();
+
+    expect(launched, [Uri.parse(AppLinks.privacyPolicyUrl)]);
+    expect(find.byKey(LocationDisclosureDialog.dialogKey), findsOneWidget);
+    expect(resolver.resolveCalls, 0);
+  });
+
+  testWidgets('location disclosure copy is localized in Indonesian',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('id'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        theme: PrayerCastTheme.forest(),
+        home: const Scaffold(body: LocationDisclosureDialog()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Lokasi bersifat opsional'), findsOneWidget);
+    expect(find.text('Lanjutkan'), findsOneWidget);
+    expect(find.text('Ketik kota saja'), findsOneWidget);
+    expect(find.text('Kebijakan privasi'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpSettings(
   WidgetTester tester, {
   PrayerDeliveryCoordinator? coordinator,
   PrayerPrefs? prefs,
+  LocationResolving locationResolver = const LocationResolver(),
 }) async {
   final store = MemoryPrayerPrefsStore(prefs ?? PrayerPrefs.defaults);
   final engine = AdhanNextPrayerProvider(
@@ -204,7 +321,10 @@ Future<void> _pumpSettings(
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         theme: PrayerCastTheme.light(),
-        home: PrayerSettingsPage(coordinator: coordinator),
+        home: PrayerSettingsPage(
+          coordinator: coordinator,
+          locationResolver: locationResolver,
+        ),
       ),
     ),
   );
@@ -299,4 +419,25 @@ final class _FakeConditions implements DeviceConditionsProvider {
         batterySaverActive: false,
         clockSkewDetected: false,
       );
+}
+
+final class _FakeLocationResolver implements LocationResolving {
+  _FakeLocationResolver({this.granted = false});
+
+  final bool granted;
+  int resolveCalls = 0;
+
+  @override
+  Future<bool> hasGrantedPermission() async => granted;
+
+  @override
+  Future<ResolvedLocation> resolveCurrent() async {
+    resolveCalls++;
+    return const ResolvedLocation(
+      latitude: -6.2,
+      longitude: 106.8,
+      city: 'Jakarta',
+      country: 'Indonesia',
+    );
+  }
 }

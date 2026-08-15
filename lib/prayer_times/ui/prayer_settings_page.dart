@@ -14,15 +14,22 @@ import 'package:prayer_cast/l10n/l10n_ext.dart';
 
 import '../adzan_voices.dart';
 import '../aladhan_client.dart';
+import '../indonesia_location.dart';
 import '../location_resolver.dart';
 import '../prayer_prefs.dart';
 import '../prayer_times_providers.dart';
+import 'location_disclosure.dart';
 
 /// Premium prayer-time settings: location, method, schedule + voice test.
 class PrayerSettingsPage extends ConsumerStatefulWidget {
-  const PrayerSettingsPage({super.key, this.coordinator});
+  const PrayerSettingsPage({
+    super.key,
+    this.coordinator,
+    this.locationResolver = const LocationResolver(),
+  });
 
   final PrayerDeliveryCoordinator? coordinator;
+  final LocationResolving locationResolver;
 
   @override
   ConsumerState<PrayerSettingsPage> createState() => _PrayerSettingsPageState();
@@ -42,11 +49,12 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
   String? _pageStatus;
   bool _pageStatusIsError = false;
   String? _scheduleError;
+  String? _scheduleMethodName;
   List<NextPrayer> _schedule = const [];
   final _cityController = TextEditingController();
   final _countryController = TextEditingController();
   bool _controllersReady = false;
-  final _locationResolver = const LocationResolver();
+  int _lastAladhanMethodId = defaultAladhanMethodId;
 
   @override
   void dispose() {
@@ -59,7 +67,14 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
     if (_controllersReady) return;
     _cityController.text = prefs.city;
     _countryController.text = prefs.country;
+    _rememberAladhan(prefs.methodId);
     _controllersReady = true;
+  }
+
+  void _rememberAladhan(int methodId) {
+    if (!isKemenagMethod(methodId)) {
+      _lastAladhanMethodId = methodId;
+    }
   }
 
   Future<void> _refreshSchedule(PrayerPrefs draft) async {
@@ -75,9 +90,15 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
         day: DateTime.now(),
       );
       if (!mounted) return;
+      final fallback = engine.lastFallbackMessage;
       setState(() {
         _schedule = day.slots;
+        _scheduleMethodName = day.methodName;
         _loadingSchedule = false;
+        if (fallback != null) {
+          _pageStatus = context.l10n.kemenagFallback(fallback);
+          _pageStatusIsError = true;
+        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -85,23 +106,42 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
         _loadingSchedule = false;
         _scheduleError = '$e';
         _schedule = const [];
+        _scheduleMethodName = null;
       });
     }
   }
 
   Future<void> _detectLocation(PrayerPrefs draft) async {
+    final alreadyGranted =
+        await widget.locationResolver.hasGrantedPermission();
+    if (!alreadyGranted) {
+      if (!mounted) return;
+      final proceed = await showLocationDisclosureDialog(context);
+      if (!proceed) {
+        if (mounted) setState(() => _editingPlace = true);
+        return;
+      }
+      if (!mounted) return;
+    }
     setState(() {
       _detectingLocation = true;
       _editingPlace = false;
     });
     try {
-      final resolved = await _locationResolver.resolveCurrent();
+      final resolved = await widget.locationResolver.resolveCurrent();
       if (!mounted) return;
+      _rememberAladhan(draft.methodId);
       final next = draft.copyWith(
         city: resolved.city,
         country: resolved.country,
         latitude: resolved.latitude,
         longitude: resolved.longitude,
+        administrativeArea: resolved.administrativeArea,
+        methodId: methodIdForLocationDetect(
+          country: resolved.country,
+          currentMethodId: draft.methodId,
+          previousAladhanMethodId: _lastAladhanMethodId,
+        ),
       );
       _cityController.text = resolved.city;
       _countryController.text = resolved.country;
@@ -263,6 +303,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                             _draft = draft.copyWith(
                                               city: v.trim(),
                                               clearCoordinates: true,
+                                              clearAdministrativeArea: true,
                                             );
                                           });
                                         },
@@ -274,10 +315,20 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                             TextCapitalization.words,
                                         decoration: _fieldDecoration(l10n.country),
                                         onChanged: (v) {
+                                          _rememberAladhan(draft.methodId);
+                                          final country = v.trim();
                                           setState(() {
                                             _draft = draft.copyWith(
-                                              country: v.trim(),
+                                              country: country,
+                                              methodId: methodIdForCountryChange(
+                                                previousCountry: draft.country,
+                                                nextCountry: country,
+                                                currentMethodId: draft.methodId,
+                                                previousAladhanMethodId:
+                                                    _lastAladhanMethodId,
+                                              ),
                                               clearCoordinates: true,
+                                              clearAdministrativeArea: true,
                                             );
                                           });
                                         },
@@ -320,13 +371,14 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                         DropdownMenuItem(
                                           value: m.id,
                                           child: Text(
-                                            m.label,
+                                            _methodLabel(l10n, m),
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                     ],
                                     onChanged: (id) {
                                       if (id == null) return;
+                                      _rememberAladhan(id);
                                       final next =
                                           draft.copyWith(methodId: id);
                                       setState(() => _draft = next);
@@ -334,7 +386,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                     },
                                     decoration: _fieldDecoration(null),
                                   ),
-                                  if (draft.methodId == 11)
+                                  if (_isAutoMethod(draft))
                                     Padding(
                                       padding: const EdgeInsets.only(right: 40),
                                       child: IgnorePointer(
@@ -378,7 +430,9 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                l10n.madhabAsrOnlyHint,
+                                isKemenagMethod(draft.methodId)
+                                    ? l10n.madhabKemenagHint
+                                    : l10n.madhabAsrOnlyHint,
                                 style: text.bodyMedium,
                               ),
                               const SizedBox(height: 16),
@@ -426,6 +480,17 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                   ),
                                 ],
                               ),
+                              if (_scheduleMethodName != null &&
+                                  _scheduleMethodName!.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  _scheduleMethodName!,
+                                  key: const ValueKey('schedule_method_name'),
+                                  style: text.bodyMedium?.copyWith(
+                                    color: PrayerCastColors.dawn,
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 6),
                               Text(
                                 l10n.scheduleVoiceHint,
@@ -676,6 +741,18 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
       if (m.id == id) return id;
     }
     return AladhanMethods.common.first.id;
+  }
+
+  static String _methodLabel(AppLocalizations l10n, AladhanMethod method) {
+    if (isKemenagMethod(method.id)) return l10n.methodKemenag;
+    return method.label;
+  }
+
+  static bool _isAutoMethod(PrayerPrefs draft) {
+    if (isIndonesiaCountry(draft.country)) {
+      return isKemenagMethod(draft.methodId);
+    }
+    return draft.methodId == defaultAladhanMethodId;
   }
 }
 

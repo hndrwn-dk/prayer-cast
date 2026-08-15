@@ -4,9 +4,11 @@ import 'dart:io';
 import 'package:prayer_cast/home_delivery/coordinator/next_prayer_provider.dart';
 
 import 'aladhan_client.dart';
+import 'indonesia_location.dart';
+import 'kemenag_client.dart';
 import 'prayer_prefs.dart';
 
-/// [NextPrayerProvider] using Aladhan Prayer Times API (global cities).
+/// [NextPrayerProvider] using Kemenag (Indonesia) or Aladhan (elsewhere).
 ///
 /// Fetches today + tomorrow on demand and picks the next obligatory slot.
 /// Successful fetches are written to [scheduleCacheFile] so a cold process
@@ -15,18 +17,25 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
   AdhanNextPrayerProvider({
     required PrayerPrefsStore store,
     AladhanClient? client,
+    KemenagClient? kemenagClient,
     File? scheduleCacheFile,
   })  : _store = store,
         _client = client ?? AladhanClient(),
+        _kemenag = kemenagClient ?? KemenagClient(),
         _scheduleCacheFile = scheduleCacheFile;
 
   final PrayerPrefsStore _store;
   final AladhanClient _client;
+  final KemenagClient _kemenag;
   final File? _scheduleCacheFile;
 
   AladhanDaySchedule? _cachedToday;
   AladhanDaySchedule? _cachedTomorrow;
   String? _cacheKey;
+
+  /// Set when Kemenag city-match or HTTP fails and Aladhan MUIS is used.
+  /// Null after a successful Kemenag fetch. Not labeled as Kemenag.
+  String? lastFallbackMessage;
 
   @override
   Future<NextPrayer> next({required DateTime after}) async {
@@ -76,12 +85,11 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
     final local = after.toLocal();
     final today = DateTime(local.year, local.month, local.day);
     final tomorrow = today.add(const Duration(days: 1));
-    final key =
-        '${prefs.city}|${prefs.country}|${prefs.latitude}|${prefs.longitude}|'
-        '${prefs.methodId}|${prefs.madhabId.name}|${today.toIso8601String()}';
+    final key = cacheKeyFor(prefs, today);
     if (_cacheKey != key || _cachedToday == null || _cachedTomorrow == null) {
       final school = prefs.madhabId.aladhanSchool;
       try {
+        lastFallbackMessage = null;
         final fetchedToday = await _fetch(prefs, today, school);
         final fetchedTomorrow = await _fetch(prefs, tomorrow, school);
         _cachedToday = fetchedToday;
@@ -90,7 +98,7 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
         await _writeDiskCache(
           key,
           [fetchedToday, fetchedTomorrow],
-          locationKey: _locationKey(prefs),
+          locationKey: locationKeyFor(prefs),
         );
       } catch (e) {
         final disk = await _readDiskCache();
@@ -113,6 +121,48 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
   }
 
   Future<AladhanDaySchedule> _fetch(
+    PrayerPrefs prefs,
+    DateTime day,
+    int school,
+  ) async {
+    if (isKemenagMethod(prefs.methodId)) {
+      return _fetchKemenagOrFallback(prefs, day, school);
+    }
+    return _fetchAladhan(prefs, day, school);
+  }
+
+  Future<AladhanDaySchedule> _fetchKemenagOrFallback(
+    PrayerPrefs prefs,
+    DateTime day,
+    int school,
+  ) async {
+    try {
+      return await _kemenag.timingsForPlace(
+        city: prefs.city,
+        adminArea: prefs.administrativeArea,
+        day: day,
+        latitude: prefs.latitude ?? 0,
+        longitude: prefs.longitude ?? 0,
+        voiceId: prefs.voiceId,
+      );
+    } on KemenagCityNotFound catch (e) {
+      lastFallbackMessage = e.message;
+      return _fetchAladhan(
+        prefs.copyWith(methodId: kemenagAladhanFallbackMethodId),
+        day,
+        school,
+      );
+    } on KemenagApiFailure catch (e) {
+      lastFallbackMessage = e.message;
+      return _fetchAladhan(
+        prefs.copyWith(methodId: kemenagAladhanFallbackMethodId),
+        day,
+        school,
+      );
+    }
+  }
+
+  Future<AladhanDaySchedule> _fetchAladhan(
     PrayerPrefs prefs,
     DateTime day,
     int school,
@@ -157,6 +207,7 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
       latitude: day.latitude,
       longitude: day.longitude,
       methodName: day.methodName,
+      sourceKey: day.sourceKey,
       slots: [
         for (final s in day.slots)
           NextPrayer(
@@ -175,8 +226,12 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
     _cachedTomorrow = null;
   }
 
-  static String _locationKey(PrayerPrefs prefs) =>
-      '${prefs.city}|${prefs.country}|${prefs.latitude}|${prefs.longitude}|'
+  static String cacheKeyFor(PrayerPrefs prefs, DateTime today) =>
+      '${locationKeyFor(prefs)}|${today.toIso8601String()}';
+
+  static String locationKeyFor(PrayerPrefs prefs) =>
+      '${scheduleSourceKey(prefs.methodId)}|${prefs.city}|${prefs.country}|'
+      '${prefs.administrativeArea}|${prefs.latitude}|${prefs.longitude}|'
       '${prefs.methodId}|${prefs.madhabId.name}';
 
   bool _diskCovers(
@@ -184,7 +239,7 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
     required PrayerPrefs prefs,
     required DateTime after,
   }) {
-    final loc = _locationKey(prefs);
+    final loc = locationKeyFor(prefs);
     final locationOk =
         disk.locationKey == loc || disk.key.startsWith('$loc|');
     if (!locationOk) return false;
@@ -234,7 +289,7 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
       }
       if (days.isEmpty) return null;
       final locationKey =
-          map['locationKey']?.toString() ?? key.split('|').take(6).join('|');
+          map['locationKey']?.toString() ?? key.split('|').take(8).join('|');
       return (key: key, locationKey: locationKey, days: days);
     } catch (_) {
       return null;
