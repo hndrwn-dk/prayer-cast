@@ -589,11 +589,11 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                               _testingPrayer == null,
                           statusText: _dryRunStatus,
                           statusIsError: _dryRunIsError,
+                          onIn5Minutes: () => _scheduleDryRun(
+                            PrayerDeliveryCoordinator.dryRunIn5Minutes,
+                          ),
                           onIn10Minutes: () => _scheduleDryRun(
                             PrayerDeliveryCoordinator.dryRunIn10Minutes,
-                          ),
-                          onIn1Hour: () => _scheduleDryRun(
-                            PrayerDeliveryCoordinator.dryRunIn1Hour,
                           ),
                         ),
                       ],
@@ -759,15 +759,15 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
 class _DryRunCard extends StatelessWidget {
   const _DryRunCard({
     required this.enabled,
+    required this.onIn5Minutes,
     required this.onIn10Minutes,
-    required this.onIn1Hour,
     this.statusText,
     this.statusIsError = false,
   });
 
   final bool enabled;
+  final VoidCallback onIn5Minutes;
   final VoidCallback onIn10Minutes;
-  final VoidCallback onIn1Hour;
   final String? statusText;
   final bool statusIsError;
 
@@ -796,9 +796,9 @@ class _DryRunCard extends StatelessWidget {
                 child: SizedBox(
                   height: PrayerCastTheme.minTap,
                   child: OutlinedButton(
-                    key: const ValueKey('dry_run_10m'),
-                    onPressed: enabled ? onIn10Minutes : null,
-                    child: Text(l10n.dryRunIn10Minutes),
+                    key: const ValueKey('dry_run_5m'),
+                    onPressed: enabled ? onIn5Minutes : null,
+                    child: Text(l10n.dryRunIn5Minutes),
                   ),
                 ),
               ),
@@ -807,9 +807,9 @@ class _DryRunCard extends StatelessWidget {
                 child: SizedBox(
                   height: PrayerCastTheme.minTap,
                   child: OutlinedButton(
-                    key: const ValueKey('dry_run_1h'),
-                    onPressed: enabled ? onIn1Hour : null,
-                    child: Text(l10n.dryRunIn1Hour),
+                    key: const ValueKey('dry_run_10m'),
+                    onPressed: enabled ? onIn10Minutes : null,
+                    child: Text(l10n.dryRunIn10Minutes),
                   ),
                 ),
               ),

@@ -76,6 +76,51 @@ void main() {
     expect(find.byKey(const ValueKey('voice-fajr-fajr_adhan')), findsNothing);
   });
 
+  testWidgets('dry-run offers 5 and 10 minutes only', (tester) async {
+    await _pumpSettings(tester);
+    final dryRun = find.byKey(const ValueKey('dry_run_5m'));
+    await tester.scrollUntilVisible(
+      dryRun,
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('prayer_settings_list')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.ensureVisible(dryRun);
+    await tester.pump();
+
+    expect(find.text('In 5 minutes'), findsOneWidget);
+    expect(find.text('In 10 minutes'), findsOneWidget);
+    expect(find.text('In 1 hour'), findsNothing);
+    expect(find.byKey(const ValueKey('dry_run_5m')), findsOneWidget);
+    expect(find.byKey(const ValueKey('dry_run_10m')), findsOneWidget);
+    expect(find.byKey(const ValueKey('dry_run_1h')), findsNothing);
+  });
+
+  testWidgets('dry-run buttons are localized in Indonesian', (tester) async {
+    await _pumpSettings(tester, locale: const Locale('id'));
+    final dryRun = find.byKey(const ValueKey('dry_run_5m'));
+    await tester.scrollUntilVisible(
+      dryRun,
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('prayer_settings_list')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.ensureVisible(dryRun);
+    await tester.pump();
+
+    expect(find.text('Dalam 5 menit'), findsOneWidget);
+    expect(find.text('Dalam 10 menit'), findsOneWidget);
+    expect(find.text('Dalam 1 jam'), findsNothing);
+  });
+
   testWidgets('dry-run shows inline time, not a SnackBar', (tester) async {
     final alarm = _FakeExactAlarm();
     addTearDown(alarm.dispose);
@@ -299,6 +344,7 @@ Future<void> _pumpSettings(
   PrayerDeliveryCoordinator? coordinator,
   PrayerPrefs? prefs,
   LocationResolving locationResolver = const LocationResolver(),
+  Locale locale = const Locale('en'),
 }) async {
   final store = MemoryPrayerPrefsStore(prefs ?? PrayerPrefs.defaults);
   final engine = AdhanNextPrayerProvider(
@@ -317,7 +363,7 @@ Future<void> _pumpSettings(
         ),
       ],
       child: MaterialApp(
-        locale: const Locale('en'),
+        locale: locale,
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         theme: PrayerCastTheme.light(),

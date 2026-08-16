@@ -836,17 +836,17 @@ abstract class AppLocalizations {
   /// **'Runs the real alarm path (wake, presence, then Cast, beep, or phone) — not the speaker test button. Replaces the next alarm until it fires.'**
   String get dryRunHint;
 
+  /// No description provided for @dryRunIn5Minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'In 5 minutes'**
+  String get dryRunIn5Minutes;
+
   /// No description provided for @dryRunIn10Minutes.
   ///
   /// In en, this message translates to:
   /// **'In 10 minutes'**
   String get dryRunIn10Minutes;
-
-  /// No description provided for @dryRunIn1Hour.
-  ///
-  /// In en, this message translates to:
-  /// **'In 1 hour'**
-  String get dryRunIn1Hour;
 
   /// No description provided for @dryRunScheduled.
   ///

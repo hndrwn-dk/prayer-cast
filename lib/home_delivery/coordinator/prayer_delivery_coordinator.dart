@@ -79,11 +79,11 @@ final class PrayerDeliveryCoordinator {
   /// production queries for canonical names (`isha`, `maghrib`, …).
   static const String dryRunPrayerSuffix = '-dryrun';
 
+  /// Azan-in-5-minutes dry-run. Wake is still T−120.
+  static const Duration dryRunIn5Minutes = Duration(minutes: 5);
+
   /// Azan-in-10-minutes dry-run. Wake is still T−120.
   static const Duration dryRunIn10Minutes = Duration(minutes: 10);
-
-  /// Azan-in-1-hour dry-run. Wake is still T−120.
-  static const Duration dryRunIn1Hour = Duration(hours: 1);
 
   /// Strip [dryRunPrayerSuffix] so mode / voice lookup uses the real slot.
   static String canonicalPrayerName(String prayer) {

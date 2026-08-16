@@ -436,10 +436,10 @@ class AppLocalizationsId extends AppLocalizations {
       'Menjalankan jalur alarm yang sama dengan sholat sungguhan (bangun, kehadiran, lalu Cast, beep, atau HP) — bukan tombol uji speaker. Mengganti alarm berikutnya sampai tes berjalan.';
 
   @override
-  String get dryRunIn10Minutes => 'Dalam 10 menit';
+  String get dryRunIn5Minutes => 'Dalam 5 menit';
 
   @override
-  String get dryRunIn1Hour => 'Dalam 1 jam';
+  String get dryRunIn10Minutes => 'Dalam 10 menit';
 
   @override
   String dryRunScheduled(String time) {

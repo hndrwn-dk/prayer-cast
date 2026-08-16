@@ -233,8 +233,8 @@
   },
   "dryRunTitle": "Test scheduled adhan",
   "dryRunHint": "Runs the real alarm path (wake, presence, then Cast, beep, or phone) — not the speaker test button. Replaces the next alarm until it fires.",
+  "dryRunIn5Minutes": "In 5 minutes",
   "dryRunIn10Minutes": "In 10 minutes",
-  "dryRunIn1Hour": "In 1 hour",
   "dryRunScheduled": "Test adhan at {time}",
   "@dryRunScheduled": {
     "placeholders": {

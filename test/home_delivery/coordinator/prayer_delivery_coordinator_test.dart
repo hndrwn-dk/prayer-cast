@@ -805,15 +805,15 @@ void main() {
     expect(coordinator.scheduledWakeEpochMs, expectedWake);
   });
 
-  test('scheduleDryRun 1 hour arms wake at now+1h + scanOffset', () async {
+  test('scheduleDryRun 5 minutes arms wake at now+5m + scanOffset', () async {
     final coordinator = buildCoordinator();
     await coordinator.start();
 
     final azanAt = await coordinator.scheduleDryRun(
-      untilAzan: PrayerDeliveryCoordinator.dryRunIn1Hour,
+      untilAzan: PrayerDeliveryCoordinator.dryRunIn5Minutes,
     );
 
-    expect(azanAt, t0.add(PrayerDeliveryCoordinator.dryRunIn1Hour));
+    expect(azanAt, t0.add(PrayerDeliveryCoordinator.dryRunIn5Minutes));
     final expectedWake = azanAt
         .add(PresenceSchedule.scanOffset)
         .millisecondsSinceEpoch;
@@ -830,7 +830,7 @@ void main() {
       untilAzan: PrayerDeliveryCoordinator.dryRunIn10Minutes,
     );
     final secondAzan = await coordinator.scheduleDryRun(
-      untilAzan: PrayerDeliveryCoordinator.dryRunIn1Hour,
+      untilAzan: PrayerDeliveryCoordinator.dryRunIn5Minutes,
     );
 
     expect(alarm.scheduled, hasLength(1));
