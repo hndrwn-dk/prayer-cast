@@ -79,11 +79,11 @@ final class PrayerDeliveryCoordinator {
   /// production queries for canonical names (`isha`, `maghrib`, …).
   static const String dryRunPrayerSuffix = '-dryrun';
 
+  /// Azan-in-1-minute dry-run. Wake is still T−120.
+  static const Duration dryRunIn1Minute = Duration(minutes: 1);
+
   /// Azan-in-5-minutes dry-run. Wake is still T−120.
   static const Duration dryRunIn5Minutes = Duration(minutes: 5);
-
-  /// Azan-in-10-minutes dry-run. Wake is still T−120.
-  static const Duration dryRunIn10Minutes = Duration(minutes: 10);
 
   /// Strip [dryRunPrayerSuffix] so mode / voice lookup uses the real slot.
   static String canonicalPrayerName(String prayer) {
@@ -203,8 +203,10 @@ final class PrayerDeliveryCoordinator {
   }
 
   /// Arm the same AlarmClock → FGS → [onFired] path as a real prayer, with
-  /// azan at now + [untilAzan] (wake at T−120). Replaces any previously
-  /// scheduled wake, including an earlier dry-run.
+  /// azan at now + [untilAzan] (wake at T−120 when that is still in the
+  /// future). A 1-minute dry-run cannot fit T−120, so wake is clamped just
+  /// after now; [onFired] still reconstructs azan as wake + 120s.
+  /// Replaces any previously scheduled wake, including an earlier dry-run.
   ///
   /// Uses the next upcoming prayer's name + voice so Cast/beep/phone mode
   /// matches that slot. Returns the azan instant for the inline confirmation.
@@ -223,16 +225,19 @@ final class PrayerDeliveryCoordinator {
     }
 
     final now = _clock.now();
-    final azanEpoch = now.add(untilAzan);
-    final wakeEpochMs =
-        azanEpoch.add(PresenceSchedule.scanOffset).millisecondsSinceEpoch;
-    if (wakeEpochMs <= now.millisecondsSinceEpoch) {
+    if (untilAzan <= Duration.zero) {
       throw ArgumentError.value(
         untilAzan,
         'untilAzan',
-        'must leave room for T-120 wake',
+        'must be after now',
       );
     }
+    final requestedAzan = now.add(untilAzan);
+    final computedWake = requestedAzan.add(PresenceSchedule.scanOffset);
+    final minWake = now.add(const Duration(seconds: 1));
+    final wakeAt = computedWake.isAfter(minWake) ? computedWake : minWake;
+    final wakeEpochMs = wakeAt.millisecondsSinceEpoch;
+    final azanEpoch = wakeAt.subtract(PresenceSchedule.scanOffset);
 
     var name = 'isha';
     var voiceId = defaultVoiceId;

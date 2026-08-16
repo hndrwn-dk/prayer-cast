@@ -76,9 +76,9 @@ void main() {
     expect(find.byKey(const ValueKey('voice-fajr-fajr_adhan')), findsNothing);
   });
 
-  testWidgets('dry-run offers 5 and 10 minutes only', (tester) async {
+  testWidgets('dry-run offers 1 and 5 minutes only', (tester) async {
     await _pumpSettings(tester);
-    final dryRun = find.byKey(const ValueKey('dry_run_5m'));
+    final dryRun = find.byKey(const ValueKey('dry_run_1m'));
     await tester.scrollUntilVisible(
       dryRun,
       300,
@@ -92,17 +92,19 @@ void main() {
     await tester.ensureVisible(dryRun);
     await tester.pump();
 
+    expect(find.text('In 1 minute'), findsOneWidget);
     expect(find.text('In 5 minutes'), findsOneWidget);
-    expect(find.text('In 10 minutes'), findsOneWidget);
+    expect(find.text('In 10 minutes'), findsNothing);
     expect(find.text('In 1 hour'), findsNothing);
+    expect(find.byKey(const ValueKey('dry_run_1m')), findsOneWidget);
     expect(find.byKey(const ValueKey('dry_run_5m')), findsOneWidget);
-    expect(find.byKey(const ValueKey('dry_run_10m')), findsOneWidget);
+    expect(find.byKey(const ValueKey('dry_run_10m')), findsNothing);
     expect(find.byKey(const ValueKey('dry_run_1h')), findsNothing);
   });
 
   testWidgets('dry-run buttons are localized in Indonesian', (tester) async {
     await _pumpSettings(tester, locale: const Locale('id'));
-    final dryRun = find.byKey(const ValueKey('dry_run_5m'));
+    final dryRun = find.byKey(const ValueKey('dry_run_1m'));
     await tester.scrollUntilVisible(
       dryRun,
       300,
@@ -116,8 +118,9 @@ void main() {
     await tester.ensureVisible(dryRun);
     await tester.pump();
 
+    expect(find.text('Dalam 1 menit'), findsOneWidget);
     expect(find.text('Dalam 5 menit'), findsOneWidget);
-    expect(find.text('Dalam 10 menit'), findsOneWidget);
+    expect(find.text('Dalam 10 menit'), findsNothing);
     expect(find.text('Dalam 1 jam'), findsNothing);
   });
 
@@ -137,7 +140,7 @@ void main() {
     await coordinator.start();
 
     await _pumpSettings(tester, coordinator: coordinator);
-    final dryRun = find.byKey(const ValueKey('dry_run_10m'));
+    final dryRun = find.byKey(const ValueKey('dry_run_5m'));
     await tester.scrollUntilVisible(
       dryRun,
       300,
@@ -156,7 +159,7 @@ void main() {
 
     expect(find.byType(SnackBar), findsNothing);
     expect(find.byKey(const ValueKey('dry_run_status')), findsOneWidget);
-    expect(find.text('Test adhan at 20:45'), findsOneWidget);
+    expect(find.text('Test adhan at 20:40'), findsOneWidget);
     expect(find.text('SCHEDULE'), findsWidgets);
   });
 
@@ -175,7 +178,7 @@ void main() {
     );
 
     await _pumpSettings(tester, coordinator: coordinator);
-    final dryRun = find.byKey(const ValueKey('dry_run_10m'));
+    final dryRun = find.byKey(const ValueKey('dry_run_5m'));
     await tester.scrollUntilVisible(
       dryRun,
       300,

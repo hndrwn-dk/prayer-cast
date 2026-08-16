@@ -786,23 +786,24 @@ void main() {
     expect(alarm.stopForegroundCalls, 1);
   });
 
-  test('scheduleDryRun 10 minutes arms wake at now+10m + scanOffset', () async {
+  test('scheduleDryRun 1 minute clamps wake just after now', () async {
     final coordinator = buildCoordinator();
     await coordinator.start();
 
     final azanAt = await coordinator.scheduleDryRun(
-      untilAzan: PrayerDeliveryCoordinator.dryRunIn10Minutes,
+      untilAzan: PrayerDeliveryCoordinator.dryRunIn1Minute,
     );
 
-    expect(azanAt, t0.add(PrayerDeliveryCoordinator.dryRunIn10Minutes));
-    final expectedWake = azanAt
-        .add(PresenceSchedule.scanOffset)
-        .millisecondsSinceEpoch;
+    final expectedWake = t0.add(const Duration(seconds: 1));
+    expect(azanAt, expectedWake.subtract(PresenceSchedule.scanOffset));
     expect(alarm.scheduled, hasLength(1));
-    expect(alarm.scheduled.single.epochMs, expectedWake);
+    expect(alarm.scheduled.single.epochMs, expectedWake.millisecondsSinceEpoch);
     expect(alarm.scheduled.single.prayer, 'maghrib-dryrun');
     expect(alarm.scheduled.single.voiceId, 'makkah');
-    expect(coordinator.scheduledWakeEpochMs, expectedWake);
+    expect(
+      coordinator.scheduledWakeEpochMs,
+      expectedWake.millisecondsSinceEpoch,
+    );
   });
 
   test('scheduleDryRun 5 minutes arms wake at now+5m + scanOffset', () async {
@@ -827,7 +828,7 @@ void main() {
     await coordinator.start();
 
     await coordinator.scheduleDryRun(
-      untilAzan: PrayerDeliveryCoordinator.dryRunIn10Minutes,
+      untilAzan: PrayerDeliveryCoordinator.dryRunIn1Minute,
     );
     final secondAzan = await coordinator.scheduleDryRun(
       untilAzan: PrayerDeliveryCoordinator.dryRunIn5Minutes,
@@ -865,7 +866,7 @@ void main() {
     );
     await coordinator.start();
     final azanAt = await coordinator.scheduleDryRun(
-      untilAzan: PrayerDeliveryCoordinator.dryRunIn10Minutes,
+      untilAzan: PrayerDeliveryCoordinator.dryRunIn1Minute,
     );
     final wakeMs = alarm.scheduled.single.epochMs;
 
@@ -898,7 +899,7 @@ void main() {
     final coordinator = buildCoordinator();
     await coordinator.start();
     final azanAt = await coordinator.scheduleDryRun(
-      untilAzan: PrayerDeliveryCoordinator.dryRunIn10Minutes,
+      untilAzan: PrayerDeliveryCoordinator.dryRunIn1Minute,
     );
     final dryWake = azanAt
         .add(PresenceSchedule.scanOffset)

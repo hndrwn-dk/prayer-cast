@@ -435,10 +435,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Runs the real alarm path (wake, presence, then Cast, beep, or phone) — not the speaker test button. Replaces the next alarm until it fires.';
 
   @override
-  String get dryRunIn5Minutes => 'In 5 minutes';
+  String get dryRunIn1Minute => 'In 1 minute';
 
   @override
-  String get dryRunIn10Minutes => 'In 10 minutes';
+  String get dryRunIn5Minutes => 'In 5 minutes';
 
   @override
   String dryRunScheduled(String time) {
