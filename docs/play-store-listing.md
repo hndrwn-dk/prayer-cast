@@ -187,5 +187,5 @@ show it clearly.
 - Home copy “no GPS” means home detection is not GPS. Optional GPS
   exists only on Prayer times to fill city.
 - Ko-fi is a browser donation, not IAP. Do not declare financial info.
-- AdzanForegroundService is specialUse, not mediaPlayback. See
+- AdzanForegroundService is connectedDevice, not mediaPlayback. See
   [play-fgs.md](play-fgs.md).

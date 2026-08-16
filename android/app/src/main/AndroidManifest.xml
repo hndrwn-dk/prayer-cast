@@ -1,7 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Local network / NSD (presence + peer discovery). -->
+    <!-- Local network / NSD (presence + peer discovery).
+         CHANGE_WIFI_MULTICAST_STATE also satisfies the official
+         connectedDevice FGS runtime prerequisite (API 34+): at least
+         one of CHANGE_NETWORK_STATE / CHANGE_WIFI_STATE /
+         CHANGE_WIFI_MULTICAST_STATE / NFC / TRANSMIT_IR.
+         WifiLock needs WAKE_LOCK only, not CHANGE_WIFI_STATE. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -29,11 +34,11 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <!-- Foreground service wake path for adzan delivery.
-         AdzanForegroundService is specialUse (locks + launch activity; it
-         does not play media). MEDIA_PLAYBACK stays for Cast SDK
-         MediaNotificationService only. -->
+         AdzanForegroundService is connectedDevice (Wi-Fi lock + Dart
+         start for Cast / LAN coordination; it does not play media).
+         MEDIA_PLAYBACK stays for Cast SDK MediaNotificationService only. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -88,18 +93,15 @@
             </intent-filter>
         </receiver>
 
-        <!-- Play-honest type: wake locks + launch MainActivity for the
-             exact-alarm azan path. Not mediaPlayback — this service never
-             starts a player. Cast SDK MediaNotificationService below stays
-             mediaPlayback. Play Console text: docs/play-fgs.md -->
+        <!-- Play-honest type: keep Wi-Fi up and start Dart so Cast
+             discovery / election / loadMedia can talk to the home
+             speaker over the LAN. Not mediaPlayback — this service
+             never starts a player. Cast SDK MediaNotificationService
+             below stays mediaPlayback. Play Console text: docs/play-fgs.md -->
         <service
             android:name=".AdzanForegroundService"
             android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Exact-alarm prayer wake: hold CPU and high-perf Wi-Fi locks and launch MainActivity so Dart can Cast adhan to the home speaker or play beep/phone adhan. This service does not play media." />
-        </service>
+            android:foregroundServiceType="connectedDevice" />
 
         <!-- Required by flutter_chrome_cast / Google Cast SDK. -->
         <meta-data

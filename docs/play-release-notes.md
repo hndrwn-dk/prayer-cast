@@ -29,7 +29,7 @@ keytool -printcert -jarfile build/app/outputs/bundle/release/app-release.aab
 - Privacy policy URL must be the Prayer Cast page, not the studio page:
   https://tursinalabs.com/privacy/prayer-cast
 - Data safety answers: `play-data-safety.md`
-- Foreground service declaration (specialUse): `play-fgs.md`
+- Foreground service declaration (connectedDevice): `play-fgs.md`
 - Store listing copy and graphics: `play-store-listing.md`
 - Permission justifications: Location (optional, prayer city only) and
   Nearby Wi-Fi devices (Cast speaker scan, neverForLocation).

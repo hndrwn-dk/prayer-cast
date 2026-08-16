@@ -19,14 +19,20 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 
 /**
- * Foreground service (type specialUse) holding PARTIAL_WAKE_LOCK and
+ * Foreground service (type connectedDevice) holding PARTIAL_WAKE_LOCK and
  * WifiLock(WIFI_MODE_FULL_HIGH_PERF) for the delivery window (spec §5.5).
  *
- * Play-honest type: a scheduled alarm wake, not user-initiated playback.
- * It holds CPU/Wi-Fi locks and runs the delivery so Dart can Cast adhan to
- * the home speaker; beep / phone adhan modes play a short alarm sound via
- * audioplayers in this process. mediaPlayback would be a type mismatch
- * (Play takedown). Cast SDK MediaNotificationService stays mediaPlayback.
+ * Play-honest type: this service keeps the Wi-Fi radio up and starts Dart
+ * so Cast discovery / election / loadMedia can talk to the home speaker
+ * over the LAN. Official connectedDevice is "interactions with external
+ * devices that require a Bluetooth, NFC, IR, USB, or network connection."
+ *
+ * The alarm path starts this service at T−120, before Dart knows
+ * presence or beep / phone / Cast mode. startForeground therefore
+ * always uses connectedDevice — the work this service itself does.
+ * It does not play media. Beep / phone adhan run later via Flutter
+ * audioplayers in this process; that is not a mediaPlayback FGS.
+ * Cast SDK MediaNotificationService stays mediaPlayback.
  *
  * WHY locks: Without the high-perf Wi-Fi lock, mDNS discovery fails
  * intermittently when the screen is off — the number one cause of
@@ -37,7 +43,7 @@ import androidx.core.app.NotificationCompat
  * (Pixel same-UID PendingIntent → BAL_BLOCK), so waiting for [MainActivity]
  * misses azan and replays when the user later opens the app.
  * Still try full-screen intent + PendingIntent BAL opt-in for lockscreen UX.
- * specialUse is API 34+; older platforms startForeground without a type.
+ * connectedDevice is API 34+; older platforms startForeground without a type.
  */
 class AdzanForegroundService : Service() {
 
@@ -82,7 +88,7 @@ class AdzanForegroundService : Service() {
             startForeground(
                 NOTIFICATION_ID,
                 notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
             )
         } else {
             startForeground(NOTIFICATION_ID, notification)

@@ -4,11 +4,18 @@
 Apps targeting Android 14+ must declare each FGS type on **Monitor and
 improve → App content**.
 
-`AdzanForegroundService` is **specialUse**: a scheduled alarm wake, not
-user-initiated playback. It holds a partial wake lock and a high-perf Wi-Fi
-lock, posts an alarm-category notification with a full-screen intent, and
-runs the delivery in a headless Flutter engine started in the service
-process, so Dart Casts adhan (HOME) without waiting for `MainActivity`.
+`AdzanForegroundService` is **connectedDevice**: it holds a high-perf
+Wi-Fi lock and starts a headless Flutter engine so Cast discovery,
+election, and `loadMedia` can talk to the saved home speaker over the
+LAN. Official type description (API 34+): "interactions with external
+devices that require a Bluetooth, NFC, IR, USB, or **network**
+connection."
+
+The alarm path starts this service at T−120, before Dart knows
+presence or beep / phone / Cast mode. `startForeground` therefore
+always uses `connectedDevice` — the work this service itself does.
+It does not play audio. Beep / phone adhan run later via Flutter
+`audioplayers` in the same process; that is not a mediaPlayback FGS.
 
 Google Cast SDK `MediaNotificationService` is declared **mediaPlayback**,
 but see [Verified: the Cast media notification does not
@@ -16,6 +23,35 @@ appear](#verified-the-cast-media-notification-does-not-appear) — as of
 1.0.0+1 that service never actually starts.
 
 Do not declare `USE_EXACT_ALARM`. The app uses `SCHEDULE_EXACT_ALARM` only.
+
+**Re-declare and re-shoot.** 1.0.0+1 was submitted as `specialUse`. This
+type change needs a new Play Console FGS form (`connectedDevice` +
+`FOREGROUND_SERVICE_CONNECTED_DEVICE`) and a new demo video. Do not
+reuse the specialUse clip.
+
+## Official connectedDevice prerequisites (API 34+ / targetSdk 36)
+
+Source: [Foreground service types](https://developer.android.com/develop/background-work/services/fgs/service-types)
+(fetched 2026-08-16).
+
+Must declare `FOREGROUND_SERVICE_CONNECTED_DEVICE`.
+
+Then at least one of these must already be true before
+`startForeground(connectedDevice)`:
+
+- Declare one of: `CHANGE_NETWORK_STATE`, `CHANGE_WIFI_STATE`,
+  `CHANGE_WIFI_MULTICAST_STATE`, `NFC`, `TRANSMIT_IR`
+- Or hold a granted runtime permission: `BLUETOOTH_CONNECT`,
+  `BLUETOOTH_ADVERTISE`, `BLUETOOTH_SCAN`, `UWB_RANGING`
+- Or have called `UsbManager.requestPermission()`
+
+This app already declares `CHANGE_WIFI_MULTICAST_STATE` (NSD / mDNS).
+That satisfies the "at least one" rule. `NEARBY_WIFI_DEVICES` is **not**
+on the official list. `CHANGE_WIFI_STATE` is **not** required for
+`WifiLock` (that API needs `WAKE_LOCK` only) and is not added.
+
+`connectedDevice` is not Bluetooth-only. The official description
+includes a network connection.
 
 ## Verified: the Cast media notification does not appear
 
@@ -65,14 +101,13 @@ dropped. Delivery still works; the notification is simply invisible.
 
 Until the app asks at runtime, granting it means
 **Settings → Apps → Prayer Cast → Notifications**. Any demo recording of the
-specialUse notification depends on this being granted first.
+connectedDevice notification depends on this being granted first.
 
-## specialUse — copy into Play Console
+## connectedDevice — copy into Play Console
 
-**Foreground service type:** `specialUse`
+**Foreground service type:** `connectedDevice`
 
-**Use case (manual, if not in the preset list):**
-Scheduled prayer alarm wake (exact-alarm azan).
+**Use case:** Connected device
 
 **Description of the app functionality using this type:**
 
@@ -81,44 +116,48 @@ Prayer Cast fires AlarmManager.setAlarmClock at T−120s before each
 scheduled prayer. AdzanAlarmReceiver (exported=false) starts
 AdzanForegroundService. That service:
 
-1. startForeground as specialUse with an ongoing alarm-category
+1. startForeground as connectedDevice with an ongoing alarm-category
    notification ("Menyiapkan adzan") and a full-screen intent.
 2. Holds PARTIAL_WAKE_LOCK and WifiLock(WIFI_MODE_FULL_HIGH_PERF) so
    mDNS / Cast discovery works with the screen off.
-3. Sends a PendingIntent that launches MainActivity (BAL opt-in on
-   API 34+). Dart PrayerDeliveryCoordinator then Casts adhan to the
-   saved home speaker when presence is HOME, or plays a local beep /
-   phone adhan when the user chose those modes.
+3. Starts a headless Flutter engine in the service process. Dart
+   PrayerDeliveryCoordinator then discovers the saved home speaker
+   on the LAN and Casts adhan when presence is HOME, or plays a
+   local beep / phone adhan when the user chose those modes.
 
 The service itself never calls MediaPlayer, AudioTrack, MediaSession,
 or audioplayers. Cast-only / away stays silent on the phone unless
 that prayer is set to beep or phone adhan.
+
+Mode is chosen in Dart after the service has already started, so
+every prayer wake uses connectedDevice. Local audio is Flutter
+audioplayers in-process, not a second FGS type.
 ```
 
-**Why this is not mediaPlayback / shortService / connectedDevice:**
+**Why this is not mediaPlayback / shortService / specialUse:**
 
 ```
 mediaPlayback is for continuing audio or video playback from this
-process. AdzanForegroundService does not play media. Phone beep /
-phone adhan run later in Flutter after MainActivity starts. Speaker
-audio is played by the Cast device; Cast SDK MediaNotificationService
+service. AdzanForegroundService does not play media. Phone beep /
+phone adhan run later in Flutter after Dart starts. Speaker audio
+is played by the Cast device; Cast SDK MediaNotificationService
 is a separate mediaPlayback service.
 
 shortService (~3 minutes) is too short: Cast discovery + loadMedia
 and a full adhan can exceed that. The wake lock is capped at 10
 minutes.
 
-connectedDevice does not apply: this service does not talk to the
-speaker. Dart does, after the activity starts.
+specialUse is a catch-all. A specific type applies: this service
+holds the Wi-Fi radio and starts Dart so the app can interact with
+an external Cast speaker over the local network.
 ```
 
 **User impact if the task is deferred (does not start immediately):**
 
 ```
-The exact-alarm fire would not keep CPU/Wi-Fi up or launch the
-delivery activity. Adhan would miss at azan time, especially
-overnight / screen-off, when mDNS fails without the high-perf Wi-Fi
-lock.
+The exact-alarm fire would not keep CPU/Wi-Fi up or start Dart
+delivery. Adhan would miss at azan time, especially overnight /
+screen-off, when mDNS fails without the high-perf Wi-Fi lock.
 ```
 
 **User impact if the task is interrupted (paused or restarted):**
@@ -129,7 +168,7 @@ mid-delivery. The next prayer is rescheduled only if Dart finished
 that step before the service was killed.
 ```
 
-**Demo video (record this):**
+**Demo video (record this — re-shoot; do not reuse the specialUse clip):**
 
 1. Open Prayer Cast. Grant exact-alarm permission, and grant
    notifications from **Settings → Apps → Prayer Cast →
@@ -145,6 +184,8 @@ that step before the service was killed.
    is beep or phone adhan.
 7. Show the ongoing FGS notification during the wake window, then
    disappearing after delivery.
+8. Narrate that the service type is connectedDevice (Wi-Fi lock +
+   Cast / LAN coordination), not media playback on the phone.
 
 ## mediaPlayback — Cast SDK only
 
@@ -186,15 +227,6 @@ the `MediaNotificationService` `<service>` from the app manifest, or give the
 Cast SDK a `CastMediaOptions` with non-null `NotificationOptions` via an
 app-owned `OptionsProvider` so the notification genuinely exists.
 
-## Manifest property (already in the APK)
-
-`android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE` on
-`.AdzanForegroundService`:
-
-```
-Exact-alarm prayer wake: hold CPU and high-perf Wi-Fi locks and launch MainActivity so Dart can Cast adhan to the home speaker or play beep/phone adhan. This service does not play media.
-```
-
 ## Console form answers
 
 The "Foreground service permissions" form lists the permissions and asks
@@ -203,8 +235,10 @@ which tasks need them:
 - `FOREGROUND_SERVICE_MEDIA_PLAYBACK` — check **Media playback**. Not
   "Show picture in picture", not "Other". Only while the permission is still
   declared; the goal is to stop declaring it.
-- `FOREGROUND_SERVICE_SPECIAL_USE` — check **Other** (the only option),
-  then paste the specialUse description above.
+- `FOREGROUND_SERVICE_CONNECTED_DEVICE` — check **Connected device**.
+  Paste the connectedDevice description above. The previous
+  `FOREGROUND_SERVICE_SPECIAL_USE` row must be removed from the form
+  (permission no longer declared).
 
 ## Full-screen intent (keep; already required)
 
@@ -243,10 +277,11 @@ once:
 - Cast-only + HOME: speaker plays; phone silent.
 - Cast-only + AWAY: phone silent (no fallback) unless that prayer is
   beep or phone adhan.
-- Beep / phone adhan: Flutter audioplayers plays after MainActivity
-  starts; FGS still does not play.
+- Beep / phone adhan: Flutter audioplayers plays after Dart starts;
+  FGS still does not play. Confirm `startForeground` does not throw
+  `SecurityException` on either path.
 - `adb shell dumpsys activity services` for
-  `AdzanForegroundService` shows type `specialUse` on API 34+.
+  `AdzanForegroundService` shows type `connectedDevice` on API 34+.
 
 Store listing copy: [play-store-listing.md](play-store-listing.md).
 Data safety: [play-data-safety.md](play-data-safety.md).

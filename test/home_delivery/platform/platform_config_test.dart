@@ -4,18 +4,16 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// Spec §5.5 platform configuration checks (manifest / Info.plist).
 void main() {
-  test('AndroidManifest declares SCHEDULE_EXACT_ALARM but not USE_EXACT_ALARM',
-      () {
-    final manifest =
-        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
-    expect(
-      manifest,
-      contains('android.permission.SCHEDULE_EXACT_ALARM'),
-    );
+  test('AndroidManifest declares SCHEDULE_EXACT_ALARM but not USE_EXACT_ALARM', () {
+    final manifest = File(
+      'android/app/src/main/AndroidManifest.xml',
+    ).readAsStringSync();
+    expect(manifest, contains('android.permission.SCHEDULE_EXACT_ALARM'));
     // Comment may mention the forbidden permission; the uses-permission must not.
     expect(
-      RegExp(r'android:name="android\.permission\.USE_EXACT_ALARM"')
-          .hasMatch(manifest),
+      RegExp(
+        r'android:name="android\.permission\.USE_EXACT_ALARM"',
+      ).hasMatch(manifest),
       isFalse,
     );
     expect(manifest, contains('.AdzanAlarmReceiver'));
@@ -38,62 +36,78 @@ void main() {
     expect(fineBlock!.group(0), contains('tools:node="remove"'));
   });
 
-  test('AdzanForegroundService is specialUse; Cast SDK stays mediaPlayback',
-      () {
-    final manifest =
-        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+  test(
+    'AdzanForegroundService is connectedDevice; Cast SDK stays mediaPlayback',
+    () {
+      final manifest = File(
+        'android/app/src/main/AndroidManifest.xml',
+      ).readAsStringSync();
 
-    expect(
-      manifest,
-      contains('android.permission.FOREGROUND_SERVICE_SPECIAL_USE'),
-    );
-    expect(
-      manifest,
-      contains('android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK'),
-    );
-    expect(
-      manifest,
-      contains('android.permission.USE_FULL_SCREEN_INTENT'),
-    );
+      expect(
+        manifest,
+        contains('android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE'),
+      );
+      expect(
+        manifest,
+        contains('android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK'),
+      );
+      expect(
+        RegExp(
+          r'android:name="android\.permission\.FOREGROUND_SERVICE_SPECIAL_USE"',
+        ).hasMatch(manifest),
+        isFalse,
+      );
+      expect(
+        manifest,
+        contains('android.permission.CHANGE_WIFI_MULTICAST_STATE'),
+      );
+      expect(manifest, contains('android.permission.USE_FULL_SCREEN_INTENT'));
 
-    final adzan = _serviceBlock(manifest, '.AdzanForegroundService');
-    expect(adzan, contains('android:foregroundServiceType="specialUse"'));
-    expect(adzan, isNot(contains('mediaPlayback')));
-    expect(
-      adzan,
-      contains('android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE'),
-    );
-    expect(adzan, contains('This service does not play media.'));
+      final adzan = _serviceBlock(manifest, '.AdzanForegroundService');
+      expect(
+        adzan,
+        contains('android:foregroundServiceType="connectedDevice"'),
+      );
+      expect(adzan, isNot(contains('mediaPlayback')));
+      expect(adzan, isNot(contains('specialUse')));
+      expect(
+        adzan,
+        isNot(contains('android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE')),
+      );
 
-    final receiver = _receiverBlock(manifest, '.AdzanAlarmReceiver');
-    expect(receiver, contains('android:exported="false"'));
+      final receiver = _receiverBlock(manifest, '.AdzanAlarmReceiver');
+      expect(receiver, contains('android:exported="false"'));
 
-    final cast = _serviceBlock(
-      manifest,
-      'com.google.android.gms.cast.framework.media.MediaNotificationService',
-    );
-    expect(cast, contains('android:foregroundServiceType="mediaPlayback"'));
-    expect(cast, isNot(contains('specialUse')));
+      final cast = _serviceBlock(
+        manifest,
+        'com.google.android.gms.cast.framework.media.MediaNotificationService',
+      );
+      expect(cast, contains('android:foregroundServiceType="mediaPlayback"'));
+      expect(cast, isNot(contains('specialUse')));
+      expect(cast, isNot(contains('connectedDevice')));
 
-    final serviceKt = File(
-      'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/'
-      'AdzanForegroundService.kt',
-    ).readAsStringSync();
-    expect(serviceKt, contains('FOREGROUND_SERVICE_TYPE_SPECIAL_USE'));
-    expect(
-      serviceKt,
-      isNot(contains('FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK')),
-    );
-    expect(serviceKt, contains('PrayerCastFlutter.ensureStarted'));
-    expect(serviceKt, contains('START_REDELIVER_INTENT'));
-    expect(serviceKt, isNot(contains('MediaPlayer')));
-    expect(serviceKt, isNot(contains('AudioTrack')));
-    expect(serviceKt, isNot(contains('MediaSession')));
-  });
+      final serviceKt = File(
+        'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/'
+        'AdzanForegroundService.kt',
+      ).readAsStringSync();
+      expect(serviceKt, contains('FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE'));
+      expect(serviceKt, isNot(contains('FOREGROUND_SERVICE_TYPE_SPECIAL_USE')));
+      expect(
+        serviceKt,
+        isNot(contains('FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK')),
+      );
+      expect(serviceKt, contains('PrayerCastFlutter.ensureStarted'));
+      expect(serviceKt, contains('START_REDELIVER_INTENT'));
+      expect(serviceKt, isNot(contains('MediaPlayer')));
+      expect(serviceKt, isNot(contains('AudioTrack')));
+      expect(serviceKt, isNot(contains('MediaSession')));
+    },
+  );
 
   test('AndroidManifest does not enable global cleartext HTTP', () {
-    final manifest =
-        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    final manifest = File(
+      'android/app/src/main/AndroidManifest.xml',
+    ).readAsStringSync();
     expect(
       manifest,
       contains('android:networkSecurityConfig="@xml/network_security_config"'),
@@ -153,6 +167,10 @@ String _componentBlock(String manifest, String tag, String androidName) {
     dotAll: true,
   );
   final match = pattern.firstMatch(manifest);
-  expect(match, isNotNull, reason: 'missing <$tag android:name="$androidName">');
+  expect(
+    match,
+    isNotNull,
+    reason: 'missing <$tag android:name="$androidName">',
+  );
   return match!.group(0)!;
 }
