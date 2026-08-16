@@ -823,6 +823,342 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Type city instead'**
   String get locationDisclosureTypeCity;
+
+  /// No description provided for @spiritualBenefitsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Spiritual benefits'**
+  String get spiritualBenefitsSection;
+
+  /// No description provided for @sunnahPracticesSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunnah practices'**
+  String get sunnahPracticesSection;
+
+  /// No description provided for @sayingSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Saying'**
+  String get sayingSection;
+
+  /// No description provided for @noteSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get noteSection;
+
+  /// No description provided for @spiritualBenefitsTeaser.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · {line}'**
+  String spiritualBenefitsTeaser(String name, String line);
+
+  /// No description provided for @spiritualBenefitsDryRunTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (dry-run)'**
+  String spiritualBenefitsDryRunTitle(String name);
+
+  /// No description provided for @fajrTeaser.
+  ///
+  /// In en, this message translates to:
+  /// **'Spiritual awakening and consciousness'**
+  String get fajrTeaser;
+
+  /// No description provided for @fajrBenefit1.
+  ///
+  /// In en, this message translates to:
+  /// **'Blessed time for remembrance and reflection'**
+  String get fajrBenefit1;
+
+  /// No description provided for @fajrBenefit2.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection throughout the day'**
+  String get fajrBenefit2;
+
+  /// No description provided for @fajrBenefit3.
+  ///
+  /// In en, this message translates to:
+  /// **'Spiritual awakening and consciousness'**
+  String get fajrBenefit3;
+
+  /// No description provided for @fajrBenefit4.
+  ///
+  /// In en, this message translates to:
+  /// **'Better focus and productivity'**
+  String get fajrBenefit4;
+
+  /// No description provided for @fajrSunnah1.
+  ///
+  /// In en, this message translates to:
+  /// **'Pray 2 Sunnah rakats before Fajr'**
+  String get fajrSunnah1;
+
+  /// No description provided for @fajrSunnah2.
+  ///
+  /// In en, this message translates to:
+  /// **'Recite morning adhkar after prayer'**
+  String get fajrSunnah2;
+
+  /// No description provided for @fajrSunnah3.
+  ///
+  /// In en, this message translates to:
+  /// **'Read Quran until sunrise'**
+  String get fajrSunnah3;
+
+  /// No description provided for @fajrSunnah4.
+  ///
+  /// In en, this message translates to:
+  /// **'Make dua during the blessed time'**
+  String get fajrSunnah4;
+
+  /// No description provided for @fajrSaying.
+  ///
+  /// In en, this message translates to:
+  /// **'Whoever prays Fajr in congregation, it is as if he prayed the whole night.'**
+  String get fajrSaying;
+
+  /// No description provided for @dhuhrTeaser.
+  ///
+  /// In en, this message translates to:
+  /// **'Midday spiritual recharge'**
+  String get dhuhrTeaser;
+
+  /// No description provided for @dhuhrBenefit1.
+  ///
+  /// In en, this message translates to:
+  /// **'Break from worldly activities'**
+  String get dhuhrBenefit1;
+
+  /// No description provided for @dhuhrBenefit2.
+  ///
+  /// In en, this message translates to:
+  /// **'Midday spiritual recharge'**
+  String get dhuhrBenefit2;
+
+  /// No description provided for @dhuhrBenefit3.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection with the community'**
+  String get dhuhrBenefit3;
+
+  /// No description provided for @dhuhrBenefit4.
+  ///
+  /// In en, this message translates to:
+  /// **'Time for gratitude and reflection'**
+  String get dhuhrBenefit4;
+
+  /// No description provided for @dhuhrSunnah1.
+  ///
+  /// In en, this message translates to:
+  /// **'Pray 4 Sunnah rakats before Dhuhr'**
+  String get dhuhrSunnah1;
+
+  /// No description provided for @dhuhrSunnah2.
+  ///
+  /// In en, this message translates to:
+  /// **'Pray 2 Sunnah rakats after Dhuhr'**
+  String get dhuhrSunnah2;
+
+  /// No description provided for @dhuhrSunnah3.
+  ///
+  /// In en, this message translates to:
+  /// **'Make dua between Dhuhr and Asr'**
+  String get dhuhrSunnah3;
+
+  /// No description provided for @dhuhrSunnah4.
+  ///
+  /// In en, this message translates to:
+  /// **'Seek forgiveness (Istighfar)'**
+  String get dhuhrSunnah4;
+
+  /// No description provided for @dhuhrNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The middle prayer that brings balance to our day and reminds us of our purpose.'**
+  String get dhuhrNote;
+
+  /// No description provided for @asrTeaser.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection from afternoon negligence'**
+  String get asrTeaser;
+
+  /// No description provided for @asrBenefit1.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection from afternoon negligence'**
+  String get asrBenefit1;
+
+  /// No description provided for @asrBenefit2.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparation for evening'**
+  String get asrBenefit2;
+
+  /// No description provided for @asrBenefit3.
+  ///
+  /// In en, this message translates to:
+  /// **'Strengthening of faith'**
+  String get asrBenefit3;
+
+  /// No description provided for @asrBenefit4.
+  ///
+  /// In en, this message translates to:
+  /// **'Community bonding'**
+  String get asrBenefit4;
+
+  /// No description provided for @asrSunnah1.
+  ///
+  /// In en, this message translates to:
+  /// **'Pray 4 Sunnah rakats before Asr (voluntary/nafl)'**
+  String get asrSunnah1;
+
+  /// No description provided for @asrSunnah2.
+  ///
+  /// In en, this message translates to:
+  /// **'Make dhikr and remembrance'**
+  String get asrSunnah2;
+
+  /// No description provided for @asrSunnah3.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepare for Maghrib'**
+  String get asrSunnah3;
+
+  /// No description provided for @asrSunnah4.
+  ///
+  /// In en, this message translates to:
+  /// **'Seek Allah\'s forgiveness'**
+  String get asrSunnah4;
+
+  /// No description provided for @asrNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Allah swears by this time in Surah Al-Asr, emphasizing its importance for believers.'**
+  String get asrNote;
+
+  /// No description provided for @maghribTeaser.
+  ///
+  /// In en, this message translates to:
+  /// **'Gratitude for the day\'s blessings'**
+  String get maghribTeaser;
+
+  /// No description provided for @maghribBenefit1.
+  ///
+  /// In en, this message translates to:
+  /// **'Gratitude for the day\'s blessings'**
+  String get maghribBenefit1;
+
+  /// No description provided for @maghribBenefit2.
+  ///
+  /// In en, this message translates to:
+  /// **'Family gathering time'**
+  String get maghribBenefit2;
+
+  /// No description provided for @maghribBenefit3.
+  ///
+  /// In en, this message translates to:
+  /// **'Breaking of the fast (if fasting)'**
+  String get maghribBenefit3;
+
+  /// No description provided for @maghribBenefit4.
+  ///
+  /// In en, this message translates to:
+  /// **'Peaceful transition to evening'**
+  String get maghribBenefit4;
+
+  /// No description provided for @maghribSunnah1.
+  ///
+  /// In en, this message translates to:
+  /// **'Pray 2 Sunnah rakats after Maghrib'**
+  String get maghribSunnah1;
+
+  /// No description provided for @maghribSunnah2.
+  ///
+  /// In en, this message translates to:
+  /// **'Break fast with dates and water'**
+  String get maghribSunnah2;
+
+  /// No description provided for @maghribSunnah3.
+  ///
+  /// In en, this message translates to:
+  /// **'Recite evening adhkar'**
+  String get maghribSunnah3;
+
+  /// No description provided for @maghribSunnah4.
+  ///
+  /// In en, this message translates to:
+  /// **'Spend time with family'**
+  String get maghribSunnah4;
+
+  /// No description provided for @maghribNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The time of Allah\'s mercy and acceptance of duas, especially at sunset.'**
+  String get maghribNote;
+
+  /// No description provided for @ishaTeaser.
+  ///
+  /// In en, this message translates to:
+  /// **'Peaceful end to the day'**
+  String get ishaTeaser;
+
+  /// No description provided for @ishaBenefit1.
+  ///
+  /// In en, this message translates to:
+  /// **'Completion of daily prayers'**
+  String get ishaBenefit1;
+
+  /// No description provided for @ishaBenefit2.
+  ///
+  /// In en, this message translates to:
+  /// **'Peaceful end to the day'**
+  String get ishaBenefit2;
+
+  /// No description provided for @ishaBenefit3.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparation for rest'**
+  String get ishaBenefit3;
+
+  /// No description provided for @ishaBenefit4.
+  ///
+  /// In en, this message translates to:
+  /// **'Night of worship opportunity'**
+  String get ishaBenefit4;
+
+  /// No description provided for @ishaSunnah1.
+  ///
+  /// In en, this message translates to:
+  /// **'Pray 2 Sunnah rakats after Isha'**
+  String get ishaSunnah1;
+
+  /// No description provided for @ishaSunnah2.
+  ///
+  /// In en, this message translates to:
+  /// **'Pray Witr (odd-numbered prayer)'**
+  String get ishaSunnah2;
+
+  /// No description provided for @ishaSunnah3.
+  ///
+  /// In en, this message translates to:
+  /// **'Recite Quran before sleep'**
+  String get ishaSunnah3;
+
+  /// No description provided for @ishaSunnah4.
+  ///
+  /// In en, this message translates to:
+  /// **'Make istighfar before bed'**
+  String get ishaSunnah4;
+
+  /// No description provided for @ishaNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The final prayer that brings peace to the heart and prepares the soul for rest.'**
+  String get ishaNote;
 }
 
 class _AppLocalizationsDelegate

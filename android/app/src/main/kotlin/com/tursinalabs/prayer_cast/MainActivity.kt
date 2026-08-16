@@ -1,6 +1,7 @@
 package com.tursinalabs.prayer_cast
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import io.flutter.embedding.android.FlutterActivity
@@ -15,6 +16,12 @@ class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        LaunchPrayerPlugin.notifyNewIntent(intent)
+    }
+
     override fun provideFlutterEngine(context: Context): FlutterEngine? {
         return PrayerCastFlutter.cached()
     }
@@ -25,6 +32,8 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // Always bind: a cached FGS engine would otherwise skip this channel.
+        LaunchPrayerPlugin.bind(flutterEngine, this)
         if (PrayerCastFlutter.cached() === flutterEngine) {
             return
         }

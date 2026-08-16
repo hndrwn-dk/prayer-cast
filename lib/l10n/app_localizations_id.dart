@@ -429,4 +429,181 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get locationDisclosureTypeCity => 'Ketik kota saja';
+
+  @override
+  String get spiritualBenefitsSection => 'Manfaat spiritual';
+
+  @override
+  String get sunnahPracticesSection => 'Amalan sunnah';
+
+  @override
+  String get sayingSection => 'Sabda';
+
+  @override
+  String get noteSection => 'Catatan';
+
+  @override
+  String spiritualBenefitsTeaser(String name, String line) {
+    return '$name · $line';
+  }
+
+  @override
+  String spiritualBenefitsDryRunTitle(String name) {
+    return '$name (uji coba)';
+  }
+
+  @override
+  String get fajrTeaser => 'Kebangkitan dan kesadaran spiritual';
+
+  @override
+  String get fajrBenefit1 => 'Waktu penuh berkah untuk zikir dan perenungan';
+
+  @override
+  String get fajrBenefit2 => 'Perlindungan sepanjang hari';
+
+  @override
+  String get fajrBenefit3 => 'Kebangkitan dan kesadaran spiritual';
+
+  @override
+  String get fajrBenefit4 => 'Fokus dan produktivitas yang lebih baik';
+
+  @override
+  String get fajrSunnah1 => 'Sholat 2 rakaat sunnah sebelum Subuh';
+
+  @override
+  String get fajrSunnah2 => 'Baca zikir pagi setelah sholat';
+
+  @override
+  String get fajrSunnah3 => 'Baca Al-Quran hingga matahari terbit';
+
+  @override
+  String get fajrSunnah4 => 'Berdoa di waktu yang penuh berkah';
+
+  @override
+  String get fajrSaying =>
+      'Siapa yang sholat Subuh berjamaah, seolah-olah ia sholat sepanjang malam.';
+
+  @override
+  String get dhuhrTeaser => 'Isi ulang spiritual di tengah hari';
+
+  @override
+  String get dhuhrBenefit1 => 'Jeda dari kesibukan duniawi';
+
+  @override
+  String get dhuhrBenefit2 => 'Isi ulang spiritual di tengah hari';
+
+  @override
+  String get dhuhrBenefit3 => 'Terhubung dengan komunitas';
+
+  @override
+  String get dhuhrBenefit4 => 'Waktu untuk syukur dan perenungan';
+
+  @override
+  String get dhuhrSunnah1 => 'Sholat 4 rakaat sunnah sebelum Dzuhur';
+
+  @override
+  String get dhuhrSunnah2 => 'Sholat 2 rakaat sunnah setelah Dzuhur';
+
+  @override
+  String get dhuhrSunnah3 => 'Berdoa antara Dzuhur dan Asar';
+
+  @override
+  String get dhuhrSunnah4 => 'Memohon ampunan (Istighfar)';
+
+  @override
+  String get dhuhrNote =>
+      'Sholat pertengahan yang menyeimbangkan hari dan mengingatkan kita pada tujuan.';
+
+  @override
+  String get asrTeaser => 'Perlindungan dari kelalaian sore hari';
+
+  @override
+  String get asrBenefit1 => 'Perlindungan dari kelalaian sore hari';
+
+  @override
+  String get asrBenefit2 => 'Persiapan menyambut petang';
+
+  @override
+  String get asrBenefit3 => 'Penguatan iman';
+
+  @override
+  String get asrBenefit4 => 'Kebersamaan komunitas';
+
+  @override
+  String get asrSunnah1 => 'Sholat 4 rakaat sunnah sebelum Asar (nafl)';
+
+  @override
+  String get asrSunnah2 => 'Berzikir dan mengingat Allah';
+
+  @override
+  String get asrSunnah3 => 'Bersiap untuk Maghrib';
+
+  @override
+  String get asrSunnah4 => 'Memohon ampunan Allah';
+
+  @override
+  String get asrNote =>
+      'Allah bersumpah dengan waktu ini dalam Surah Al-Asr, menegaskan pentingnya bagi orang beriman.';
+
+  @override
+  String get maghribTeaser => 'Syukur atas nikmat hari ini';
+
+  @override
+  String get maghribBenefit1 => 'Syukur atas nikmat hari ini';
+
+  @override
+  String get maghribBenefit2 => 'Waktu berkumpul bersama keluarga';
+
+  @override
+  String get maghribBenefit3 => 'Berbuka puasa (jika berpuasa)';
+
+  @override
+  String get maghribBenefit4 => 'Peralihan damai ke petang';
+
+  @override
+  String get maghribSunnah1 => 'Sholat 2 rakaat sunnah setelah Maghrib';
+
+  @override
+  String get maghribSunnah2 => 'Berbuka dengan kurma dan air';
+
+  @override
+  String get maghribSunnah3 => 'Baca zikir petang';
+
+  @override
+  String get maghribSunnah4 => 'Luangkan waktu bersama keluarga';
+
+  @override
+  String get maghribNote =>
+      'Waktu rahmat Allah dan dikabulkannya doa, terutama saat matahari terbenam.';
+
+  @override
+  String get ishaTeaser => 'Penutup hari yang damai';
+
+  @override
+  String get ishaBenefit1 => 'Penyelesaian sholat harian';
+
+  @override
+  String get ishaBenefit2 => 'Penutup hari yang damai';
+
+  @override
+  String get ishaBenefit3 => 'Persiapan untuk istirahat';
+
+  @override
+  String get ishaBenefit4 => 'Kesempatan ibadah di malam hari';
+
+  @override
+  String get ishaSunnah1 => 'Sholat 2 rakaat sunnah setelah Isya';
+
+  @override
+  String get ishaSunnah2 => 'Sholat Witir (sholat bernomor ganjil)';
+
+  @override
+  String get ishaSunnah3 => 'Baca Al-Quran sebelum tidur';
+
+  @override
+  String get ishaSunnah4 => 'Beristighfar sebelum tidur';
+
+  @override
+  String get ishaNote =>
+      'Sholat penutup yang menenangkan hati dan menyiapkan jiwa untuk istirahat.';
 }

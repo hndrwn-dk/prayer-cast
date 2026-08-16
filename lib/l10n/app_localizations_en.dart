@@ -428,4 +428,181 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get locationDisclosureTypeCity => 'Type city instead';
+
+  @override
+  String get spiritualBenefitsSection => 'Spiritual benefits';
+
+  @override
+  String get sunnahPracticesSection => 'Sunnah practices';
+
+  @override
+  String get sayingSection => 'Saying';
+
+  @override
+  String get noteSection => 'Note';
+
+  @override
+  String spiritualBenefitsTeaser(String name, String line) {
+    return '$name · $line';
+  }
+
+  @override
+  String spiritualBenefitsDryRunTitle(String name) {
+    return '$name (dry-run)';
+  }
+
+  @override
+  String get fajrTeaser => 'Spiritual awakening and consciousness';
+
+  @override
+  String get fajrBenefit1 => 'Blessed time for remembrance and reflection';
+
+  @override
+  String get fajrBenefit2 => 'Protection throughout the day';
+
+  @override
+  String get fajrBenefit3 => 'Spiritual awakening and consciousness';
+
+  @override
+  String get fajrBenefit4 => 'Better focus and productivity';
+
+  @override
+  String get fajrSunnah1 => 'Pray 2 Sunnah rakats before Fajr';
+
+  @override
+  String get fajrSunnah2 => 'Recite morning adhkar after prayer';
+
+  @override
+  String get fajrSunnah3 => 'Read Quran until sunrise';
+
+  @override
+  String get fajrSunnah4 => 'Make dua during the blessed time';
+
+  @override
+  String get fajrSaying =>
+      'Whoever prays Fajr in congregation, it is as if he prayed the whole night.';
+
+  @override
+  String get dhuhrTeaser => 'Midday spiritual recharge';
+
+  @override
+  String get dhuhrBenefit1 => 'Break from worldly activities';
+
+  @override
+  String get dhuhrBenefit2 => 'Midday spiritual recharge';
+
+  @override
+  String get dhuhrBenefit3 => 'Connection with the community';
+
+  @override
+  String get dhuhrBenefit4 => 'Time for gratitude and reflection';
+
+  @override
+  String get dhuhrSunnah1 => 'Pray 4 Sunnah rakats before Dhuhr';
+
+  @override
+  String get dhuhrSunnah2 => 'Pray 2 Sunnah rakats after Dhuhr';
+
+  @override
+  String get dhuhrSunnah3 => 'Make dua between Dhuhr and Asr';
+
+  @override
+  String get dhuhrSunnah4 => 'Seek forgiveness (Istighfar)';
+
+  @override
+  String get dhuhrNote =>
+      'The middle prayer that brings balance to our day and reminds us of our purpose.';
+
+  @override
+  String get asrTeaser => 'Protection from afternoon negligence';
+
+  @override
+  String get asrBenefit1 => 'Protection from afternoon negligence';
+
+  @override
+  String get asrBenefit2 => 'Preparation for evening';
+
+  @override
+  String get asrBenefit3 => 'Strengthening of faith';
+
+  @override
+  String get asrBenefit4 => 'Community bonding';
+
+  @override
+  String get asrSunnah1 => 'Pray 4 Sunnah rakats before Asr (voluntary/nafl)';
+
+  @override
+  String get asrSunnah2 => 'Make dhikr and remembrance';
+
+  @override
+  String get asrSunnah3 => 'Prepare for Maghrib';
+
+  @override
+  String get asrSunnah4 => 'Seek Allah\'s forgiveness';
+
+  @override
+  String get asrNote =>
+      'Allah swears by this time in Surah Al-Asr, emphasizing its importance for believers.';
+
+  @override
+  String get maghribTeaser => 'Gratitude for the day\'s blessings';
+
+  @override
+  String get maghribBenefit1 => 'Gratitude for the day\'s blessings';
+
+  @override
+  String get maghribBenefit2 => 'Family gathering time';
+
+  @override
+  String get maghribBenefit3 => 'Breaking of the fast (if fasting)';
+
+  @override
+  String get maghribBenefit4 => 'Peaceful transition to evening';
+
+  @override
+  String get maghribSunnah1 => 'Pray 2 Sunnah rakats after Maghrib';
+
+  @override
+  String get maghribSunnah2 => 'Break fast with dates and water';
+
+  @override
+  String get maghribSunnah3 => 'Recite evening adhkar';
+
+  @override
+  String get maghribSunnah4 => 'Spend time with family';
+
+  @override
+  String get maghribNote =>
+      'The time of Allah\'s mercy and acceptance of duas, especially at sunset.';
+
+  @override
+  String get ishaTeaser => 'Peaceful end to the day';
+
+  @override
+  String get ishaBenefit1 => 'Completion of daily prayers';
+
+  @override
+  String get ishaBenefit2 => 'Peaceful end to the day';
+
+  @override
+  String get ishaBenefit3 => 'Preparation for rest';
+
+  @override
+  String get ishaBenefit4 => 'Night of worship opportunity';
+
+  @override
+  String get ishaSunnah1 => 'Pray 2 Sunnah rakats after Isha';
+
+  @override
+  String get ishaSunnah2 => 'Pray Witr (odd-numbered prayer)';
+
+  @override
+  String get ishaSunnah3 => 'Recite Quran before sleep';
+
+  @override
+  String get ishaSunnah4 => 'Make istighfar before bed';
+
+  @override
+  String get ishaNote =>
+      'The final prayer that brings peace to the heart and prepares the soul for rest.';
 }

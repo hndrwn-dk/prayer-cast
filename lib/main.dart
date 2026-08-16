@@ -19,6 +19,7 @@ import 'package:prayer_cast/home_delivery/delivery/cast_init.dart';
 import 'package:prayer_cast/home_delivery/logging/delivery_database.dart';
 import 'package:prayer_cast/home_delivery/logging/delivery_database_open.dart';
 import 'package:prayer_cast/home_delivery/platform/exact_alarm.dart';
+import 'package:prayer_cast/home_delivery/platform/launch_prayer.dart';
 import 'package:prayer_cast/home_delivery/presence/fingerprint_store.dart';
 import 'package:prayer_cast/home_delivery/presence/lan_fingerprint.dart';
 import 'package:prayer_cast/home_delivery/presence/mdns_browser.dart';
@@ -28,22 +29,25 @@ import 'package:prayer_cast/home_delivery/ui/delivery_log_providers.dart';
 import 'package:prayer_cast/home_delivery/ui/home_setup_providers.dart';
 import 'package:prayer_cast/home_delivery/ui/icons/premium_icons.dart';
 import 'package:prayer_cast/home_delivery/ui/speaker_setup_page.dart';
+import 'package:prayer_cast/home_delivery/ui/spiritual_benefits_page.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/atmosphere_background.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/adhan_countdown.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
+import 'package:prayer_cast/home_delivery/ui/widgets/spiritual_benefits_teaser.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
 import 'package:prayer_cast/l10n/locale_controller.dart';
 import 'package:prayer_cast/prayer_times/adhan_next_prayer_provider.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 import 'package:prayer_cast/prayer_times/prayer_times_providers.dart';
+import 'package:prayer_cast/prayer_times/spiritual_benefits.dart';
 import 'package:prayer_cast/prayer_times/ui/prayer_settings_page.dart';
 import 'package:prayer_cast/support/open_support_url.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
-const String kAppVersion = '1.0.0+1';
+const String kAppVersion = '1.0.1+2';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -194,16 +198,35 @@ class _HomeShell extends ConsumerStatefulWidget {
 
 class _HomeShellState extends ConsumerState<_HomeShell>
     with WidgetsBindingObserver {
+  final LaunchPrayer _launchPrayer = LaunchPrayer();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _launchPrayer.onPrayer = _openSpiritualBenefitsFromLaunch;
+    _launchPrayer.attach();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_consumeLaunchPrayer());
+    });
   }
 
   @override
   void dispose() {
+    _launchPrayer.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  Future<void> _consumeLaunchPrayer() async {
+    final prayer = await _launchPrayer.consume();
+    if (prayer == null || !mounted) return;
+    _openSpiritualBenefitsFromLaunch(prayer);
+  }
+
+  void _openSpiritualBenefitsFromLaunch(String prayer) {
+    if (!mounted) return;
+    _openSpiritualBenefits(prayer);
   }
 
   @override
@@ -232,6 +255,20 @@ class _HomeShellState extends ConsumerState<_HomeShell>
     );
     ref.invalidate(prayerPrefsProvider);
     ref.invalidate(nextPrayerSnapshotProvider);
+  }
+
+  void _openSpiritualBenefits(String prayer) {
+    final key = PrayerDeliveryCoordinator.canonicalPrayerName(prayer);
+    if (!SpiritualBenefits.isSupported(key) || !mounted) return;
+    Navigator.of(context).push(
+      _fadeRoute(
+        SpiritualBenefitsPage(prayer: key),
+        settings: RouteSettings(
+          name: SpiritualBenefitsPage.routeName,
+          arguments: key,
+        ),
+      ),
+    );
   }
 
   @override
@@ -264,6 +301,12 @@ class _HomeShellState extends ConsumerState<_HomeShell>
     final nextTime = nextAt == null ? null : _fmtTime(nextAt);
     final nextName = nextPrayer.maybeWhen(
       data: (n) => n == null ? null : prayerDisplayName(l10n, n.name),
+      orElse: () => null,
+    );
+    final nextPrayerKey = nextPrayer.maybeWhen(
+      data: (n) => n == null
+          ? null
+          : PrayerDeliveryCoordinator.canonicalPrayerName(n.name),
       orElse: () => null,
     );
     final nextEmptyLabel = nextPrayer.when(
@@ -308,6 +351,7 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                   nextAt: nextAt,
                   nextTime: nextTime,
                   nextName: nextName,
+                  nextPrayerKey: nextPrayerKey,
                   nextEmptyLabel: nextEmptyLabel,
                   cityLabel: cityLabel,
                   countryLabel: countryLabel,
@@ -328,6 +372,9 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                   },
                   onUnsetPrayerTap:
                       nextHeroConfigured ? null : _openPrayerSettings,
+                  onSpiritualBenefitsTap: nextPrayerKey == null
+                      ? null
+                      : () => _openSpiritualBenefits(nextPrayerKey),
                 ),
               ),
               SliverToBoxAdapter(
@@ -392,6 +439,7 @@ class _HomeHero extends StatelessWidget {
     this.nextAt,
     required this.nextTime,
     required this.nextName,
+    this.nextPrayerKey,
     required this.nextEmptyLabel,
     required this.cityLabel,
     required this.countryLabel,
@@ -401,6 +449,7 @@ class _HomeHero extends StatelessWidget {
     required this.onLanguageSelected,
     required this.onRequestExactAlarm,
     this.onUnsetPrayerTap,
+    this.onSpiritualBenefitsTap,
   });
 
   final String activeLang;
@@ -409,6 +458,7 @@ class _HomeHero extends StatelessWidget {
   final DateTime? nextAt;
   final String? nextTime;
   final String? nextName;
+  final String? nextPrayerKey;
   final String? nextEmptyLabel;
   final String? cityLabel;
   final String? countryLabel;
@@ -418,6 +468,7 @@ class _HomeHero extends StatelessWidget {
   final ValueChanged<String> onLanguageSelected;
   final VoidCallback onRequestExactAlarm;
   final VoidCallback? onUnsetPrayerTap;
+  final VoidCallback? onSpiritualBenefitsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -457,8 +508,10 @@ class _HomeHero extends StatelessWidget {
                       scheduledAt: nextAt,
                       time: nextTime,
                       prayerName: nextName,
+                      prayerKey: nextPrayerKey,
                       emptyLabel: nextEmptyLabel,
                       onUnsetTap: onUnsetPrayerTap,
+                      onSpiritualBenefitsTap: onSpiritualBenefitsTap,
                     ),
                   ),
                   const SizedBox(height: 40),
@@ -588,16 +641,20 @@ class _NextAdhanJewel extends StatelessWidget {
     this.scheduledAt,
     required this.time,
     required this.prayerName,
+    this.prayerKey,
     required this.emptyLabel,
     this.onUnsetTap,
+    this.onSpiritualBenefitsTap,
   });
 
   final bool configured;
   final DateTime? scheduledAt;
   final String? time;
   final String? prayerName;
+  final String? prayerKey;
   final String? emptyLabel;
   final VoidCallback? onUnsetTap;
+  final VoidCallback? onSpiritualBenefitsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -633,6 +690,11 @@ class _NextAdhanJewel extends StatelessWidget {
               ),
             ),
           ],
+          if (prayerKey != null && onSpiritualBenefitsTap != null)
+            SpiritualBenefitsTeaserLine(
+              prayerKey: prayerKey!,
+              onTap: onSpiritualBenefitsTap!,
+            ),
         ] else
           Text(
             emptyLabel ?? l10n.prayerNotConfigured,
@@ -948,8 +1010,9 @@ class _ExactAlarmPermissionBanner extends StatelessWidget {
   }
 }
 
-PageRouteBuilder<void> _fadeRoute(Widget page) {
+PageRouteBuilder<void> _fadeRoute(Widget page, {RouteSettings? settings}) {
   return PageRouteBuilder<void>(
+    settings: settings,
     pageBuilder: (_, __, ___) => page,
     transitionsBuilder: (_, animation, __, child) {
       return FadeTransition(
