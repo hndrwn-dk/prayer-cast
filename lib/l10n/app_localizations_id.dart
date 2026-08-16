@@ -297,6 +297,14 @@ class AppLocalizationsId extends AppLocalizations {
       'Izin lokasi diblokir. Buka pengaturan aplikasi dan aktifkan lokasi.';
 
   @override
+  String get locationTimeout =>
+      'Lokasi tidak didapat tepat waktu. Coba lagi, atau ketik kota dan negara.';
+
+  @override
+  String get locationUnavailable =>
+      'Lokasi tidak didapat. Coba lagi, atau ketik kota dan negara.';
+
+  @override
   String get castBusy => 'Masih mengirim uji putar sebelumnya…';
 
   @override

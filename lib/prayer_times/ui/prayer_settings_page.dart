@@ -163,11 +163,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
       await _refreshSchedule(next);
     } catch (e) {
       if (!mounted) return;
-      final l10n = context.l10n;
-      final message = e is LocationResolveFailure
-          ? locationFailureMessage(l10n, e)
-          : '$e';
-      _setPageStatus(message, error: true);
+      _setPageStatus(locationErrorMessage(context.l10n, e), error: true);
     } finally {
       if (mounted) setState(() => _detectingLocation = false);
     }

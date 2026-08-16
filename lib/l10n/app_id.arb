@@ -85,6 +85,8 @@
   "locationServiceOff": "Layanan lokasi mati. Nyalakan GPS lalu coba lagi.",
   "locationDenied": "Izin lokasi ditolak. Izinkan akses lokasi untuk deteksi otomatis.",
   "locationDeniedForever": "Izin lokasi diblokir. Buka pengaturan aplikasi dan aktifkan lokasi.",
+  "locationTimeout": "Lokasi tidak didapat tepat waktu. Coba lagi, atau ketik kota dan negara.",
+  "locationUnavailable": "Lokasi tidak didapat. Coba lagi, atau ketik kota dan negara.",
   "castBusy": "Masih mengirim uji putar sebelumnya…",
   "castNoSpeaker": "Pilih speaker rumah dulu di menu Speaker rumah.",
   "castEmptyAudio": "Audio adzan kosong.",

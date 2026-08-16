@@ -3,8 +3,13 @@ import 'package:geolocator/geolocator.dart';
 import 'package:prayer_cast/prayer_times/location_resolver.dart';
 
 void main() {
-  test('prayer-city GPS uses coarse accuracy, not fine', () {
-    expect(LocationResolver.coarseSettings.accuracy, LocationAccuracy.low);
+  test('prayer-city GPS uses balanced approximate settings, not fine GPS', () {
+    expect(LocationResolver.coarseSettings, isA<AndroidSettings>());
+    expect(
+      LocationResolver.coarseSettings.accuracy,
+      LocationAccuracy.medium,
+    );
+    expect(LocationResolver.coarseSettings.timeLimit, isNull);
     expect(
       LocationResolver.coarseSettings.accuracy,
       isNot(LocationAccuracy.high),
@@ -13,6 +18,20 @@ void main() {
       LocationResolver.coarseSettings.accuracy,
       isNot(LocationAccuracy.best),
     );
+    final android = LocationResolver.coarseSettings as AndroidSettings;
+    expect(android.intervalDuration, Duration.zero);
+    expect(android.forceLocationManager, isFalse);
+  });
+
+  test('last known with finite coords is usable for approximate location', () {
+    final now = DateTime.utc(2026, 8, 16, 10);
+    expect(
+      LocationResolver.hasUsableCoordinates(
+        _position(timestamp: now.subtract(const Duration(hours: 2))),
+      ),
+      isTrue,
+    );
+    expect(LocationResolver.hasUsableCoordinates(null), isFalse);
   });
 
   test('Indonesia prefers kabupaten as city and as admin hint', () {
@@ -46,4 +65,19 @@ void main() {
     expect(sleman.city, 'Condongcatur');
     expect(sleman.administrativeArea, 'Kabupaten Sleman');
   });
+}
+
+Position _position({required DateTime timestamp}) {
+  return Position(
+    longitude: 106.8,
+    latitude: -6.2,
+    timestamp: timestamp,
+    accuracy: 500,
+    altitude: 0,
+    altitudeAccuracy: 0,
+    heading: 0,
+    headingAccuracy: 0,
+    speed: 0,
+    speedAccuracy: 0,
+  );
 }

@@ -296,6 +296,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Location permission blocked. Open app settings and enable location.';
 
   @override
+  String get locationTimeout =>
+      'Could not get your location in time. Try again, or enter city and country.';
+
+  @override
+  String get locationUnavailable =>
+      'Could not get your location. Try again, or enter city and country.';
+
+  @override
   String get castBusy => 'A test cast is already in progress…';
 
   @override

@@ -481,6 +481,24 @@ void main() {
     expect(resolver.resolveCalls, 0);
   });
 
+  testWidgets('location timeout shows l10n message, not TimeoutException',
+      (tester) async {
+    final resolver = _TimeoutLocationResolver();
+    await _pumpSettings(tester, locationResolver: resolver);
+
+    await tester.tap(find.text('Use current location'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.textContaining('TimeoutException'), findsNothing);
+    expect(
+      find.text(
+        'Could not get your location in time. Try again, or enter city and country.',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('location disclosure copy is localized in Indonesian',
       (tester) async {
     await tester.pumpWidget(
@@ -635,6 +653,16 @@ final class _FakeConditions implements DeviceConditionsProvider {
         batterySaverActive: false,
         clockSkewDetected: false,
       );
+}
+
+final class _TimeoutLocationResolver implements LocationResolving {
+  @override
+  Future<bool> hasGrantedPermission() async => true;
+
+  @override
+  Future<ResolvedLocation> resolveCurrent() async {
+    throw TimeoutException('Future not completed', const Duration(seconds: 20));
+  }
 }
 
 final class _FakeLocationResolver implements LocationResolving {

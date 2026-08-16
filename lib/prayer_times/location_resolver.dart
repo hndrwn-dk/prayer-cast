@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -26,6 +28,8 @@ enum LocationResolveCode {
   serviceOff,
   denied,
   deniedForever,
+  timeout,
+  unavailable,
 }
 
 /// Typed failure for the “use current location” flow.
@@ -49,15 +53,18 @@ abstract interface class LocationResolving {
 
 /// GPS + reverse-geocode helper for prayer times.
 ///
-/// Uses **coarse** accuracy. City / country is enough for Aladhan-by-city
-/// and for timings-by-coordinates. Fine location is not requested.
+/// Android: COARSE only (FINE is tools:node="remove"). Approximate location
+/// is a fused *cached* city-block fix, not a new GPS sample.
+/// [getCurrentPosition] with [LocationAccuracy.low] + a 20s Dart [timeLimit]
+/// waits for a new PRIORITY_LOW_POWER update and cancels before the network
+/// provider typically returns.
 final class LocationResolver implements LocationResolving {
   const LocationResolver();
 
-  /// Network / coarse fix — city-scale, not a precise geofence.
-  static const LocationSettings coarseSettings = LocationSettings(
-    accuracy: LocationAccuracy.low,
-    timeLimit: Duration(seconds: 20),
+  /// Balanced / approximate — not GPS (high/best). No Dart timeLimit.
+  static final LocationSettings coarseSettings = AndroidSettings(
+    accuracy: LocationAccuracy.medium,
+    intervalDuration: Duration.zero,
   );
 
   @override
@@ -86,10 +93,31 @@ final class LocationResolver implements LocationResolving {
       throw const LocationResolveFailure(LocationResolveCode.deniedForever);
     }
 
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: coarseSettings,
-    );
+    late final Position position;
+    try {
+      position = await _readPosition();
+    } on LocationResolveFailure {
+      rethrow;
+    } on TimeoutException {
+      throw const LocationResolveFailure(LocationResolveCode.timeout);
+    } catch (_) {
+      throw const LocationResolveFailure(LocationResolveCode.unavailable);
+    }
 
+    return _resolvedFromPosition(position);
+  }
+
+  /// Approximate location: use fused last-known (what COARSE actually
+  /// delivers) before requesting a new update.
+  Future<Position> _readPosition() async {
+    final lastKnown = await Geolocator.getLastKnownPosition();
+    if (hasUsableCoordinates(lastKnown)) {
+      return lastKnown!;
+    }
+    return Geolocator.getCurrentPosition(locationSettings: coarseSettings);
+  }
+
+  Future<ResolvedLocation> _resolvedFromPosition(Position position) async {
     var city = '';
     var country = '';
     var administrativeArea = '';
@@ -130,6 +158,12 @@ final class LocationResolver implements LocationResolving {
       country: country,
       administrativeArea: administrativeArea,
     );
+  }
+
+  /// True when [position] has finite latitude/longitude.
+  static bool hasUsableCoordinates(Position? position) {
+    if (position == null) return false;
+    return position.latitude.isFinite && position.longitude.isFinite;
   }
 
   /// Maps reverse-geocode fields to prayer-city labels.

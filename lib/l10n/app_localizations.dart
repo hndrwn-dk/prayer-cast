@@ -608,6 +608,18 @@ abstract class AppLocalizations {
   /// **'Location permission blocked. Open app settings and enable location.'**
   String get locationDeniedForever;
 
+  /// No description provided for @locationTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not get your location in time. Try again, or enter city and country.'**
+  String get locationTimeout;
+
+  /// No description provided for @locationUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not get your location. Try again, or enter city and country.'**
+  String get locationUnavailable;
+
   /// No description provided for @castBusy.
   ///
   /// In en, this message translates to:

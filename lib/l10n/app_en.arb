@@ -152,6 +152,8 @@
   "locationServiceOff": "Location services are off. Turn on GPS and try again.",
   "locationDenied": "Location permission denied. Allow location access for automatic detection.",
   "locationDeniedForever": "Location permission blocked. Open app settings and enable location.",
+  "locationTimeout": "Could not get your location in time. Try again, or enter city and country.",
+  "locationUnavailable": "Could not get your location. Try again, or enter city and country.",
   "castBusy": "A test cast is already in progress…",
   "castNoSpeaker": "Pick a home speaker first in Home speaker.",
   "castEmptyAudio": "Adhan audio is empty.",

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:prayer_cast/home_delivery/coordinator/adzan_cast_tester.dart';
 import 'package:prayer_cast/l10n/app_localizations.dart';
@@ -46,7 +48,20 @@ String locationFailureMessage(
     LocationResolveCode.serviceOff => l10n.locationServiceOff,
     LocationResolveCode.denied => l10n.locationDenied,
     LocationResolveCode.deniedForever => l10n.locationDeniedForever,
+    LocationResolveCode.timeout => l10n.locationTimeout,
+    LocationResolveCode.unavailable => l10n.locationUnavailable,
   };
+}
+
+/// Maps GPS failures to l10n. Never returns [Object.toString] (e.g. TimeoutException).
+String locationErrorMessage(AppLocalizations l10n, Object error) {
+  if (error is LocationResolveFailure) {
+    return locationFailureMessage(l10n, error);
+  }
+  if (error is TimeoutException) {
+    return l10n.locationTimeout;
+  }
+  return l10n.locationUnavailable;
 }
 
 String castFailureMessage(AppLocalizations l10n, AdzanCastTestFailure failure) {
