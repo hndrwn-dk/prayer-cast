@@ -192,8 +192,8 @@
       "name": {"type": "String"}
     }
   },
-  "removeHomeSpeaker": "Remove home speaker",
-  "removeHomeSpeakerConfirmTitle": "Remove home speaker?",
+  "removeHomeSpeaker": "Remove default speaker",
+  "removeHomeSpeakerConfirmTitle": "Remove default speaker?",
   "removeHomeSpeakerConfirmBody": "Prayer Cast will stop using this speaker. Your Google Home devices are not deleted.",
   "removeHomeSpeakerConfirm": "Remove",
   "removeHomeSpeakerCancel": "Cancel",

@@ -731,13 +731,13 @@ abstract class AppLocalizations {
   /// No description provided for @removeHomeSpeaker.
   ///
   /// In en, this message translates to:
-  /// **'Remove home speaker'**
+  /// **'Remove default speaker'**
   String get removeHomeSpeaker;
 
   /// No description provided for @removeHomeSpeakerConfirmTitle.
   ///
   /// In en, this message translates to:
-  /// **'Remove home speaker?'**
+  /// **'Remove default speaker?'**
   String get removeHomeSpeakerConfirmTitle;
 
   /// No description provided for @removeHomeSpeakerConfirmBody.

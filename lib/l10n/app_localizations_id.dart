@@ -369,10 +369,10 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get removeHomeSpeaker => 'Hapus speaker rumah';
+  String get removeHomeSpeaker => 'Hapus speaker default';
 
   @override
-  String get removeHomeSpeakerConfirmTitle => 'Hapus speaker rumah?';
+  String get removeHomeSpeakerConfirmTitle => 'Hapus speaker default?';
 
   @override
   String get removeHomeSpeakerConfirmBody =>

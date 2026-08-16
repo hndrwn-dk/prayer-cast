@@ -318,6 +318,25 @@ abstract final class PrayerCastTheme {
         surfaceContainerHighest: PrayerCastColors.inkSoft,
       ),
       textTheme: textTheme,
+      dialogTheme: const DialogThemeData(
+        backgroundColor: PrayerCastColors.ink,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: TextStyle(
+          fontFamily: displayFont,
+          fontSize: 22,
+          fontWeight: FontWeight.w500,
+          height: 1.25,
+          color: PrayerCastColors.surfaceRaised,
+          fontVariations: [FontVariation('wght', 500)],
+        ),
+        contentTextStyle: TextStyle(
+          fontFamily: bodyFont,
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+          height: 1.45,
+          color: PrayerCastColors.mist,
+        ),
+      ),
       appBarTheme: const AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,

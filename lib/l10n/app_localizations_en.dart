@@ -368,10 +368,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get removeHomeSpeaker => 'Remove home speaker';
+  String get removeHomeSpeaker => 'Remove default speaker';
 
   @override
-  String get removeHomeSpeakerConfirmTitle => 'Remove home speaker?';
+  String get removeHomeSpeakerConfirmTitle => 'Remove default speaker?';
 
   @override
   String get removeHomeSpeakerConfirmBody =>

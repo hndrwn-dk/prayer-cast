@@ -116,47 +116,57 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
       context: context,
       barrierColor: PrayerCastColors.ink.withValues(alpha: 0.72),
       builder: (ctx) {
-        final text = Theme.of(ctx).textTheme;
-        return Dialog(
-          key: const ValueKey('remove_home_speaker_dialog'),
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 24,
-          ),
-          child: InkSurface(
-            borderColor: PrayerCastColors.inkSoft,
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  l10n.removeHomeSpeakerConfirmTitle,
-                  style: text.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                Text(l10n.removeHomeSpeakerConfirmBody, style: text.bodyMedium),
-                const SizedBox(height: 20),
-                SizedBox(
-                  height: PrayerCastTheme.minTap,
-                  child: FilledButton(
-                    key: const ValueKey('remove_home_speaker_confirm'),
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                    child: Text(l10n.removeHomeSpeakerConfirm),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: PrayerCastTheme.minTap,
-                  child: TextButton(
-                    key: const ValueKey('remove_home_speaker_cancel'),
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    child: Text(l10n.removeHomeSpeakerCancel),
-                  ),
-                ),
-              ],
+        // Overlay uses MaterialApp light theme; ink onSurface is unreadable
+        // on this dark dialog. Color every string explicitly.
+        return Theme(
+          data: PrayerCastTheme.forest(),
+          child: AlertDialog(
+            key: const ValueKey('remove_home_speaker_dialog'),
+            backgroundColor: PrayerCastColors.ink,
+            surfaceTintColor: Colors.transparent,
+            title: Text(
+              l10n.removeHomeSpeakerConfirmTitle,
+              style: const TextStyle(
+                color: PrayerCastColors.surfaceRaised,
+                fontSize: 22,
+                fontWeight: FontWeight.w500,
+                height: 1.25,
+              ),
             ),
+            content: Text(
+              l10n.removeHomeSpeakerConfirmBody,
+              style: const TextStyle(
+                color: PrayerCastColors.mist,
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                height: 1.45,
+              ),
+            ),
+            actions: [
+              TextButton(
+                key: const ValueKey('remove_home_speaker_cancel'),
+                onPressed: () => Navigator.of(ctx).pop(false),
+                style: TextButton.styleFrom(
+                  foregroundColor: PrayerCastColors.mist,
+                ),
+                child: Text(
+                  l10n.removeHomeSpeakerCancel,
+                  style: const TextStyle(color: PrayerCastColors.mist),
+                ),
+              ),
+              FilledButton(
+                key: const ValueKey('remove_home_speaker_confirm'),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: PrayerCastColors.canopy,
+                  foregroundColor: PrayerCastColors.surfaceRaised,
+                ),
+                child: Text(
+                  l10n.removeHomeSpeakerConfirm,
+                  style: const TextStyle(color: PrayerCastColors.surfaceRaised),
+                ),
+              ),
+            ],
           ),
         );
       },

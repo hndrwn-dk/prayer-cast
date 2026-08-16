@@ -11,6 +11,7 @@ import 'package:prayer_cast/home_delivery/presence/fingerprint_store.dart';
 import 'package:prayer_cast/home_delivery/presence/lan_fingerprint.dart';
 import 'package:prayer_cast/home_delivery/ui/home_setup_providers.dart';
 import 'package:prayer_cast/home_delivery/ui/speaker_setup_page.dart';
+import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/speaker_search_pulse.dart';
 import 'package:prayer_cast/l10n/app_localizations.dart';
@@ -579,7 +580,37 @@ void main() {
       find.byKey(const ValueKey('remove_home_speaker_dialog')),
       findsOneWidget,
     );
-    expect(find.text('Remove home speaker?'), findsOneWidget);
+    expect(find.text('Remove default speaker?'), findsOneWidget);
+    expect(
+      find.text(
+        'Prayer Cast will stop using this speaker. Your Google Home devices are not deleted.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Remove'), findsOneWidget);
+    expect(
+      tester
+          .widget<Text>(find.text('Remove default speaker?'))
+          .style
+          ?.color,
+      PrayerCastColors.surfaceRaised,
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.text(
+              'Prayer Cast will stop using this speaker. Your Google Home devices are not deleted.',
+            ),
+          )
+          .style
+          ?.color,
+      PrayerCastColors.mist,
+    );
+    expect(
+      tester.widget<Text>(find.text('Cancel')).style?.color,
+      PrayerCastColors.mist,
+    );
 
     await tester.tap(find.byKey(const ValueKey('remove_home_speaker_confirm')));
     await tester.pumpAndSettle();
