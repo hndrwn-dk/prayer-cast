@@ -122,4 +122,20 @@ final class HomeOnboarding {
     await _store.writeHomeCastId('');
     await _store.writeHomeCastFriendlyName('');
   }
+
+  /// Drop devices from the last scan cache. They reappear on the next live scan.
+  ///
+  /// Does not touch the physical Cast device or the saved home speaker.
+  Future<void> removeDevicesFromCachedScan(Iterable<String> deviceIds) async {
+    final drop = deviceIds.toSet();
+    if (drop.isEmpty) return;
+    final cached = await readCachedSpeakerScan();
+    if (cached == null) return;
+    final kept = [
+      for (final device in cached.devices)
+        if (!drop.contains(device.deviceId)) device,
+    ];
+    if (kept.length == cached.devices.length) return;
+    await writeCachedSpeakerScan(SpeakerScanResult(devices: kept));
+  }
 }

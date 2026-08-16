@@ -13,6 +13,9 @@ abstract final class PremiumIcons {
   static Widget check({double size = 24, Color? color}) =>
       _Icon(size: size, color: color, paint: _paintCheck);
 
+  static Widget trash({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintTrash);
+
   static Widget refresh({double size = 24, Color? color}) =>
       _Icon(size: size, color: color, paint: _paintRefresh);
 
@@ -69,11 +72,7 @@ abstract final class PremiumIcons {
 typedef _PaintFn = void Function(Canvas canvas, Size size, Color color);
 
 class _Icon extends StatelessWidget {
-  const _Icon({
-    required this.size,
-    required this.paint,
-    this.color,
-  });
+  const _Icon({required this.size, required this.paint, this.color});
 
   final double size;
   final Color? color;
@@ -85,9 +84,7 @@ class _Icon extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      child: CustomPaint(
-        painter: _FnPainter(resolved, paint),
-      ),
+      child: CustomPaint(painter: _FnPainter(resolved, paint)),
     );
   }
 }
@@ -164,6 +161,23 @@ void _paintCheck(Canvas canvas, Size size, Color color) {
   final p = _stroke(color, width: 2.2);
   canvas.drawLine(Offset(s * 0.22, s * 0.52), Offset(s * 0.42, s * 0.72), p);
   canvas.drawLine(Offset(s * 0.42, s * 0.72), Offset(s * 0.78, s * 0.30), p);
+}
+
+void _paintTrash(Canvas canvas, Size size, Color color) {
+  final s = size.shortestSide;
+  final p = _stroke(color);
+  canvas.drawLine(Offset(s * 0.22, s * 0.30), Offset(s * 0.78, s * 0.30), p);
+  canvas.drawLine(Offset(s * 0.34, s * 0.22), Offset(s * 0.66, s * 0.22), p);
+  canvas.drawLine(Offset(s * 0.38, s * 0.22), Offset(s * 0.38, s * 0.30), p);
+  canvas.drawLine(Offset(s * 0.62, s * 0.22), Offset(s * 0.62, s * 0.30), p);
+  final can = Path()
+    ..moveTo(s * 0.28, s * 0.30)
+    ..lineTo(s * 0.32, s * 0.80)
+    ..lineTo(s * 0.68, s * 0.80)
+    ..lineTo(s * 0.72, s * 0.30);
+  canvas.drawPath(can, p);
+  canvas.drawLine(Offset(s * 0.42, s * 0.40), Offset(s * 0.44, s * 0.70), p);
+  canvas.drawLine(Offset(s * 0.58, s * 0.40), Offset(s * 0.56, s * 0.70), p);
 }
 
 void _paintRefresh(Canvas canvas, Size size, Color color) {
@@ -258,8 +272,14 @@ void _paintGear(Canvas canvas, Size size, Color color) {
   canvas.drawCircle(c, s * 0.16, p);
   for (var i = 0; i < 6; i++) {
     final a = i * math.pi / 3;
-    final i1 = Offset(c.dx + math.cos(a) * s * 0.22, c.dy + math.sin(a) * s * 0.22);
-    final o1 = Offset(c.dx + math.cos(a) * s * 0.36, c.dy + math.sin(a) * s * 0.36);
+    final i1 = Offset(
+      c.dx + math.cos(a) * s * 0.22,
+      c.dy + math.sin(a) * s * 0.22,
+    );
+    final o1 = Offset(
+      c.dx + math.cos(a) * s * 0.36,
+      c.dy + math.sin(a) * s * 0.36,
+    );
     canvas.drawLine(i1, o1, p);
   }
   canvas.drawCircle(c, s * 0.36, p);
@@ -315,10 +335,32 @@ void _paintWifiSlash(Canvas canvas, Size size, Color color) {
   final s = size.shortestSide;
   final p = _stroke(color);
   final c = Offset(s * 0.5, s * 0.62);
-  canvas.drawArc(Rect.fromCircle(center: c, radius: s * 0.12), math.pi, math.pi, false, p);
-  canvas.drawArc(Rect.fromCircle(center: c, radius: s * 0.24), math.pi * 1.1, math.pi * 0.8, false, p);
-  canvas.drawArc(Rect.fromCircle(center: c, radius: s * 0.36), math.pi * 1.15, math.pi * 0.7, false, p);
-  canvas.drawLine(Offset(s * 0.2, s * 0.2), Offset(s * 0.8, s * 0.8), _stroke(color, width: 2));
+  canvas.drawArc(
+    Rect.fromCircle(center: c, radius: s * 0.12),
+    math.pi,
+    math.pi,
+    false,
+    p,
+  );
+  canvas.drawArc(
+    Rect.fromCircle(center: c, radius: s * 0.24),
+    math.pi * 1.1,
+    math.pi * 0.8,
+    false,
+    p,
+  );
+  canvas.drawArc(
+    Rect.fromCircle(center: c, radius: s * 0.36),
+    math.pi * 1.15,
+    math.pi * 0.7,
+    false,
+    p,
+  );
+  canvas.drawLine(
+    Offset(s * 0.2, s * 0.2),
+    Offset(s * 0.8, s * 0.8),
+    _stroke(color, width: 2),
+  );
 }
 
 void _paintPlug(Canvas canvas, Size size, Color color) {

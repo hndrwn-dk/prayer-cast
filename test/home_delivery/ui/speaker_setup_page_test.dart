@@ -36,7 +36,13 @@ Future<void> _pumpPage(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        savedHomeSpeakerProvider.overrideWith((ref) async => null),
+        savedHomeSpeakerProvider.overrideWith((ref) async {
+          try {
+            return await ref.read(homeOnboardingProvider).readSavedSpeaker();
+          } on UnimplementedError {
+            return null;
+          }
+        }),
         ...overrides,
       ],
       child: MaterialApp(
@@ -237,6 +243,7 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const ValueKey('speaker_empty_state')), findsOneWidget);
+    expect(find.byKey(const ValueKey('speaker_select_mode')), findsNothing);
     expect(find.text('No speakers found'), findsOneWidget);
     expect(
       find.text(
@@ -283,7 +290,10 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byKey(const ValueKey('speaker_group_delay_hint')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('speaker_group_delay_hint')),
+      findsOneWidget,
+    );
     expect(
       find.textContaining('Cast groups (Xiaomi, mixed brands'),
       findsOneWidget,
@@ -434,8 +444,9 @@ void main() {
     },
   );
 
-  testWidgets('API 32 scan does not request nearby-wifi or location',
-      (tester) async {
+  testWidgets('API 32 scan does not request nearby-wifi or location', (
+    tester,
+  ) async {
     var requested = false;
     final cast = FakeCastPlatform(devices: [_speaker()]);
     final onboarding = _onboarding(cast: cast);
@@ -463,82 +474,188 @@ void main() {
     expect(find.text('Nest Mini Kitchen'), findsOneWidget);
   });
 
-  testWidgets(
-    'saved speaker shows remove action; confirm clears Home and setup',
-    (tester) async {
-      final speaker = _speaker();
-      final store = MemoryFingerprintStore(
-        homeCastId: speaker.deviceId,
-        homeCastFriendlyName: speaker.friendlyName,
-        hashes: {'keep-lan-hash'},
-        electionSecret: 'keep-election',
-      );
-      final cast = FakeCastPlatform(devices: []);
-      final onboarding = _onboarding(cast: cast, store: store);
-      await onboarding.writeCachedSpeakerScan(
-        SpeakerScanResult(devices: [speaker]),
-      );
-      final navKey = GlobalKey<NavigatorState>();
+  testWidgets('swipe-delete saved speaker confirms and clears Home and setup', (
+    tester,
+  ) async {
+    final speaker = _speaker();
+    final store = MemoryFingerprintStore(
+      homeCastId: speaker.deviceId,
+      homeCastFriendlyName: speaker.friendlyName,
+      hashes: {'keep-lan-hash'},
+      electionSecret: 'keep-election',
+    );
+    final cast = FakeCastPlatform(devices: []);
+    final onboarding = _onboarding(cast: cast, store: store);
+    await onboarding.writeCachedSpeakerScan(
+      SpeakerScanResult(devices: [speaker]),
+    );
+    final navKey = GlobalKey<NavigatorState>();
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            homeOnboardingProvider.overrideWith((ref) => onboarding),
-          ],
-          child: MaterialApp(
-            locale: const Locale('en'),
-            supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            theme: PrayerCastTheme.light(),
-            navigatorKey: navKey,
-            home: const _HomeSpeakerStub(),
-          ),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [homeOnboardingProvider.overrideWith((ref) => onboarding)],
+        child: MaterialApp(
+          locale: const Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          theme: PrayerCastTheme.light(),
+          navigatorKey: navKey,
+          home: const _HomeSpeakerStub(),
         ),
-      );
-      await tester.pump();
-      await tester.pump();
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
 
-      expect(find.text('Nest Mini Kitchen'), findsOneWidget);
-      expect(find.text('No speaker selected'), findsNothing);
+    expect(find.text('Nest Mini Kitchen'), findsOneWidget);
+    expect(find.text('No speaker selected'), findsNothing);
 
-      await tester.tap(find.text('open setup'));
-      await tester.pump();
-      await tester.pump();
+    await tester.tap(find.text('open setup'));
+    await tester.pump();
+    await tester.pump();
 
-      expect(find.byKey(const ValueKey('remove_home_speaker')), findsOneWidget);
-      expect(find.text('Remove home speaker'), findsOneWidget);
-      expect(cast.discoverCalls, 0);
+    expect(find.byKey(const ValueKey('remove_home_speaker')), findsNothing);
+    expect(find.byKey(const ValueKey('saved_home_speaker_card')), findsNothing);
+    expect(find.byKey(const ValueKey('speaker_select_mode')), findsOneWidget);
+    expect(cast.discoverCalls, 0);
 
-      await tester.tap(find.byKey(const ValueKey('remove_home_speaker')));
-      await tester.pump();
-      expect(
-        find.byKey(const ValueKey('remove_home_speaker_dialog')),
-        findsOneWidget,
-      );
-      expect(find.text('Remove home speaker?'), findsOneWidget);
+    await tester.drag(
+      find.byKey(const ValueKey('speaker_dismiss_nest-1')),
+      const Offset(-400, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('remove_home_speaker_dialog')),
+      findsOneWidget,
+    );
+    expect(find.text('Remove home speaker?'), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('remove_home_speaker_confirm')));
-      await tester.pump();
-      await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('remove_home_speaker_confirm')));
+    await tester.pumpAndSettle();
 
-      expect(await store.readHomeCastId(), isEmpty);
-      expect(await store.readHomeCastFriendlyName(), isEmpty);
-      expect(await store.readHashes(), {'keep-lan-hash'});
-      expect(await store.readElectionSecret(), 'keep-election');
-      expect(find.byKey(const ValueKey('remove_home_speaker')), findsNothing);
-      expect(find.byKey(const ValueKey('saved_home_speaker_card')), findsNothing);
-      expect(find.text('Nest Mini Kitchen'), findsOneWidget);
-      expect(cast.discoverCalls, 0);
+    expect(await store.readHomeCastId(), isEmpty);
+    expect(await store.readHomeCastFriendlyName(), isEmpty);
+    expect(await store.readHashes(), {'keep-lan-hash'});
+    expect(await store.readElectionSecret(), 'keep-election');
+    expect(find.text('Nest Mini Kitchen'), findsOneWidget);
+    expect(cast.discoverCalls, 0);
 
-      navKey.currentState!.pop();
-      await tester.pump();
-      await tester.pump();
+    navKey.currentState!.pop();
+    await tester.pumpAndSettle();
 
-      expect(find.text('open setup'), findsOneWidget);
-      expect(find.text('No speaker selected'), findsOneWidget);
-      expect(find.text('Nest Mini Kitchen'), findsNothing);
-    },
-  );
+    expect(find.text('open setup'), findsOneWidget);
+    expect(find.text('No speaker selected'), findsOneWidget);
+    expect(find.text('Nest Mini Kitchen'), findsNothing);
+  });
+
+  testWidgets('select-mode delete unsaves home speaker after confirm', (
+    tester,
+  ) async {
+    final speaker = _speaker();
+    final store = MemoryFingerprintStore(
+      homeCastId: speaker.deviceId,
+      homeCastFriendlyName: speaker.friendlyName,
+    );
+    final cast = FakeCastPlatform(devices: []);
+    final onboarding = _onboarding(cast: cast, store: store);
+    await onboarding.writeCachedSpeakerScan(
+      SpeakerScanResult(devices: [speaker]),
+    );
+
+    await _pumpPage(
+      tester,
+      overrides: [homeOnboardingProvider.overrideWith((ref) => onboarding)],
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('speaker_select_mode')));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('speaker_select_bar')), findsOneWidget);
+    expect(find.byKey(const ValueKey('speaker_check_nest-1')), findsOneWidget);
+
+    await tester.tap(find.text('Nest Mini Kitchen'));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('speaker_select_delete')));
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('remove_home_speaker_dialog')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('remove_home_speaker_confirm')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(await store.readHomeCastId(), isEmpty);
+    expect(await store.readHomeCastFriendlyName(), isEmpty);
+    expect(find.text('Nest Mini Kitchen'), findsOneWidget);
+    expect(find.byKey(const ValueKey('speaker_select_bar')), findsNothing);
+    final cached = await onboarding.readCachedSpeakerScan();
+    expect(cached!.devices.single.deviceId, 'nest-1');
+  });
+
+  testWidgets('select-mode delete hides scanned-only speaker until rescan', (
+    tester,
+  ) async {
+    final scanned = _speaker(id: 'hall-1', name: 'Hall speaker');
+    final store = MemoryFingerprintStore();
+    final cast = FakeCastPlatform(devices: []);
+    final onboarding = _onboarding(cast: cast, store: store);
+    await onboarding.writeCachedSpeakerScan(
+      SpeakerScanResult(devices: [scanned]),
+    );
+
+    await _pumpPage(
+      tester,
+      overrides: [homeOnboardingProvider.overrideWith((ref) => onboarding)],
+    );
+    await tester.pump();
+    expect(find.text('Hall speaker'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('speaker_select_mode')));
+    await tester.pump();
+    await tester.tap(find.text('Hall speaker'));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('speaker_select_delete')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('remove_home_speaker_dialog')),
+      findsNothing,
+    );
+    expect(find.text('Hall speaker'), findsNothing);
+    expect(find.byKey(const ValueKey('speaker_empty_state')), findsOneWidget);
+    expect(find.byKey(const ValueKey('speaker_select_mode')), findsNothing);
+    final cached = await onboarding.readCachedSpeakerScan();
+    expect(cached, isNotNull);
+    expect(cached!.devices, isEmpty);
+    expect(await store.readHomeCastId(), isNull);
+  });
+
+  testWidgets('long-press shows IP when not selecting', (tester) async {
+    final speaker = _speaker();
+    await _pumpPage(
+      tester,
+      overrides: [
+        speakerDiscoveryProvider.overrideWith(
+          (ref) async => SpeakerScanResult(devices: [speaker]),
+        ),
+      ],
+    );
+    await tester.pump();
+
+    await tester.longPress(find.text('Nest Mini Kitchen'));
+    await tester.pump();
+    expect(find.text('IP: 192.168.1.40'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('speaker_select_mode')));
+    await tester.pump();
+    await tester.longPress(find.text('Nest Mini Kitchen'));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('speaker_check_nest-1')), findsOneWidget);
+    expect(find.text('1 selected'), findsWidgets);
+  });
 }
 
 class _HomeSpeakerStub extends ConsumerWidget {

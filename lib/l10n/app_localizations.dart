@@ -764,6 +764,30 @@ abstract class AppLocalizations {
   /// **'Home speaker removed'**
   String get homeSpeakerRemoved;
 
+  /// No description provided for @selectSpeakers.
+  ///
+  /// In en, this message translates to:
+  /// **'Select speakers'**
+  String get selectSpeakers;
+
+  /// No description provided for @speakersSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String speakersSelected(int count);
+
+  /// No description provided for @deleteSpeaker.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get deleteSpeaker;
+
+  /// No description provided for @speakerHiddenUntilRescan.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed from this list. Scan again to find it.'**
+  String get speakerHiddenUntilRescan;
+
   /// No description provided for @speakerSaveFailed.
   ///
   /// In en, this message translates to:

@@ -93,6 +93,27 @@ void main() {
     expect(cached!.devices.single.deviceId, 'cast-home-1');
   });
 
+  test('removeDevicesFromCachedScan drops ids and keeps others', () async {
+    await onboarding.writeCachedSpeakerScan(
+      SpeakerScanResult(
+        devices: [
+          cast.devices.first,
+          CastReceiver(
+            deviceId: 'other-1',
+            friendlyName: 'Hall',
+            host: InternetAddress('192.168.1.51'),
+          ),
+        ],
+      ),
+    );
+
+    await onboarding.removeDevicesFromCachedScan(['cast-home-1']);
+
+    final cached = await onboarding.readCachedSpeakerScan();
+    expect(cached, isNotNull);
+    expect(cached!.devices.single.deviceId, 'other-1');
+  });
+
   test('cached scan reconstructs CastReceiver fields', () async {
     final original = cast.devices.first;
     await onboarding.writeCachedSpeakerScan(

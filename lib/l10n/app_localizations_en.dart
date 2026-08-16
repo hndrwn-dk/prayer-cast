@@ -387,6 +387,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeSpeakerRemoved => 'Home speaker removed';
 
   @override
+  String get selectSpeakers => 'Select speakers';
+
+  @override
+  String speakersSelected(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get deleteSpeaker => 'Delete';
+
+  @override
+  String get speakerHiddenUntilRescan =>
+      'Removed from this list. Scan again to find it.';
+
+  @override
   String speakerSaveFailed(String error) {
     return 'Failed to save speaker: $error';
   }

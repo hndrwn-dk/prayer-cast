@@ -388,6 +388,21 @@ class AppLocalizationsId extends AppLocalizations {
   String get homeSpeakerRemoved => 'Speaker rumah dihapus';
 
   @override
+  String get selectSpeakers => 'Pilih speaker';
+
+  @override
+  String speakersSelected(int count) {
+    return '$count dipilih';
+  }
+
+  @override
+  String get deleteSpeaker => 'Hapus';
+
+  @override
+  String get speakerHiddenUntilRescan =>
+      'Dihapus dari daftar ini. Pindai ulang untuk menemukannya.';
+
+  @override
   String speakerSaveFailed(String error) {
     return 'Gagal menyimpan speaker: $error';
   }

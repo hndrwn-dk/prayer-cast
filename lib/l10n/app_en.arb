@@ -198,6 +198,15 @@
   "removeHomeSpeakerConfirm": "Remove",
   "removeHomeSpeakerCancel": "Cancel",
   "homeSpeakerRemoved": "Home speaker removed",
+  "selectSpeakers": "Select speakers",
+  "speakersSelected": "{count} selected",
+  "@speakersSelected": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "deleteSpeaker": "Delete",
+  "speakerHiddenUntilRescan": "Removed from this list. Scan again to find it.",
   "speakerSaveFailed": "Failed to save speaker: {error}",
   "@speakerSaveFailed": {
     "placeholders": {
