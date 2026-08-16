@@ -228,8 +228,9 @@ class AdzanForegroundService : Service() {
         val title = SpiritualBenefitsTeaser.contentTitle(prayer, language)
         val text = SpiritualBenefitsTeaser.contentText(prayer, language)
         val expanded = SpiritualBenefitsTeaser.bigText(prayer, language)
-        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+        return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
+            .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_lock_silent_mode_off)
             .setContentIntent(fullScreen)
             .setFullScreenIntent(fullScreen, true)
@@ -238,10 +239,7 @@ class AdzanForegroundService : Service() {
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setStyle(NotificationCompat.BigTextStyle().bigText(expanded))
             .setOngoing(true)
-        if (text != null) {
-            builder.setContentText(text)
-        }
-        return builder.build()
+            .build()
     }
 
     private fun applyBalCreatorMode(options: ActivityOptions) {

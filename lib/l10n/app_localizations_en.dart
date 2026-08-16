@@ -451,6 +451,19 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get notificationDisclosureTitle => 'Show the test notification';
+
+  @override
+  String get notificationDisclosureBody =>
+      'Android needs notification permission so the dry-run alarm can appear while the app is closed or locked. You can deny and still schedule the test.';
+
+  @override
+  String get notificationDisclosureContinue => 'Allow';
+
+  @override
+  String get notificationDisclosureSkip => 'Not now';
+
+  @override
   String get locationDisclosureTitle => 'Location is optional';
 
   @override

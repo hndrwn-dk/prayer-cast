@@ -170,16 +170,16 @@ that step before the service was killed.
 
 **Demo video (record this — re-shoot; do not reuse the specialUse clip):**
 
-1. Open Prayer Cast. Grant exact-alarm permission, and grant
-   notifications from **Settings → Apps → Prayer Cast →
-   Notifications** — the app does not prompt for it.
+1. Open Prayer Cast. Grant exact-alarm permission. On dry-run, grant
+   notifications when prompted (needed for the FGS shade on Android 13+).
 2. Save a home speaker, or set one prayer to beep.
 3. Use the in-app next-alarm test so a wake fires soon. It replaces
    the next armed alarm, so do not use it when a real prayer is
    being relied on.
 4. Lock the phone / turn the screen off.
-5. Show the notification — title "Menyiapkan adzan", body the prayer
-   wire value (e.g. `dhuhr`) — and the app coming to the foreground.
+5. Show the notification — title "Menyiapkan adzan" / "Preparing adzan",
+   body e.g. `Dhuhr (dry-run) · Midday spiritual recharge` — never a
+   raw key like `dhuhr-dryrun` — and the app coming to the foreground.
 6. Cast path: speaker plays; phone stays silent unless that prayer
    is beep or phone adhan.
 7. Show the ongoing FGS notification during the wake window, then

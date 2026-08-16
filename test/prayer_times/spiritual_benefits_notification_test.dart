@@ -3,14 +3,18 @@ import 'package:prayer_cast/prayer_times/spiritual_benefits.dart';
 
 void main() {
   group('SpiritualBenefitsNotification', () {
-    test('strips dry-run suffix and maps prayer to EN teaser title', () {
+    test('title is Preparing adzan for real and dry-run', () {
       expect(
         SpiritualBenefitsNotification.title('dhuhr'),
-        'Dhuhr · Midday spiritual recharge',
+        'Preparing adzan',
       );
       expect(
         SpiritualBenefitsNotification.title('dhuhr-dryrun'),
-        'Dhuhr (dry-run)',
+        'Preparing adzan',
+      );
+      expect(
+        SpiritualBenefitsNotification.title('dhuhr-dryrun', language: 'id'),
+        'Menyiapkan adzan',
       );
       expect(
         SpiritualBenefitsNotification.canonicalPrayer('dhuhr-dryrun'),
@@ -22,38 +26,42 @@ void main() {
 
     test('never returns a raw key like dhuhr-dryrun', () {
       expect(
-        SpiritualBenefitsNotification.title('dhuhr-dryrun'),
+        SpiritualBenefitsNotification.subtitle('dhuhr-dryrun'),
+        'Dhuhr (dry-run) · Midday spiritual recharge',
+      );
+      expect(
+        SpiritualBenefitsNotification.subtitle('dhuhr-dryrun'),
         isNot(contains('dhuhr-dryrun')),
       );
       expect(
         SpiritualBenefitsNotification.title('reschedule-retry'),
-        'Adhan',
+        'Preparing adzan',
       );
       expect(
-        SpiritualBenefitsNotification.title('unknown-dryrun'),
+        SpiritualBenefitsNotification.subtitle('unknown-dryrun'),
         'Adhan (dry-run)',
       );
       expect(
-        SpiritualBenefitsNotification.subtitle('dhuhr-dryrun'),
+        SpiritualBenefitsNotification.subtitle('dhuhr'),
         'Dhuhr · Midday spiritual recharge',
       );
     });
 
-    test('maps each canonical prayer', () {
+    test('maps each canonical prayer on the subtitle', () {
       expect(
-        SpiritualBenefitsNotification.title('fajr'),
+        SpiritualBenefitsNotification.subtitle('fajr'),
         'Fajr · Spiritual awakening and consciousness',
       );
       expect(
-        SpiritualBenefitsNotification.title('asr'),
+        SpiritualBenefitsNotification.subtitle('asr'),
         'Asr · Protection from afternoon negligence',
       );
       expect(
-        SpiritualBenefitsNotification.title('maghrib'),
+        SpiritualBenefitsNotification.subtitle('maghrib'),
         'Maghrib · Gratitude for the day\'s blessings',
       );
       expect(
-        SpiritualBenefitsNotification.title('isha'),
+        SpiritualBenefitsNotification.subtitle('isha'),
         'Isha · Peaceful end to the day',
       );
     });

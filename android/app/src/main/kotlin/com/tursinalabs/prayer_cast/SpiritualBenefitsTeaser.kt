@@ -153,23 +153,29 @@ object SpiritualBenefitsTeaser {
         }
     }
 
+    fun preparingTitle(language: String = "en"): String {
+        return if (language == "id") "Menyiapkan adzan" else "Preparing adzan"
+    }
+
     fun contentTitle(prayer: String, language: String = "en"): String {
+        return preparingTitle(language)
+    }
+
+    fun contentText(prayer: String, language: String = "en"): String {
         val copy = copyFor(prayer, language)
         if (copy == null) {
             return if (isDryRun(prayer)) "Adhan (dry-run)" else "Adhan"
         }
-        if (isDryRun(prayer)) return "${copy.name} (${copy.dryRunLabel})"
-        return "${copy.name} · ${copy.teaser}"
-    }
-
-    fun contentText(prayer: String, language: String = "en"): String? {
-        if (!isDryRun(prayer)) return null
-        val copy = copyFor(prayer, language) ?: return null
-        return "${copy.name} · ${copy.teaser}"
+        val label = if (isDryRun(prayer)) {
+            "${copy.name} (${copy.dryRunLabel})"
+        } else {
+            copy.name
+        }
+        return "$label · ${copy.teaser}"
     }
 
     fun bigText(prayer: String, language: String = "en"): String {
-        val copy = copyFor(prayer, language) ?: return contentTitle(prayer, language)
+        val copy = copyFor(prayer, language) ?: return contentText(prayer, language)
         return copy.lines.take(3).joinToString("\n")
     }
 

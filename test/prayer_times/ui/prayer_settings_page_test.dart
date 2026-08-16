@@ -17,6 +17,7 @@ import 'package:prayer_cast/home_delivery/delivery/delivery_orchestrator.dart';
 import 'package:prayer_cast/home_delivery/logging/outcome.dart';
 import 'package:prayer_cast/home_delivery/platform/device_conditions.dart';
 import 'package:prayer_cast/home_delivery/platform/exact_alarm.dart';
+import 'package:prayer_cast/home_delivery/platform/post_notifications_permission.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/l10n/app_localizations.dart';
@@ -26,6 +27,7 @@ import 'package:prayer_cast/prayer_times/location_resolver.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 import 'package:prayer_cast/prayer_times/prayer_times_providers.dart';
 import 'package:prayer_cast/prayer_times/ui/location_disclosure.dart';
+import 'package:prayer_cast/prayer_times/ui/notification_disclosure.dart';
 import 'package:prayer_cast/prayer_times/ui/prayer_settings_page.dart';
 import 'package:prayer_cast/support/app_links.dart';
 import 'package:prayer_cast/support/open_support_url.dart';
@@ -162,6 +164,137 @@ void main() {
     expect(find.byKey(const ValueKey('dry_run_status')), findsOneWidget);
     expect(find.text('Test adhan at 20:40'), findsOneWidget);
     expect(find.text('SCHEDULE'), findsWidgets);
+  });
+
+  testWidgets('dry-run prompts for notifications when not granted',
+      (tester) async {
+    final alarm = _FakeExactAlarm();
+    addTearDown(alarm.dispose);
+    final t0 = DateTime(2026, 8, 13, 20, 35);
+    final coordinator = _coordinator(
+      alarm: alarm,
+      clock: FakeClock(t0),
+      next: NextPrayer(
+        name: 'dhuhr',
+        scheduledAt: t0.add(const Duration(hours: 2)),
+        voiceId: 'standard_adhan',
+      ),
+    );
+    await coordinator.start();
+
+    var requested = 0;
+    await _pumpSettings(
+      tester,
+      coordinator: coordinator,
+      postNotifications: PostNotificationsPermission(
+        isAndroid: true,
+        androidSdkInt: 33,
+        readGranted: () async => false,
+        requestGrant: () async {
+          requested++;
+          return true;
+        },
+      ),
+    );
+    final dryRun = find.byKey(const ValueKey('dry_run_1m'));
+    await tester.scrollUntilVisible(
+      dryRun,
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('prayer_settings_list')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.ensureVisible(dryRun);
+    await tester.pump();
+    await tester.tap(dryRun);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(NotificationDisclosureDialog.dialogKey), findsOneWidget);
+    await tester.tap(find.byKey(NotificationDisclosureDialog.continueKey));
+    await tester.pump();
+    await tester.pump();
+
+    expect(requested, 1);
+    expect(alarm.scheduled.length, 1);
+    expect(alarm.scheduled.single.prayer, 'dhuhr-dryrun');
+    expect(find.text('Test adhan at 20:37'), findsOneWidget);
+  });
+
+  testWidgets('dry-run still schedules if notification prompt is skipped',
+      (tester) async {
+    final alarm = _FakeExactAlarm();
+    addTearDown(alarm.dispose);
+    final t0 = DateTime(2026, 8, 13, 20, 35);
+    final coordinator = _coordinator(
+      alarm: alarm,
+      clock: FakeClock(t0),
+      next: NextPrayer(
+        name: 'dhuhr',
+        scheduledAt: t0.add(const Duration(hours: 2)),
+        voiceId: 'standard_adhan',
+      ),
+    );
+    await coordinator.start();
+
+    var requested = 0;
+    await _pumpSettings(
+      tester,
+      coordinator: coordinator,
+      postNotifications: PostNotificationsPermission(
+        isAndroid: true,
+        androidSdkInt: 33,
+        readGranted: () async => false,
+        requestGrant: () async {
+          requested++;
+          return false;
+        },
+      ),
+    );
+    final dryRun = find.byKey(const ValueKey('dry_run_5m'));
+    await tester.scrollUntilVisible(
+      dryRun,
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('prayer_settings_list')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.ensureVisible(dryRun);
+    await tester.pump();
+    await tester.tap(dryRun);
+    await tester.pump();
+    await tester.pump();
+    await tester.tap(find.byKey(NotificationDisclosureDialog.skipKey));
+    await tester.pump();
+    await tester.pump();
+
+    expect(requested, 0);
+    expect(alarm.scheduled.length, 1);
+    expect(find.text('Test adhan at 20:40'), findsOneWidget);
+  });
+
+  testWidgets('notification disclosure copy is localized in Indonesian',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('id'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        theme: PrayerCastTheme.forest(),
+        home: const Scaffold(body: NotificationDisclosureDialog()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Tampilkan notifikasi uji'), findsOneWidget);
+    expect(find.text('Izinkan'), findsOneWidget);
+    expect(find.text('Nanti saja'), findsOneWidget);
   });
 
   testWidgets('dry-run failure stays on the card, not a SnackBar',
@@ -373,6 +506,7 @@ Future<void> _pumpSettings(
   PrayerDeliveryCoordinator? coordinator,
   PrayerPrefs? prefs,
   LocationResolving locationResolver = const LocationResolver(),
+  PostNotificationsPermission? postNotifications,
   Locale locale = const Locale('en'),
 }) async {
   final store = MemoryPrayerPrefsStore(prefs ?? PrayerPrefs.defaults);
@@ -399,6 +533,8 @@ Future<void> _pumpSettings(
         home: PrayerSettingsPage(
           coordinator: coordinator,
           locationResolver: locationResolver,
+          postNotifications: postNotifications ??
+              const PostNotificationsPermission(isAndroid: false),
         ),
       ),
     ),
@@ -438,6 +574,7 @@ final class _FixedNextPrayer implements NextPrayerProvider {
 
 final class _FakeExactAlarm implements ExactAlarmPlatform {
   final _fireController = StreamController<AlarmFiredEvent>.broadcast();
+  final scheduled = <({int epochMs, String prayer, String voiceId})>[];
 
   @override
   Stream<AlarmFiredEvent> get onFired => _fireController.stream;
@@ -447,7 +584,11 @@ final class _FakeExactAlarm implements ExactAlarmPlatform {
     required int epochMs,
     required String prayer,
     required String voiceId,
-  }) async {}
+  }) async {
+    scheduled
+      ..clear()
+      ..add((epochMs: epochMs, prayer: prayer, voiceId: voiceId));
+  }
 
   @override
   Future<void> cancel() async {}

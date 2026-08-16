@@ -196,28 +196,29 @@ abstract final class SpiritualBenefitsNotification {
 
   static bool isDryRun(String prayer) => prayer.endsWith(dryRunSuffix);
 
-  /// Collapsed notification title. Never returns a raw key like `dhuhr-dryrun`.
-  static String title(String prayer) {
-    final key = canonicalPrayer(prayer);
-    final copy = _en[key];
+  static const String preparingTitleEn = 'Preparing adzan';
+
+  static const String preparingTitleId = 'Menyiapkan adzan';
+
+  /// Collapsed notification title. Same for dry-run and real prayer.
+  static String title(String prayer, {String language = 'en'}) {
+    return language == 'id' ? preparingTitleId : preparingTitleEn;
+  }
+
+  /// Collapsed subtitle. Never returns a raw key like `dhuhr-dryrun`.
+  static String subtitle(String prayer) {
+    final copy = _en[canonicalPrayer(prayer)];
     if (copy == null) {
       return isDryRun(prayer) ? 'Adhan (dry-run)' : 'Adhan';
     }
-    if (isDryRun(prayer)) return '${copy.name} (dry-run)';
-    return '${copy.name} · ${copy.teaser}';
-  }
-
-  /// Optional collapsed subtitle (dry-run keeps the teaser visible).
-  static String? subtitle(String prayer) {
-    if (!isDryRun(prayer)) return null;
-    final copy = _en[canonicalPrayer(prayer)];
-    if (copy == null) return null;
-    return '${copy.name} · ${copy.teaser}';
+    final label =
+        isDryRun(prayer) ? '${copy.name} (dry-run)' : copy.name;
+    return '${label} · ${copy.teaser}';
   }
 
   static String bigText(String prayer) {
     final copy = _en[canonicalPrayer(prayer)];
-    if (copy == null) return title(prayer);
+    if (copy == null) return subtitle(prayer);
     return copy.lines.take(3).join('\n');
   }
 }

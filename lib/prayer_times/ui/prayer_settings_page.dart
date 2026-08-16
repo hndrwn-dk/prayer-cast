@@ -12,6 +12,8 @@ import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/soft_pill.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
 
+import 'package:prayer_cast/home_delivery/platform/post_notifications_permission.dart';
+
 import '../adzan_voices.dart';
 import '../aladhan_client.dart';
 import '../indonesia_location.dart';
@@ -19,6 +21,7 @@ import '../location_resolver.dart';
 import '../prayer_prefs.dart';
 import '../prayer_times_providers.dart';
 import 'location_disclosure.dart';
+import 'notification_disclosure.dart';
 
 /// Premium prayer-time settings: location, method, schedule + voice test.
 class PrayerSettingsPage extends ConsumerStatefulWidget {
@@ -26,10 +29,14 @@ class PrayerSettingsPage extends ConsumerStatefulWidget {
     super.key,
     this.coordinator,
     this.locationResolver = const LocationResolver(),
+    this.postNotifications = const PostNotificationsPermission(),
+    this.showNotificationDisclosure = showNotificationDisclosureDialog,
   });
 
   final PrayerDeliveryCoordinator? coordinator;
   final LocationResolving locationResolver;
+  final PostNotificationsPermission postNotifications;
+  final Future<bool> Function(BuildContext context) showNotificationDisclosure;
 
   @override
   ConsumerState<PrayerSettingsPage> createState() => _PrayerSettingsPageState();
@@ -630,6 +637,15 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
     if (coordinator == null) return;
     setState(() => _schedulingDryRun = true);
     try {
+      final alreadyGranted = await widget.postNotifications.isGranted();
+      if (!alreadyGranted) {
+        if (!mounted) return;
+        final proceed = await widget.showNotificationDisclosure(context);
+        if (proceed && mounted) {
+          await widget.postNotifications.request();
+        }
+      }
+      if (!mounted) return;
       final azanAt = await coordinator.scheduleDryRun(untilAzan: untilAzan);
       if (!mounted) return;
       final local = azanAt.toLocal();

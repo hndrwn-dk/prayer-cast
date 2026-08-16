@@ -202,11 +202,12 @@ final class PrayerDeliveryCoordinator {
     _started = false;
   }
 
-  /// Arm the same AlarmClock → FGS → [onFired] path as a real prayer, with
-  /// azan at now + [untilAzan] (wake at T−120 when that is still in the
-  /// future). A 1-minute dry-run cannot fit T−120, so wake is clamped just
-  /// after now; [onFired] still reconstructs azan as wake + 120s.
-  /// Replaces any previously scheduled wake, including an earlier dry-run.
+  /// Arm the same AlarmClock → FGS (with shade notification) → [onFired]
+  /// path as a real prayer, with azan at now + [untilAzan] (wake at T−120
+  /// when that is still in the future). A 1-minute dry-run cannot fit
+  /// T−120, so wake is clamped just after now; [onFired] still reconstructs
+  /// azan as wake + 120s. Replaces any previously scheduled wake, including
+  /// an earlier dry-run.
   ///
   /// Uses the next upcoming prayer's name + voice so Cast/beep/phone mode
   /// matches that slot. Returns the azan instant for the inline confirmation.

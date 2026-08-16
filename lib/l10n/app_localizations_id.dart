@@ -452,6 +452,19 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
+  String get notificationDisclosureTitle => 'Tampilkan notifikasi uji';
+
+  @override
+  String get notificationDisclosureBody =>
+      'Android memerlukan izin notifikasi agar alarm uji coba muncul saat aplikasi tertutup atau terkunci. Anda bisa menolak dan tetap menjadwalkan tes.';
+
+  @override
+  String get notificationDisclosureContinue => 'Izinkan';
+
+  @override
+  String get notificationDisclosureSkip => 'Nanti saja';
+
+  @override
   String get locationDisclosureTitle => 'Lokasi bersifat opsional';
 
   @override

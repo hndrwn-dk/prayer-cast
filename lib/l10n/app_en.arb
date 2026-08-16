@@ -247,6 +247,10 @@
       "error": {"type": "String"}
     }
   },
+  "notificationDisclosureTitle": "Show the test notification",
+  "notificationDisclosureBody": "Android needs notification permission so the dry-run alarm can appear while the app is closed or locked. You can deny and still schedule the test.",
+  "notificationDisclosureContinue": "Allow",
+  "notificationDisclosureSkip": "Not now",
   "locationDisclosureTitle": "Location is optional",
   "locationDisclosureBody": "GPS is optional. It is used only to fill city and country so Prayer Cast can fetch prayer times.\n\nIt is not used to decide whether you are home. Home uses the Wi-Fi / LAN fingerprint on this phone.\n\nLocation stays on this device except when sent to Aladhan and the system geocoder, as described in the privacy policy.\n\nYou can type city and country instead.",
   "locationDisclosureContinue": "Continue",

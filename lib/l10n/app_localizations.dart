@@ -860,6 +860,30 @@ abstract class AppLocalizations {
   /// **'Could not schedule test adhan: {error}'**
   String dryRunFailed(String error);
 
+  /// No description provided for @notificationDisclosureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the test notification'**
+  String get notificationDisclosureTitle;
+
+  /// No description provided for @notificationDisclosureBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Android needs notification permission so the dry-run alarm can appear while the app is closed or locked. You can deny and still schedule the test.'**
+  String get notificationDisclosureBody;
+
+  /// No description provided for @notificationDisclosureContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow'**
+  String get notificationDisclosureContinue;
+
+  /// No description provided for @notificationDisclosureSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get notificationDisclosureSkip;
+
   /// No description provided for @locationDisclosureTitle.
   ///
   /// In en, this message translates to:
