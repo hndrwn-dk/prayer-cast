@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
-import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
 import 'package:prayer_cast/support/open_support_url.dart';
 
@@ -31,74 +30,90 @@ class LocationDisclosureDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final text = Theme.of(context).textTheme;
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.88;
-    return Dialog(
-      key: dialogKey,
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: 400, maxHeight: maxHeight),
-        child: InkSurface(
-          borderColor: PrayerCastColors.inkSoft,
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        l10n.locationDisclosureTitle,
-                        style: text.titleLarge,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        l10n.locationDisclosureBody,
-                        style: text.bodyMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(
-                          key: privacyKey,
-                          onPressed: () => openPrivacyPolicyUrl(context),
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(0, 40),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Text(l10n.privacyPolicy),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: PrayerCastTheme.minTap,
-                child: FilledButton(
-                  key: continueKey,
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: Text(l10n.locationDisclosureContinue),
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: PrayerCastTheme.minTap,
-                child: TextButton(
-                  key: typeCityKey,
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: Text(l10n.locationDisclosureTypeCity),
-                ),
-              ),
-            ],
+    // Overlay uses MaterialApp light theme; ink onSurface is unreadable
+    // on this dark dialog. Color every string explicitly.
+    return Theme(
+      data: PrayerCastTheme.forest(),
+      child: AlertDialog(
+        key: dialogKey,
+        backgroundColor: PrayerCastColors.canopyDeep,
+        surfaceTintColor: Colors.transparent,
+        elevation: 12,
+        shadowColor: PrayerCastColors.ink.withValues(alpha: 0.55),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: PrayerCastColors.mist.withValues(alpha: 0.28),
+            width: 1,
           ),
         ),
+        title: Text(
+          l10n.locationDisclosureTitle,
+          style: const TextStyle(
+            color: PrayerCastColors.surfaceRaised,
+            fontSize: 22,
+            fontWeight: FontWeight.w500,
+            height: 1.25,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.locationDisclosureBody,
+              style: const TextStyle(
+                color: PrayerCastColors.mist,
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                key: privacyKey,
+                onPressed: () => openPrivacyPolicyUrl(context),
+                style: TextButton.styleFrom(
+                  foregroundColor: PrayerCastColors.mist,
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 40),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  l10n.privacyPolicy,
+                  style: const TextStyle(color: PrayerCastColors.mist),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            key: typeCityKey,
+            onPressed: () => Navigator.of(context).pop(false),
+            style: TextButton.styleFrom(
+              foregroundColor: PrayerCastColors.mist,
+            ),
+            child: Text(
+              l10n.locationDisclosureTypeCity,
+              style: const TextStyle(color: PrayerCastColors.mist),
+            ),
+          ),
+          FilledButton(
+            key: continueKey,
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: PrayerCastColors.canopy,
+              foregroundColor: PrayerCastColors.surfaceRaised,
+            ),
+            child: Text(
+              l10n.locationDisclosureContinue,
+              style: const TextStyle(color: PrayerCastColors.surfaceRaised),
+            ),
+          ),
+        ],
       ),
     );
   }

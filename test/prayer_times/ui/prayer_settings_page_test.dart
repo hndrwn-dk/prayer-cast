@@ -17,6 +17,7 @@ import 'package:prayer_cast/home_delivery/delivery/delivery_orchestrator.dart';
 import 'package:prayer_cast/home_delivery/logging/outcome.dart';
 import 'package:prayer_cast/home_delivery/platform/device_conditions.dart';
 import 'package:prayer_cast/home_delivery/platform/exact_alarm.dart';
+import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/l10n/app_localizations.dart';
 import 'package:prayer_cast/prayer_times/adhan_next_prayer_provider.dart';
@@ -247,6 +248,31 @@ void main() {
     );
     expect(find.text('Privacy policy'), findsOneWidget);
     expect(resolver.resolveCalls, 0);
+
+    final dialog = tester.widget<AlertDialog>(
+      find.byKey(LocationDisclosureDialog.dialogKey),
+    );
+    expect(dialog.backgroundColor, PrayerCastColors.canopyDeep);
+    expect(dialog.backgroundColor, isNot(PrayerCastColors.ink));
+    expect(dialog.elevation, 12);
+    final shape = dialog.shape as RoundedRectangleBorder;
+    expect(shape.side.width, 1);
+    expect(
+      shape.side.color,
+      PrayerCastColors.mist.withValues(alpha: 0.28),
+    );
+    expect(
+      tester.widget<Text>(find.text('Location is optional')).style?.color,
+      PrayerCastColors.surfaceRaised,
+    );
+    expect(
+      tester.widget<Text>(find.text('Type city instead')).style?.color,
+      PrayerCastColors.mist,
+    );
+    expect(
+      tester.widget<Text>(find.text('Privacy policy')).style?.color,
+      PrayerCastColors.mist,
+    );
   });
 
   testWidgets('location disclosure Continue then resolves city', (tester) async {
