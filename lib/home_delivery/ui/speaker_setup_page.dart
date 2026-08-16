@@ -122,8 +122,17 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
           data: PrayerCastTheme.forest(),
           child: AlertDialog(
             key: const ValueKey('remove_home_speaker_dialog'),
-            backgroundColor: PrayerCastColors.ink,
+            backgroundColor: PrayerCastColors.canopyDeep,
             surfaceTintColor: Colors.transparent,
+            elevation: 12,
+            shadowColor: PrayerCastColors.ink.withValues(alpha: 0.55),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: PrayerCastColors.mist.withValues(alpha: 0.28),
+                width: 1,
+              ),
+            ),
             title: Text(
               l10n.removeHomeSpeakerConfirmTitle,
               style: const TextStyle(

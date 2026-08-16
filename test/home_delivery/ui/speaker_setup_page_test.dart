@@ -589,6 +589,18 @@ void main() {
     );
     expect(find.text('Cancel'), findsOneWidget);
     expect(find.text('Remove'), findsOneWidget);
+    final dialog = tester.widget<AlertDialog>(
+      find.byKey(const ValueKey('remove_home_speaker_dialog')),
+    );
+    expect(dialog.backgroundColor, PrayerCastColors.canopyDeep);
+    expect(dialog.backgroundColor, isNot(PrayerCastColors.ink));
+    expect(dialog.elevation, 12);
+    final shape = dialog.shape as RoundedRectangleBorder;
+    expect(shape.side.width, 1);
+    expect(
+      shape.side.color,
+      PrayerCastColors.mist.withValues(alpha: 0.28),
+    );
     expect(
       tester
           .widget<Text>(find.text('Remove default speaker?'))
