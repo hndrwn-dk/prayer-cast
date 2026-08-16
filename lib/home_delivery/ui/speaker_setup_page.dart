@@ -382,6 +382,11 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                     ),
                     data: (result) {
                       if (visibleSpeakers.isEmpty) {
+                        // Reload keeps the previous (empty) value. Do not show
+                        // "no speakers" until this scan has actually finished.
+                        if (isRefreshing) {
+                          return const _ScanningState();
+                        }
                         final onlyTvs = result.devices
                             .where((d) => !hiddenIds.contains(d.deviceId))
                             .isNotEmpty;

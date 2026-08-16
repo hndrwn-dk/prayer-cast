@@ -256,6 +256,57 @@ void main() {
     expect(find.byKey(const ValueKey('speaker_scan_retry')), findsOneWidget);
   });
 
+  testWidgets(
+    'rescan with empty previous value shows searching not empty state',
+    (tester) async {
+      var calls = 0;
+      final secondScan = Completer<SpeakerScanResult>();
+
+      await _pumpPage(
+        tester,
+        overrides: [
+          speakerDiscoveryProvider.overrideWith((ref) async {
+            ref.watch(speakerScanEpochProvider);
+            calls += 1;
+            if (calls == 1) {
+              return const SpeakerScanResult(devices: []);
+            }
+            return secondScan.future;
+          }),
+        ],
+      );
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('speaker_empty_state')), findsOneWidget);
+      expect(find.text('No speakers found'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('speaker_scan_retry')));
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('speaker_scanning_state')),
+        findsOneWidget,
+      );
+      expect(find.byType(SpeakerSearchPulse), findsOneWidget);
+      expect(find.text('Searching for speakers…'), findsOneWidget);
+      expect(find.byKey(const ValueKey('speaker_empty_state')), findsNothing);
+      expect(find.text('No speakers found'), findsNothing);
+      expect(find.byKey(const ValueKey('speaker_scan_retry')), findsNothing);
+      expect(find.text('Try again'), findsNothing);
+      expect(find.byKey(const ValueKey('speaker_select_mode')), findsNothing);
+
+      secondScan.complete(const SpeakerScanResult(devices: []));
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('speaker_empty_state')), findsOneWidget);
+      expect(find.text('No speakers found'), findsOneWidget);
+      expect(find.byKey(const ValueKey('speaker_scan_retry')), findsOneWidget);
+      expect(find.text('Try again'), findsOneWidget);
+      expect(find.byKey(const ValueKey('speaker_scanning_state')), findsNothing);
+      expect(find.byType(SpeakerSearchPulse), findsNothing);
+    },
+  );
+
   testWidgets('thrown error shows error state with retry', (tester) async {
     await _pumpPage(
       tester,
