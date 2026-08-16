@@ -369,6 +369,25 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
+  String get removeHomeSpeaker => 'Hapus speaker rumah';
+
+  @override
+  String get removeHomeSpeakerConfirmTitle => 'Hapus speaker rumah?';
+
+  @override
+  String get removeHomeSpeakerConfirmBody =>
+      'Prayer Cast tidak akan memakai speaker ini lagi. Perangkat Google Home tidak dihapus.';
+
+  @override
+  String get removeHomeSpeakerConfirm => 'Hapus';
+
+  @override
+  String get removeHomeSpeakerCancel => 'Batal';
+
+  @override
+  String get homeSpeakerRemoved => 'Speaker rumah dihapus';
+
+  @override
   String speakerSaveFailed(String error) {
     return 'Gagal menyimpan speaker: $error';
   }

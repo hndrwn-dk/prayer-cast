@@ -24,11 +24,13 @@ class SpeakerSetupPage extends ConsumerStatefulWidget {
 class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
   String? _savingDeviceId;
   bool _saveSucceeded = false;
+  bool _removing = false;
 
   bool get _saving => _savingDeviceId != null;
+  bool get _busy => _saving || _removing;
 
   Future<void> _select(CastReceiver receiver) async {
-    if (_saving) return;
+    if (_busy) return;
     final l10n = context.l10n;
     setState(() {
       _savingDeviceId = receiver.deviceId;
@@ -66,8 +68,88 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
   }
 
   void _rescan() {
-    if (_saving) return;
+    if (_busy) return;
     ref.read(speakerScanEpochProvider.notifier).state++;
+  }
+
+  Future<void> _confirmRemoveHomeSpeaker() async {
+    if (_busy) return;
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: PrayerCastColors.ink.withValues(alpha: 0.72),
+      builder: (ctx) {
+        final text = Theme.of(ctx).textTheme;
+        return Dialog(
+          key: const ValueKey('remove_home_speaker_dialog'),
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 24,
+          ),
+          child: InkSurface(
+            borderColor: PrayerCastColors.inkSoft,
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  l10n.removeHomeSpeakerConfirmTitle,
+                  style: text.titleLarge,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.removeHomeSpeakerConfirmBody,
+                  style: text.bodyMedium,
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: PrayerCastTheme.minTap,
+                  child: FilledButton(
+                    key: const ValueKey('remove_home_speaker_confirm'),
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: Text(l10n.removeHomeSpeakerConfirm),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: PrayerCastTheme.minTap,
+                  child: TextButton(
+                    key: const ValueKey('remove_home_speaker_cancel'),
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: Text(l10n.removeHomeSpeakerCancel),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+    await _clearHomeSpeaker();
+  }
+
+  Future<void> _clearHomeSpeaker() async {
+    final l10n = context.l10n;
+    setState(() => _removing = true);
+    try {
+      await ref.read(homeOnboardingProvider).clearHomeSpeaker();
+      ref.invalidate(savedHomeSpeakerProvider);
+      ref.invalidate(homePresenceProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.homeSpeakerRemoved)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.speakerSaveFailed('$e'))));
+    } finally {
+      if (mounted) setState(() => _removing = false);
+    }
   }
 
   @override
@@ -75,7 +157,8 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
     final saved = ref.watch(savedHomeSpeakerProvider);
     final discovery = ref.watch(speakerDiscoveryProvider);
     final l10n = context.l10n;
-    final selectedId = saved.asData?.value?.deviceId;
+    final savedSpeaker = saved.asData?.value;
+    final selectedId = savedSpeaker?.deviceId;
 
     final isInitialLoading = discovery.isLoading && !discovery.hasValue;
     final isRefreshing = discovery.isLoading && discovery.hasValue;
@@ -90,7 +173,7 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
           eyebrow: l10n.deviceEyebrow,
           title: l10n.speakerSetupTitle,
           backTooltip: l10n.back,
-          onBack: _saving ? null : () => Navigator.of(context).maybePop(),
+          onBack: _busy ? null : () => Navigator.of(context).maybePop(),
         ),
         body: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -109,6 +192,33 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                   ),
                 ),
               ),
+              if (savedSpeaker != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  child: InkSurface(
+                    key: const ValueKey('saved_home_speaker_card'),
+                    color: PrayerCastColors.canopyDeep,
+                    borderColor: PrayerCastColors.dawn,
+                    borderWidth: 1.4,
+                    borderRadius: 14,
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          savedSpeaker.displayName,
+                          style: text.titleMedium,
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton(
+                          key: const ValueKey('remove_home_speaker'),
+                          onPressed: _busy ? null : _confirmRemoveHomeSpeaker,
+                          child: Text(l10n.removeHomeSpeaker),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(28, 8, 16, 8),
                 child: Row(
@@ -135,7 +245,7 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                         shape: const CircleBorder(),
                         child: InkWell(
                           customBorder: const CircleBorder(),
-                          onTap: isInitialLoading || isRefreshing || _saving
+                          onTap: isInitialLoading || isRefreshing || _busy
                               ? null
                               : _rescan,
                           child: SizedBox(
@@ -194,7 +304,7 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                       selectedId: selectedId,
                       savingDeviceId: _savingDeviceId,
                       saveSucceeded: _saveSucceeded,
-                      enabled: !_saving,
+                      enabled: !_busy,
                       onSelect: _select,
                       onLongPress: _showIpDebug,
                     );

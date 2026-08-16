@@ -72,6 +72,27 @@ void main() {
     expect(await store.readHashes(), captured.hashes);
   });
 
+  test('clearHomeSpeaker drops Cast target and keeps LAN extras', () async {
+    await onboarding.saveHomeSpeaker(cast.devices.first);
+    await store.writeElectionSecret('keep-election');
+    await onboarding.writeCachedSpeakerScan(
+      SpeakerScanResult(devices: [cast.devices.first]),
+    );
+    final hashes = await store.readHashes();
+    expect(hashes, isNotEmpty);
+
+    await onboarding.clearHomeSpeaker();
+
+    expect(await onboarding.readSavedSpeaker(), isNull);
+    expect(await store.readHomeCastId(), isEmpty);
+    expect(await store.readHomeCastFriendlyName(), isEmpty);
+    expect(await store.readHashes(), hashes);
+    expect(await store.readElectionSecret(), 'keep-election');
+    final cached = await onboarding.readCachedSpeakerScan();
+    expect(cached, isNotNull);
+    expect(cached!.devices.single.deviceId, 'cast-home-1');
+  });
+
   test('cached scan reconstructs CastReceiver fields', () async {
     final original = cast.devices.first;
     await onboarding.writeCachedSpeakerScan(

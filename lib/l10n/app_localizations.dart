@@ -728,6 +728,42 @@ abstract class AppLocalizations {
   /// **'{name} saved as home speaker'**
   String speakerSaved(String name);
 
+  /// No description provided for @removeHomeSpeaker.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove home speaker'**
+  String get removeHomeSpeaker;
+
+  /// No description provided for @removeHomeSpeakerConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove home speaker?'**
+  String get removeHomeSpeakerConfirmTitle;
+
+  /// No description provided for @removeHomeSpeakerConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Prayer Cast will stop using this speaker. Your Google Home devices are not deleted.'**
+  String get removeHomeSpeakerConfirmBody;
+
+  /// No description provided for @removeHomeSpeakerConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get removeHomeSpeakerConfirm;
+
+  /// No description provided for @removeHomeSpeakerCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get removeHomeSpeakerCancel;
+
+  /// No description provided for @homeSpeakerRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Home speaker removed'**
+  String get homeSpeakerRemoved;
+
   /// No description provided for @speakerSaveFailed.
   ///
   /// In en, this message translates to:

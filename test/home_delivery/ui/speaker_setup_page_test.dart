@@ -462,4 +462,113 @@ void main() {
     expect(cast.discoverCalls, 1);
     expect(find.text('Nest Mini Kitchen'), findsOneWidget);
   });
+
+  testWidgets(
+    'saved speaker shows remove action; confirm clears Home and setup',
+    (tester) async {
+      final speaker = _speaker();
+      final store = MemoryFingerprintStore(
+        homeCastId: speaker.deviceId,
+        homeCastFriendlyName: speaker.friendlyName,
+        hashes: {'keep-lan-hash'},
+        electionSecret: 'keep-election',
+      );
+      final cast = FakeCastPlatform(devices: []);
+      final onboarding = _onboarding(cast: cast, store: store);
+      await onboarding.writeCachedSpeakerScan(
+        SpeakerScanResult(devices: [speaker]),
+      );
+      final navKey = GlobalKey<NavigatorState>();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            homeOnboardingProvider.overrideWith((ref) => onboarding),
+          ],
+          child: MaterialApp(
+            locale: const Locale('en'),
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            theme: PrayerCastTheme.light(),
+            navigatorKey: navKey,
+            home: const _HomeSpeakerStub(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Nest Mini Kitchen'), findsOneWidget);
+      expect(find.text('No speaker selected'), findsNothing);
+
+      await tester.tap(find.text('open setup'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('remove_home_speaker')), findsOneWidget);
+      expect(find.text('Remove home speaker'), findsOneWidget);
+      expect(cast.discoverCalls, 0);
+
+      await tester.tap(find.byKey(const ValueKey('remove_home_speaker')));
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('remove_home_speaker_dialog')),
+        findsOneWidget,
+      );
+      expect(find.text('Remove home speaker?'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('remove_home_speaker_confirm')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(await store.readHomeCastId(), isEmpty);
+      expect(await store.readHomeCastFriendlyName(), isEmpty);
+      expect(await store.readHashes(), {'keep-lan-hash'});
+      expect(await store.readElectionSecret(), 'keep-election');
+      expect(find.byKey(const ValueKey('remove_home_speaker')), findsNothing);
+      expect(find.byKey(const ValueKey('saved_home_speaker_card')), findsNothing);
+      expect(find.text('Nest Mini Kitchen'), findsOneWidget);
+      expect(cast.discoverCalls, 0);
+
+      navKey.currentState!.pop();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('open setup'), findsOneWidget);
+      expect(find.text('No speaker selected'), findsOneWidget);
+      expect(find.text('Nest Mini Kitchen'), findsNothing);
+    },
+  );
+}
+
+class _HomeSpeakerStub extends ConsumerWidget {
+  const _HomeSpeakerStub();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final speaker = ref.watch(savedHomeSpeakerProvider);
+    final label = speaker.when(
+      data: (s) => s?.displayName ?? 'No speaker selected',
+      loading: () => 'Speaker…',
+      error: (_, __) => 'No speaker selected',
+    );
+    return Scaffold(
+      body: Column(
+        children: [
+          Text(label, key: const ValueKey('home_speaker_label')),
+          TextButton(
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const SpeakerSetupPage(),
+                ),
+              );
+              ref.invalidate(savedHomeSpeakerProvider);
+            },
+            child: const Text('open setup'),
+          ),
+        ],
+      ),
+    );
+  }
 }

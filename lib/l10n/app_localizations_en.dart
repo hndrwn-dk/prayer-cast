@@ -368,6 +368,25 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get removeHomeSpeaker => 'Remove home speaker';
+
+  @override
+  String get removeHomeSpeakerConfirmTitle => 'Remove home speaker?';
+
+  @override
+  String get removeHomeSpeakerConfirmBody =>
+      'Prayer Cast will stop using this speaker. Your Google Home devices are not deleted.';
+
+  @override
+  String get removeHomeSpeakerConfirm => 'Remove';
+
+  @override
+  String get removeHomeSpeakerCancel => 'Cancel';
+
+  @override
+  String get homeSpeakerRemoved => 'Home speaker removed';
+
+  @override
   String speakerSaveFailed(String error) {
     return 'Failed to save speaker: $error';
   }

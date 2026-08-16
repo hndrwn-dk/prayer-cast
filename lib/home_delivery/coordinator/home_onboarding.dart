@@ -112,4 +112,14 @@ final class HomeOnboarding {
     await _store.writeHomeCastFriendlyName(receiver.friendlyName);
     return _lanFingerprint.captureHome();
   }
+
+  /// Clear the saved Cast target only (Signal A).
+  ///
+  /// Leaves LAN fingerprint hashes, per-install salt, household election
+  /// secret, and the last speaker-scan cache in place. Presence then falls
+  /// back to Signal B until a new speaker is saved.
+  Future<void> clearHomeSpeaker() async {
+    await _store.writeHomeCastId('');
+    await _store.writeHomeCastFriendlyName('');
+  }
 }
