@@ -47,7 +47,7 @@ import 'package:prayer_cast/support/open_support_url.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
-const String kAppVersion = '1.0.1+2';
+const String kAppVersion = '1.0.2+3';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -226,6 +226,9 @@ class _HomeShellState extends ConsumerState<_HomeShell>
 
   void _openSpiritualBenefitsFromLaunch(String prayer) {
     if (!mounted) return;
+    // Dry-run is for the alarm / Cast path. Opening the benefits card
+    // covers the FGS shade the Play demo needs to show.
+    if (PrayerDeliveryCoordinator.isDryRunPrayer(prayer)) return;
     _openSpiritualBenefits(prayer);
   }
 

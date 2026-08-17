@@ -79,11 +79,16 @@ final class PrayerDeliveryCoordinator {
   /// production queries for canonical names (`isha`, `maghrib`, …).
   static const String dryRunPrayerSuffix = '-dryrun';
 
-  /// Azan-in-1-minute dry-run. Wake is still T−120.
+  /// Azan-in-1-minute dry-run. Wake is still T−120 when that fits.
   static const Duration dryRunIn1Minute = Duration(minutes: 1);
 
   /// Azan-in-5-minutes dry-run. Wake is still T−120.
   static const Duration dryRunIn5Minutes = Duration(minutes: 5);
+
+  /// Floor for a clamped dry-run wake. A 1-minute slot cannot fit T−120;
+  /// delaying past 1s lets the user leave settings / lock so the FGS
+  /// shade can heads-up before azan.
+  static const Duration dryRunMinWakeDelay = Duration(seconds: 25);
 
   /// Strip [dryRunPrayerSuffix] so mode / voice lookup uses the real slot.
   static String canonicalPrayerName(String prayer) {
@@ -205,9 +210,9 @@ final class PrayerDeliveryCoordinator {
   /// Arm the same AlarmClock → FGS (with shade notification) → [onFired]
   /// path as a real prayer, with azan at now + [untilAzan] (wake at T−120
   /// when that is still in the future). A 1-minute dry-run cannot fit
-  /// T−120, so wake is clamped just after now; [onFired] still reconstructs
-  /// azan as wake + 120s. Replaces any previously scheduled wake, including
-  /// an earlier dry-run.
+  /// T−120, so wake is clamped to now + [dryRunMinWakeDelay]; [onFired]
+  /// still reconstructs azan as wake + 120s. Replaces any previously
+  /// scheduled wake, including an earlier dry-run.
   ///
   /// Uses the next upcoming prayer's name + voice so Cast/beep/phone mode
   /// matches that slot. Returns the azan instant for the inline confirmation.
@@ -235,7 +240,7 @@ final class PrayerDeliveryCoordinator {
     }
     final requestedAzan = now.add(untilAzan);
     final computedWake = requestedAzan.add(PresenceSchedule.scanOffset);
-    final minWake = now.add(const Duration(seconds: 1));
+    final minWake = now.add(dryRunMinWakeDelay);
     final wakeAt = computedWake.isAfter(minWake) ? computedWake : minWake;
     final wakeEpochMs = wakeAt.millisecondsSinceEpoch;
     final azanEpoch = wakeAt.subtract(PresenceSchedule.scanOffset);

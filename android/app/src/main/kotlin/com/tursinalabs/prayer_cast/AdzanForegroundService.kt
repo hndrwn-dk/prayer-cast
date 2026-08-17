@@ -112,13 +112,18 @@ class AdzanForegroundService : Service() {
         // with creator + sender BAL opt-in is still blocked on Pixel / API 36
         // when sender and creator share a UID (sameUid → BAL_BLOCK). Dart
         // therefore starts in this process via [PrayerCastFlutter.ensureStarted].
-        try {
-            val sendOpts = ActivityOptions.makeBasic()
-            applyBalSenderMode(sendOpts)
-            launchPi.send(this, 0, null, null, null, null, sendOpts.toBundle())
-        } catch (e: PendingIntent.CanceledException) {
-            Log.w(TAG, "delivery activity PendingIntent canceled; startActivity fallback", e)
-            startActivity(deliveryActivityIntent(prayer, scheduledEpochMs, voiceId, firedAtMs))
+        // Dry-run skips bringing MainActivity up so the FGS shade stays the
+        // visible popup (Play connectedDevice demo) instead of a full-screen
+        // card covering it.
+        if (!SpiritualBenefitsTeaser.isDryRun(prayer)) {
+            try {
+                val sendOpts = ActivityOptions.makeBasic()
+                applyBalSenderMode(sendOpts)
+                launchPi.send(this, 0, null, null, null, null, sendOpts.toBundle())
+            } catch (e: PendingIntent.CanceledException) {
+                Log.w(TAG, "delivery activity PendingIntent canceled; startActivity fallback", e)
+                startActivity(deliveryActivityIntent(prayer, scheduledEpochMs, voiceId, firedAtMs))
+            }
         }
 
         try {
@@ -228,18 +233,22 @@ class AdzanForegroundService : Service() {
         val title = SpiritualBenefitsTeaser.contentTitle(prayer, language)
         val text = SpiritualBenefitsTeaser.contentText(prayer, language)
         val expanded = SpiritualBenefitsTeaser.bigText(prayer, language)
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_lock_silent_mode_off)
             .setContentIntent(fullScreen)
-            .setFullScreenIntent(fullScreen, true)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setStyle(NotificationCompat.BigTextStyle().bigText(expanded))
             .setOngoing(true)
-            .build()
+        // Dry-run keeps a heads-up shade. Full-screen intent launches the
+        // activity over the lockscreen and hides that notification.
+        if (!SpiritualBenefitsTeaser.isDryRun(prayer)) {
+            builder.setFullScreenIntent(fullScreen, true)
+        }
+        return builder.build()
     }
 
     private fun applyBalCreatorMode(options: ActivityOptions) {

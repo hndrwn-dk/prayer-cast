@@ -786,7 +786,7 @@ void main() {
     expect(alarm.stopForegroundCalls, 1);
   });
 
-  test('scheduleDryRun 1 minute clamps wake just after now', () async {
+  test('scheduleDryRun 1 minute clamps wake after lock-screen delay', () async {
     final coordinator = buildCoordinator();
     await coordinator.start();
 
@@ -794,7 +794,7 @@ void main() {
       untilAzan: PrayerDeliveryCoordinator.dryRunIn1Minute,
     );
 
-    final expectedWake = t0.add(const Duration(seconds: 1));
+    final expectedWake = t0.add(PrayerDeliveryCoordinator.dryRunMinWakeDelay);
     expect(azanAt, expectedWake.subtract(PresenceSchedule.scanOffset));
     expect(alarm.scheduled, hasLength(1));
     expect(alarm.scheduled.single.epochMs, expectedWake.millisecondsSinceEpoch);
