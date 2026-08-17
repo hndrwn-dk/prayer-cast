@@ -22,6 +22,7 @@ final class AudioplayersLocalPrayerPlayer implements LocalPrayerPlayer {
   final AdzanAudioLoader _audioLoader;
   final HomeDeliveryLogger _logger;
   AudioPlayer? _player;
+  Completer<void>? _playingDone;
 
   @override
   Future<void> playBeep() {
@@ -47,7 +48,13 @@ final class AudioplayersLocalPrayerPlayer implements LocalPrayerPlayer {
   }
 
   @override
-  Future<void> stop() => _release();
+  Future<void> stop() async {
+    final done = _playingDone;
+    if (done != null && !done.isCompleted) {
+      done.complete();
+    }
+    await _release();
+  }
 
   Future<void> _play({
     required String assetId,
@@ -90,8 +97,14 @@ final class AudioplayersLocalPrayerPlayer implements LocalPrayerPlayer {
 
     if (!waitUntilDone) return;
 
+    final done = Completer<void>();
+    StreamSubscription<void>? completeSub;
+    completeSub = player.onPlayerComplete.listen((_) {
+      if (!done.isCompleted) done.complete();
+    });
+    _playingDone = done;
     try {
-      await player.onPlayerComplete.first.timeout(timeout);
+      await done.future.timeout(timeout);
     } on TimeoutException {
       _logger.warn(
         'Local play $assetId timed out after $timeout',
@@ -99,6 +112,10 @@ final class AudioplayersLocalPrayerPlayer implements LocalPrayerPlayer {
       );
       await player.stop();
     } finally {
+      await completeSub.cancel();
+      if (identical(_playingDone, done)) {
+        _playingDone = null;
+      }
       if (identical(_player, player)) {
         await _release();
       }

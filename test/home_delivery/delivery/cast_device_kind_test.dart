@@ -18,7 +18,50 @@ void main() {
       expect(looksLikeTvCastTarget('Chromecast Speaker'), isFalse);
     });
 
+    test('hides common smart-TV brands and SKUs', () {
+      const tvs = [
+        'Samsung QN55Q80C',
+        'AU8000 Living Room',
+        'LG OLED55C3',
+        'Sony XR-55A80L',
+        'KD-55X80K',
+        'Hisense U7K',
+        'TCL 55C745',
+        'Philips PUS8507',
+        'The Frame',
+        'Google TV Bedroom',
+        'Chromecast with Google TV',
+        'Roku TV',
+        'Fire TV Stick',
+        'Mi Box',
+        'Xiaomi TV 55',
+        'Bravia 65 inch',
+        'LG 55NANO80',
+        'Chromecast HD',
+        'Chromecast Ultra',
+        'Google Streamer',
+        'Vizio Living Room',
+        'Hisense A6H',
+        'PRIMS Q55U',
+        'Onn Google TV',
+      ];
+      for (final name in tvs) {
+        expect(looksLikeTvCastTarget(name), isTrue, reason: name);
+      }
+    });
+
+    test('hides smart displays and the reported household TVs', () {
+      expect(looksLikeTvCastTarget('Master Room Display'), isTrue);
+      expect(looksLikeTvCastTarget('Prism-Q55U'), isTrue);
+      expect(looksLikeTvCastTarget('Nest Hub'), isTrue);
+      expect(looksLikeTvCastTarget('Google Nest Hub Max'), isTrue);
+    });
+
     test('keeps speakers, Nest, and groups', () {
+      expect(looksLikeTvCastTarget('Living Room speaker'), isFalse);
+      expect(looksLikeTvCastTarget('Boys Bedroom speaker'), isFalse);
+      expect(looksLikeTvCastTarget('Azan Speaker'), isFalse);
+      expect(looksLikeTvCastTarget('TV speaker'), isFalse);
       expect(looksLikeTvCastTarget('Kitchen Nest'), isFalse);
       expect(looksLikeTvCastTarget('Nest Mini'), isFalse);
       expect(looksLikeTvCastTarget('Nest Audio'), isFalse);
@@ -26,6 +69,9 @@ void main() {
       expect(looksLikeTvCastTarget('Speaker group'), isFalse);
       expect(looksLikeTvCastTarget('Living Room group'), isFalse);
       expect(looksLikeTvCastTarget('Upstairs speaker group'), isFalse);
+      expect(looksLikeTvCastTarget('Samsung soundbar'), isFalse);
+      expect(looksLikeTvCastTarget('Roku Streambar'), isFalse);
+      expect(looksLikeTvCastTarget('Sonos Arc'), isFalse);
     });
 
     test('group wins over TV-ish words in the same name', () {
@@ -51,9 +97,15 @@ void main() {
         'Chromecast',
         'Speaker group',
         'Chromecast Audio',
+        'Master Room Display',
+        'Prism-Q55U',
+        'Azan Speaker',
       ];
       final kept = filterSpeakerCastTargets(names, (n) => n);
-      expect(kept, ['Kitchen Nest', 'Speaker group', 'Chromecast Audio']);
+      expect(
+        kept,
+        ['Kitchen Nest', 'Speaker group', 'Chromecast Audio', 'Azan Speaker'],
+      );
     });
   });
 }

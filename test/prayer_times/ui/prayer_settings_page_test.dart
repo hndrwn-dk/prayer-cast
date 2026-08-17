@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui' show FakeViewPadding;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -363,6 +364,24 @@ void main() {
     expect(find.text('Save'), findsOneWidget);
   });
 
+  testWidgets('Save button sits above the Android navigation inset',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 915);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.padding = FakeViewPadding.zero;
+    tester.view.viewPadding = const FakeViewPadding(bottom: 48);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPadding);
+    addTearDown(tester.view.resetViewPadding);
+
+    await _pumpSettings(tester);
+
+    final save = find.widgetWithText(FilledButton, 'Save');
+    expect(save, findsOneWidget);
+    expect(tester.getRect(save).bottom, lessThanOrEqualTo(915 - 48));
+  });
+
   testWidgets('location disclosure appears before resolve when not granted',
       (tester) async {
     final resolver = _FakeLocationResolver();
@@ -619,6 +638,12 @@ final class _FakeExactAlarm implements ExactAlarmPlatform {
 
   @override
   Future<void> stopForegroundService() async {}
+
+  @override
+  Future<void> showPhonePlaybackControls({required String prayer}) async {}
+
+  @override
+  Stream<void> get onStopLocalPlayback => const Stream.empty();
 
   @override
   Future<ScheduledAlarm?> readScheduled() async => null;

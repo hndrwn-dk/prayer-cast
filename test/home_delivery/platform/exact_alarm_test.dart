@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prayer_cast/home_delivery/logging/outcome.dart';
@@ -22,6 +24,7 @@ void main() {
         case 'cancel':
         case 'requestExactAlarmPermission':
         case 'stopForegroundService':
+        case 'showPhonePlaybackControls':
           return null;
         case 'canScheduleExactAlarms':
           return true;
@@ -167,6 +170,32 @@ void main() {
       await expectLater(alarm.cancel(), completes);
       await expectLater(alarm.requestExactAlarmPermission(), completes);
       await expectLater(alarm.stopForegroundService(), completes);
+      await expectLater(
+        alarm.showPhonePlaybackControls(prayer: 'maghrib'),
+        completes,
+      );
     },
   );
+
+  test('showPhonePlaybackControls invokes MethodChannel', () async {
+    final alarm = ExactAlarm();
+    await alarm.showPhonePlaybackControls(prayer: 'isha');
+    expect(calls.last.method, 'showPhonePlaybackControls');
+    expect(calls.last.arguments, {'prayer': 'isha'});
+  });
+
+  test('native stopLocalPlayback emits onStopLocalPlayback', () async {
+    final alarm = ExactAlarm();
+    final stopped = Completer<void>();
+    alarm.onStopLocalPlayback.listen((_) {
+      if (!stopped.isCompleted) stopped.complete();
+    });
+    const codec = StandardMethodCodec();
+    await messenger.handlePlatformMessage(
+      'prayer_cast/exact_alarm',
+      codec.encodeMethodCall(const MethodCall('stopLocalPlayback')),
+      (_) {},
+    );
+    await stopped.future.timeout(const Duration(seconds: 1));
+  });
 }

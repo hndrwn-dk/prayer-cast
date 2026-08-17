@@ -348,10 +348,14 @@ class ForestScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(
         statusBarColor: Colors.transparent,
-        systemNavigationBarColor: backgroundColor,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarDividerColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarContrastEnforced: false,
       ),
       child: Scaffold(
         backgroundColor: backgroundColor,
@@ -364,7 +368,11 @@ class ForestScaffold extends StatelessWidget {
               children: [
                 SafeArea(bottom: false, child: header),
                 Expanded(child: body),
-                if (bottom != null) SafeArea(top: false, child: bottom!),
+                if (bottom != null)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: bottomInset),
+                    child: bottom!,
+                  ),
               ],
             ),
           ],

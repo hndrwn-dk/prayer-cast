@@ -57,6 +57,10 @@ class AdzanForegroundService : Service() {
         stopSelf()
     }
 
+    private var lastPrayer: String = "adzan"
+    private var lastLaunchPi: PendingIntent? = null
+    private var phonePlayback: Boolean = false
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -67,8 +71,30 @@ class AdzanForegroundService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+        if (intent?.action == ACTION_STOP_PLAYBACK) {
+            ExactAlarmPlugin.requestStopLocalPlayback()
+            return START_STICKY
+        }
+        if (intent?.action == ACTION_SHOW_PHONE_PLAYBACK) {
+            val prayer = intent.getStringExtra(ExactAlarmPlugin.EXTRA_PRAYER) ?: lastPrayer
+            lastPrayer = prayer
+            phonePlayback = true
+            ensureChannel()
+            val pi = lastLaunchPi ?: deliveryActivityPendingIntent(
+                prayer = prayer,
+                scheduledEpochMs = 0L,
+                voiceId = "",
+                firedAtMs = System.currentTimeMillis(),
+            )
+            lastLaunchPi = pi
+            val notification = buildNotification(prayer, pi)
+            startForegroundCompat(notification)
+            return START_STICKY
+        }
 
         val prayer = intent?.getStringExtra(ExactAlarmPlugin.EXTRA_PRAYER) ?: "adzan"
+        lastPrayer = prayer
+        phonePlayback = false
         val scheduledEpochMs =
             intent?.getLongExtra(ExactAlarmPlugin.EXTRA_SCHEDULED_EPOCH_MS, 0L) ?: 0L
         val voiceId = intent?.getStringExtra(ExactAlarmPlugin.EXTRA_VOICE_ID) ?: ""
@@ -84,15 +110,8 @@ class AdzanForegroundService : Service() {
             firedAtMs = firedAtMs,
         )
         val notification = buildNotification(prayer, launchPi)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
+        lastLaunchPi = launchPi
+        startForegroundCompat(notification)
 
         acquireLocks()
         timeoutHandler.removeCallbacks(stopAfterWindow)
@@ -176,6 +195,18 @@ class AdzanForegroundService : Service() {
         wakeLock = null
     }
 
+    private fun startForegroundCompat(notification: Notification) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
+    }
+
     private fun ensureChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = getSystemService(NotificationManager::class.java) ?: return
@@ -230,7 +261,11 @@ class AdzanForegroundService : Service() {
 
     private fun buildNotification(prayer: String, fullScreen: PendingIntent): Notification {
         val language = SpiritualBenefitsTeaser.shadeLanguage(this)
-        val title = SpiritualBenefitsTeaser.contentTitle(prayer, language)
+        val title = if (phonePlayback) {
+            SpiritualBenefitsTeaser.playingTitle(language)
+        } else {
+            SpiritualBenefitsTeaser.contentTitle(prayer, language)
+        }
         val text = SpiritualBenefitsTeaser.contentText(prayer, language)
         val expanded = SpiritualBenefitsTeaser.bigText(prayer, language)
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
@@ -243,12 +278,31 @@ class AdzanForegroundService : Service() {
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setStyle(NotificationCompat.BigTextStyle().bigText(expanded))
             .setOngoing(true)
+        if (phonePlayback) {
+            builder.addAction(
+                android.R.drawable.ic_media_pause,
+                SpiritualBenefitsTeaser.stopLabel(language),
+                stopPlaybackPendingIntent(),
+            )
+        }
         // Dry-run keeps a heads-up shade. Full-screen intent launches the
         // activity over the lockscreen and hides that notification.
-        if (!SpiritualBenefitsTeaser.isDryRun(prayer)) {
+        if (!phonePlayback && !SpiritualBenefitsTeaser.isDryRun(prayer)) {
             builder.setFullScreenIntent(fullScreen, true)
         }
         return builder.build()
+    }
+
+    private fun stopPlaybackPendingIntent(): PendingIntent {
+        val stop = Intent(this, AdzanForegroundService::class.java).apply {
+            action = ACTION_STOP_PLAYBACK
+        }
+        return PendingIntent.getService(
+            this,
+            REQ_STOP_PLAYBACK,
+            stop,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 
     private fun applyBalCreatorMode(options: ActivityOptions) {
@@ -278,10 +332,23 @@ class AdzanForegroundService : Service() {
     companion object {
         const val ACTION_START = "com.tursinalabs.prayer_cast.ACTION_START_FGS"
         const val ACTION_STOP = "com.tursinalabs.prayer_cast.ACTION_STOP_FGS"
+        const val ACTION_SHOW_PHONE_PLAYBACK =
+            "com.tursinalabs.prayer_cast.ACTION_SHOW_PHONE_PLAYBACK"
+        const val ACTION_STOP_PLAYBACK =
+            "com.tursinalabs.prayer_cast.ACTION_STOP_PLAYBACK"
         private const val TAG = "AdzanForegroundService"
         private const val CHANNEL_ID = "adzan_delivery_alarm"
         private const val NOTIFICATION_ID = 42
         private const val REQ_LAUNCH = 1003
+        private const val REQ_STOP_PLAYBACK = 1004
         private const val DELIVERY_WINDOW_MS = 10 * 60 * 1000L
+
+        fun showPhonePlayback(context: Context, prayer: String) {
+            val intent = Intent(context, AdzanForegroundService::class.java).apply {
+                action = ACTION_SHOW_PHONE_PLAYBACK
+                putExtra(ExactAlarmPlugin.EXTRA_PRAYER, prayer)
+            }
+            androidx.core.content.ContextCompat.startForegroundService(context, intent)
+        }
     }
 }

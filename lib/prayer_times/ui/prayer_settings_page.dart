@@ -891,7 +891,12 @@ class _StickySaveBar extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          12,
+          20,
+          16 + MediaQuery.viewPaddingOf(context).bottom,
+        ),
         child: SizedBox(
           height: PrayerCastTheme.minTap,
           width: double.infinity,

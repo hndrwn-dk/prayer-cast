@@ -42,10 +42,16 @@ abstract interface class ExactAlarmPlatform {
 
   Future<void> stopForegroundService();
 
+  /// Add a Stop action to the adzan FGS shade while phone adhan plays.
+  Future<void> showPhonePlaybackControls({required String prayer});
+
   /// Currently armed alarm, if any (from native prefs).
   Future<ScheduledAlarm?> readScheduled();
 
   Stream<AlarmFiredEvent> get onFired;
+
+  /// User tapped Stop on the phone-adhan notification.
+  Stream<void> get onStopLocalPlayback;
 }
 
 /// MethodChannel bridge to Android `AlarmManager.setAlarmClock` (spec §5.5).
@@ -68,6 +74,19 @@ final class ExactAlarm implements ExactAlarmPlatform {
   final EventChannel _events;
   final HomeDeliveryLogger _logger;
   Stream<AlarmFiredEvent>? _onFired;
+  final StreamController<void> _stopLocalPlayback =
+      StreamController<void>.broadcast();
+  bool _nativeCallbacksBound = false;
+
+  void _ensureNativeCallbacks() {
+    if (_nativeCallbacksBound) return;
+    _nativeCallbacksBound = true;
+    _methods.setMethodCallHandler((call) async {
+      if (call.method == 'stopLocalPlayback') {
+        _stopLocalPlayback.add(null);
+      }
+    });
+  }
 
   @override
   Future<void> scheduleNext({
@@ -176,6 +195,36 @@ final class ExactAlarm implements ExactAlarmPlatform {
         cause: e,
       );
     }
+  }
+
+  @override
+  Future<void> showPhonePlaybackControls({required String prayer}) async {
+    _ensureNativeCallbacks();
+    try {
+      await _methods.invokeMethod<void>('showPhonePlaybackControls', {
+        'prayer': prayer,
+      });
+    } on MissingPluginException catch (e, st) {
+      _logger.warn(
+        'showPhonePlaybackControls: exact_alarm plugin missing (no-op)',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'showPhonePlaybackControls failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  @override
+  Stream<void> get onStopLocalPlayback {
+    _ensureNativeCallbacks();
+    return _stopLocalPlayback.stream;
   }
 
   @override

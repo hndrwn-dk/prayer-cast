@@ -73,6 +73,18 @@ final class _FakeExactAlarm implements ExactAlarmPlatform {
   }
 
   @override
+  Future<void> showPhonePlaybackControls({required String prayer}) async {
+    callOrder.add('showPhonePlaybackControls');
+  }
+
+  final _stopLocalPlayback = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get onStopLocalPlayback => _stopLocalPlayback.stream;
+
+  void emitStopLocalPlayback() => _stopLocalPlayback.add(null);
+
+  @override
   Future<ScheduledAlarm?> readScheduled() async {
     if (scheduled.isEmpty) return null;
     final s = scheduled.single;
@@ -85,7 +97,10 @@ final class _FakeExactAlarm implements ExactAlarmPlatform {
 
   void emit(AlarmFiredEvent event) => _fireController.add(event);
 
-  Future<void> dispose() => _fireController.close();
+  Future<void> dispose() async {
+    await _stopLocalPlayback.close();
+    await _fireController.close();
+  }
 }
 
 final class _CountingNextPrayer implements NextPrayerProvider {
@@ -201,6 +216,35 @@ final class _FakeLocalPlayer implements LocalPrayerPlayer {
 
   @override
   Future<void> stop() async => calls.add('stop');
+}
+
+final class _HangingLocalPlayer implements LocalPrayerPlayer {
+  _HangingLocalPlayer({required this.started, required this.finished});
+
+  final Completer<void> started;
+  final Completer<void> finished;
+  final calls = <String>[];
+  final _play = Completer<void>();
+
+  @override
+  Future<void> playBeep() async => calls.add('beep');
+
+  @override
+  Future<void> playAdhan({
+    required String voiceId,
+    bool waitUntilDone = true,
+  }) async {
+    calls.add('adhan:$voiceId');
+    if (!started.isCompleted) started.complete();
+    await _play.future;
+    if (!finished.isCompleted) finished.complete();
+  }
+
+  @override
+  Future<void> stop() async {
+    calls.add('stop');
+    if (!_play.isCompleted) _play.complete();
+  }
 }
 
 void main() {
@@ -706,7 +750,7 @@ void main() {
     expect(local.calls, isEmpty);
   });
 
-  test('beep mode plays locally and does not call Cast', () async {
+  test('beep mode waits until azan then plays locally', () async {
     final local = _FakeLocalPlayer();
     final coordinator = PrayerDeliveryCoordinator(
       exactAlarm: alarm,
@@ -728,6 +772,8 @@ void main() {
     );
     await coordinator.start();
     final wakeMs = alarm.scheduled.single.epochMs;
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
+        .subtract(PresenceSchedule.scanOffset);
     clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
     alarm.emit(
       AlarmFiredEvent(
@@ -737,6 +783,12 @@ void main() {
         voiceId: 'makkah',
       ),
     );
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(deliveries, isEmpty);
+    expect(local.calls, isEmpty);
+    expect(alarm.stopForegroundCalls, 0);
+
+    clock.advanceTo(azanAt);
     for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
       await Future<void>.delayed(const Duration(milliseconds: 10));
     }
@@ -746,7 +798,7 @@ void main() {
     expect(alarm.stopForegroundCalls, 1);
   });
 
-  test('adhanPhone mode plays local voice and does not call Cast', () async {
+  test('adhanPhone mode waits until azan then plays local voice', () async {
     final local = _FakeLocalPlayer();
     final coordinator = PrayerDeliveryCoordinator(
       exactAlarm: alarm,
@@ -768,6 +820,8 @@ void main() {
     );
     await coordinator.start();
     final wakeMs = alarm.scheduled.single.epochMs;
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
+        .subtract(PresenceSchedule.scanOffset);
     clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
     alarm.emit(
       AlarmFiredEvent(
@@ -777,12 +831,65 @@ void main() {
         voiceId: 'makkah',
       ),
     );
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(deliveries, isEmpty);
+    expect(local.calls, isEmpty);
+    expect(alarm.stopForegroundCalls, 0);
+
+    clock.advanceTo(azanAt);
     for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
       await Future<void>.delayed(const Duration(milliseconds: 10));
     }
 
     expect(deliveries, isEmpty);
     expect(local.calls, ['adhan:makkah']);
+    expect(alarm.callOrder, contains('showPhonePlaybackControls'));
+    expect(alarm.stopForegroundCalls, 1);
+  });
+
+  test('adhanPhone Stop on the shade stops local playback', () async {
+    final started = Completer<void>();
+    final finished = Completer<void>();
+    final local = _HangingLocalPlayer(started: started, finished: finished);
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      deliveryModes: _FakeModes(PrayerDeliveryMode.adhanPhone),
+      localPlayer: local,
+      runDelivery: (request) async {
+        deliveries.add(request);
+        return const DeliveryAttemptResult(
+          sessionId: 'sess',
+          outcome: Outcome.played,
+          role: 'SOLO',
+        );
+      },
+      clock: clock,
+    );
+    await coordinator.start();
+    final wakeMs = alarm.scheduled.single.epochMs;
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
+        .subtract(PresenceSchedule.scanOffset);
+    clock.advanceTo(azanAt);
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
+    );
+    await started.future;
+    alarm.emitStopLocalPlayback();
+    await finished.future;
+    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+
+    expect(local.calls, ['adhan:makkah', 'stop']);
     expect(alarm.stopForegroundCalls, 1);
   });
 

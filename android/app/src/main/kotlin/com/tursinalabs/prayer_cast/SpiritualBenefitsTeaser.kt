@@ -157,6 +157,14 @@ object SpiritualBenefitsTeaser {
         return if (language == "id") "Menyiapkan adzan" else "Preparing adzan"
     }
 
+    fun playingTitle(language: String = "en"): String {
+        return if (language == "id") "Memutar adzan" else "Playing adhan"
+    }
+
+    fun stopLabel(language: String = "en"): String {
+        return if (language == "id") "Berhenti" else "Stop"
+    }
+
     fun contentTitle(prayer: String, language: String = "en"): String {
         return preparingTitle(language)
     }

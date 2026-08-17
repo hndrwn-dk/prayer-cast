@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../prayer_times/prayer_prefs.dart';
 import '../common/clock.dart';
 import '../common/logger.dart';
+import '../common/scheduler.dart';
 import '../delivery/delivery_orchestrator.dart';
 import '../delivery/delivery_timing.dart';
 import '../logging/delivery_log_dao.dart';
@@ -381,6 +382,10 @@ final class PrayerDeliveryCoordinator {
         'Local beep for ${event.prayer} (skip Cast)',
         tag: 'PrayerDeliveryCoordinator',
       );
+      await _waitUntilAzan(azanEpoch);
+      if (DeliveryTiming.isTooLate(scheduledAzan: azanEpoch, now: _clock.now())) {
+        return;
+      }
       await _localPlayer.playBeep();
       return;
     }
@@ -390,7 +395,19 @@ final class PrayerDeliveryCoordinator {
         'Local adhan for ${event.prayer} voice=$voiceId (skip Cast)',
         tag: 'PrayerDeliveryCoordinator',
       );
-      await _localPlayer.playAdhan(voiceId: voiceId);
+      await _waitUntilAzan(azanEpoch);
+      if (DeliveryTiming.isTooLate(scheduledAzan: azanEpoch, now: _clock.now())) {
+        return;
+      }
+      await _exactAlarm.showPhonePlaybackControls(prayer: event.prayer);
+      final stopSub = _exactAlarm.onStopLocalPlayback.listen((_) {
+        unawaited(_localPlayer.stop());
+      });
+      try {
+        await _localPlayer.playAdhan(voiceId: voiceId);
+      } finally {
+        await stopSub.cancel();
+      }
       return;
     }
 
@@ -440,6 +457,24 @@ final class PrayerDeliveryCoordinator {
         error: e,
         stackTrace: st,
       );
+    }
+  }
+
+  /// Beep / phone adhan must wait until T, same as Cast loadMedia.
+  /// Wake is T−120; playing at wake made phone adhan two minutes early.
+  Future<void> _waitUntilAzan(DateTime azanEpoch) async {
+    final clock = _clock;
+    if (clock is Scheduler) {
+      await clock.waitUntil(azanEpoch);
+      return;
+    }
+    while (_clock.now().isBefore(azanEpoch)) {
+      final remaining = azanEpoch.difference(_clock.now());
+      if (remaining <= Duration.zero) return;
+      final slice = remaining > const Duration(milliseconds: 50)
+          ? const Duration(milliseconds: 50)
+          : remaining;
+      await Future<void>.delayed(slice);
     }
   }
 

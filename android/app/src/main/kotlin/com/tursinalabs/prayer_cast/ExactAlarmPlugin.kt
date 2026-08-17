@@ -26,6 +26,15 @@ class ExactAlarmPlugin(
 ) : MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
 
     private var eventSink: EventChannel.EventSink? = null
+    private var channel: MethodChannel? = null
+
+    fun attachChannel(methodChannel: MethodChannel) {
+        channel = methodChannel
+    }
+
+    fun notifyStopLocalPlayback() {
+        channel?.invokeMethod("stopLocalPlayback", null)
+    }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
@@ -64,6 +73,11 @@ class ExactAlarmPlugin(
             "stopForegroundService" -> {
                 val intent = Intent(context, AdzanForegroundService::class.java)
                 context.stopService(intent)
+                result.success(null)
+            }
+            "showPhonePlaybackControls" -> {
+                val prayer = call.argument<String>("prayer") ?: "adzan"
+                AdzanForegroundService.showPhonePlayback(context, prayer)
                 result.success(null)
             }
             "getScheduled" -> {
@@ -144,13 +158,20 @@ class ExactAlarmPlugin(
         @Volatile
         private var pendingFire: Map<String, Any>? = null
 
+        fun requestStopLocalPlayback() {
+            instance?.notifyStopLocalPlayback()
+        }
+
         fun registerWith(flutterEngine: FlutterEngine, context: Context): ExactAlarmPlugin {
             val plugin = ExactAlarmPlugin(context.applicationContext)
             instance = plugin
             MethodChannel(
                 flutterEngine.dartExecutor.binaryMessenger,
                 CHANNEL,
-            ).setMethodCallHandler(plugin)
+            ).also { method ->
+                plugin.attachChannel(method)
+                method.setMethodCallHandler(plugin)
+            }
             EventChannel(
                 flutterEngine.dartExecutor.binaryMessenger,
                 EVENT_CHANNEL,
