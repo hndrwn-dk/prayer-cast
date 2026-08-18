@@ -50,11 +50,11 @@ void main() {
       }
     });
 
-    test('hides smart displays and the reported household TVs', () {
-      expect(looksLikeTvCastTarget('Master Room Display'), isTrue);
+    test('keeps Nest Hub speakers but hides reported TVs', () {
+      expect(looksLikeTvCastTarget('Master Room Display'), isFalse);
+      expect(looksLikeTvCastTarget('Nest Hub'), isFalse);
+      expect(looksLikeTvCastTarget('Google Nest Hub Max'), isFalse);
       expect(looksLikeTvCastTarget('Prism-Q55U'), isTrue);
-      expect(looksLikeTvCastTarget('Nest Hub'), isTrue);
-      expect(looksLikeTvCastTarget('Google Nest Hub Max'), isTrue);
     });
 
     test('keeps speakers, Nest, and groups', () {
@@ -104,7 +104,13 @@ void main() {
       final kept = filterSpeakerCastTargets(names, (n) => n);
       expect(
         kept,
-        ['Kitchen Nest', 'Speaker group', 'Chromecast Audio', 'Azan Speaker'],
+        [
+          'Kitchen Nest',
+          'Speaker group',
+          'Chromecast Audio',
+          'Master Room Display',
+          'Azan Speaker',
+        ],
       );
     });
   });

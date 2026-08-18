@@ -12,9 +12,10 @@ final _tvPlatform = RegExp(
 
 final _tvWord = RegExp(r'\btv\b|television');
 
-final _displayOrHub = RegExp(
-  r'\bdisplay\b|nest\s*hub|\bhub max\b|smart\s*display|'
-  r'lenovo\s*smart\s*display',
+/// Nest Hub / Hub Max and similar Cast speakers with a screen — not TVs.
+final _nestHubSpeaker = RegExp(
+  r'nest\s*hub|\bhub max\b|google\s*nest\s*hub|'
+  r'smart\s*display|lenovo\s*smart\s*display',
 );
 
 final _panelTech = RegExp(
@@ -46,14 +47,18 @@ final _tvSku = RegExp(
   r'|\bthe frame\b|\bthe serif\b|\bthe preview\b|\bcrystal\s*uhd\b',
 );
 
-/// True when [friendlyName] looks like a TV, stick, or smart display.
+/// True when [friendlyName] looks like a TV or Cast stick.
 ///
-/// Keeps Chromecast Audio, Nest speakers, soundbars, and Google Home groups.
+/// Keeps Chromecast Audio, Nest Hub, Nest speakers, soundbars, and groups.
 bool looksLikeTvCastTarget(String friendlyName) {
   final n = friendlyName.toLowerCase().trim();
   if (n.isEmpty) return false;
 
   if (_groupWord.hasMatch(n)) {
+    return false;
+  }
+
+  if (_nestHubSpeaker.hasMatch(n)) {
     return false;
   }
 
@@ -72,7 +77,6 @@ bool looksLikeTvCastTarget(String friendlyName) {
 
   if (_tvPlatform.hasMatch(n) ||
       _tvWord.hasMatch(n) ||
-      _displayOrHub.hasMatch(n) ||
       _panelTech.hasMatch(n) ||
       _tvBrand.hasMatch(n) ||
       _tvSku.hasMatch(n)) {
