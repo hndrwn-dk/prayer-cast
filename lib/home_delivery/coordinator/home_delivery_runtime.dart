@@ -94,6 +94,7 @@ final class HomeDeliveryRuntime {
     final localPlayer = AudioplayersLocalPrayerPlayer(
       audioLoader: audioLoader,
       logger: logger,
+      nativeBeep: exactAlarm.playLocalBeep,
     );
     final castTester = AdzanCastTester(
       castClient: castClient,

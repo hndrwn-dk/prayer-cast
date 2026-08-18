@@ -715,6 +715,15 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
     }
     setState(() => _saving = true);
     try {
+      final alreadyGranted = await widget.postNotifications.isGranted();
+      if (!alreadyGranted) {
+        if (!mounted) return;
+        final proceed = await widget.showNotificationDisclosure(context);
+        if (proceed && mounted) {
+          await widget.postNotifications.request();
+        }
+      }
+      if (!mounted) return;
       await ref.read(prayerPrefsStoreProvider).write(prefs);
       ref.read(adhanNextPrayerProvider).invalidateCache();
       ref.invalidate(prayerPrefsProvider);

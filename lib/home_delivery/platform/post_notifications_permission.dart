@@ -12,6 +12,7 @@ final class PostNotificationsPermission {
     this.androidSdkInt,
     this.readGranted,
     this.requestGrant,
+    this.openSettingsPage,
   });
 
   /// Test hook. Production uses [Platform.isAndroid].
@@ -25,6 +26,9 @@ final class PostNotificationsPermission {
 
   /// Test / injection hook for the API 33+ system prompt.
   final Future<bool> Function()? requestGrant;
+
+  /// Test / injection hook to open the system app-notification screen.
+  final Future<bool> Function()? openSettingsPage;
 
   Future<bool> isGranted() async {
     final android = isAndroid ?? Platform.isAndroid;
@@ -42,6 +46,14 @@ final class PostNotificationsPermission {
     if (sdk != null && sdk < 33) return true;
     final ask = requestGrant ?? _requestNotification;
     return ask();
+  }
+
+  /// Opens the system app settings so the user can unblock notifications.
+  Future<bool> openSettings() async {
+    final android = isAndroid ?? Platform.isAndroid;
+    if (!android) return true;
+    final open = openSettingsPage ?? openAppSettings;
+    return open();
   }
 
   static Future<bool> _statusGranted() async {

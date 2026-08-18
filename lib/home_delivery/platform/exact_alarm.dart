@@ -45,6 +45,9 @@ abstract interface class ExactAlarmPlatform {
   /// Add a Stop action to the adzan FGS shade while phone adhan plays.
   Future<void> showPhonePlaybackControls({required String prayer});
 
+  /// Play the bundled beep on [STREAM_ALARM] (audible with the screen off).
+  Future<void> playLocalBeep();
+
   /// Currently armed alarm, if any (from native prefs).
   Future<ScheduledAlarm?> readScheduled();
 
@@ -218,6 +221,28 @@ final class ExactAlarm implements ExactAlarmPlatform {
         error: e,
         stackTrace: st,
       );
+    }
+  }
+
+  @override
+  Future<void> playLocalBeep() async {
+    try {
+      await _methods.invokeMethod<void>('playLocalBeep');
+    } on MissingPluginException catch (e, st) {
+      _logger.warn(
+        'playLocalBeep: exact_alarm plugin missing (no-op)',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'playLocalBeep failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+      throw ExactAlarmFailure('playLocalBeep failed: ${e.message}', cause: e);
     }
   }
 

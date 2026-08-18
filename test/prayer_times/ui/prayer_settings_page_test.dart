@@ -643,6 +643,9 @@ final class _FakeExactAlarm implements ExactAlarmPlatform {
   Future<void> showPhonePlaybackControls({required String prayer}) async {}
 
   @override
+  Future<void> playLocalBeep() async {}
+
+  @override
   Stream<void> get onStopLocalPlayback => const Stream.empty();
 
   @override

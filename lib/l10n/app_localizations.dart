@@ -284,6 +284,24 @@ abstract class AppLocalizations {
   /// **'Open alarm settings'**
   String get exactAlarmOpenSettings;
 
+  /// No description provided for @notificationsBlockedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are blocked'**
+  String get notificationsBlockedTitle;
+
+  /// No description provided for @notificationsBlockedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Adhan on this phone needs notification permission. Open settings and allow notifications for Prayer Cast.'**
+  String get notificationsBlockedBody;
+
+  /// No description provided for @notificationsBlockedAllow.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow notifications'**
+  String get notificationsBlockedAllow;
+
   /// No description provided for @language.
   ///
   /// In en, this message translates to:

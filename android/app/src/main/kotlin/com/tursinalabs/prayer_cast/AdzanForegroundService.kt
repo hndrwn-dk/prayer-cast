@@ -127,24 +127,11 @@ class AdzanForegroundService : Service() {
             )
         }
 
-        // Full-screen intent covers lockscreen / screen-off. PendingIntent.send
-        // with creator + sender BAL opt-in is still blocked on Pixel / API 36
-        // when sender and creator share a UID (sameUid → BAL_BLOCK). Dart
-        // therefore starts in this process via [PrayerCastFlutter.ensureStarted].
-        // Dry-run skips bringing MainActivity up so the FGS shade stays the
-        // visible popup (Play connectedDevice demo) instead of a full-screen
-        // card covering it.
-        if (!SpiritualBenefitsTeaser.isDryRun(prayer)) {
-            try {
-                val sendOpts = ActivityOptions.makeBasic()
-                applyBalSenderMode(sendOpts)
-                launchPi.send(this, 0, null, null, null, null, sendOpts.toBundle())
-            } catch (e: PendingIntent.CanceledException) {
-                Log.w(TAG, "delivery activity PendingIntent canceled; startActivity fallback", e)
-                startActivity(deliveryActivityIntent(prayer, scheduledEpochMs, voiceId, firedAtMs))
-            }
-        }
-
+        // Dart runs in this process via [PrayerCastFlutter.ensureStarted].
+        // Do not also PendingIntent.send() here: FSI + contentIntent already
+        // open MainActivity. send() + FSI on phones that allow BAL opens the
+        // spiritual-benefits card twice.
+        // Dry-run skips FSI so the FGS shade stays the visible popup.
         try {
             PrayerCastFlutter.ensureStarted(this)
         } catch (e: Exception) {
@@ -196,14 +183,23 @@ class AdzanForegroundService : Service() {
     }
 
     private fun startForegroundCompat(notification: Notification) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "startForeground failed (notifications blocked?)", e)
+            try {
+                startForeground(NOTIFICATION_ID, notification)
+            } catch (e2: Exception) {
+                Log.e(TAG, "startForeground fallback failed — continuing for Dart", e2)
+            }
         }
     }
 
@@ -312,18 +308,6 @@ class AdzanForegroundService : Service() {
             )
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             options.setPendingIntentCreatorBackgroundActivityStartMode(
-                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED,
-            )
-        }
-    }
-
-    private fun applyBalSenderMode(options: ActivityOptions) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-            options.setPendingIntentBackgroundActivityStartMode(
-                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_ALWAYS,
-            )
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            options.setPendingIntentBackgroundActivityStartMode(
                 ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED,
             )
         }

@@ -77,6 +77,11 @@ final class _FakeExactAlarm implements ExactAlarmPlatform {
     callOrder.add('showPhonePlaybackControls');
   }
 
+  @override
+  Future<void> playLocalBeep() async {
+    callOrder.add('playLocalBeep');
+  }
+
   final _stopLocalPlayback = StreamController<void>.broadcast();
 
   @override

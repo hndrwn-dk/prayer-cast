@@ -25,6 +25,7 @@ void main() {
         case 'requestExactAlarmPermission':
         case 'stopForegroundService':
         case 'showPhonePlaybackControls':
+        case 'playLocalBeep':
           return null;
         case 'canScheduleExactAlarms':
           return true;
@@ -174,6 +175,7 @@ void main() {
         alarm.showPhonePlaybackControls(prayer: 'maghrib'),
         completes,
       );
+      await expectLater(alarm.playLocalBeep(), completes);
     },
   );
 
@@ -182,6 +184,12 @@ void main() {
     await alarm.showPhonePlaybackControls(prayer: 'isha');
     expect(calls.last.method, 'showPhonePlaybackControls');
     expect(calls.last.arguments, {'prayer': 'isha'});
+  });
+
+  test('playLocalBeep invokes MethodChannel', () async {
+    final alarm = ExactAlarm();
+    await alarm.playLocalBeep();
+    expect(calls.last.method, 'playLocalBeep');
   });
 
   test('native stopLocalPlayback emits onStopLocalPlayback', () async {

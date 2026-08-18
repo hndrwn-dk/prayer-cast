@@ -13,7 +13,8 @@ final class AudioplayersLocalPrayerPlayer implements LocalPrayerPlayer {
   AudioplayersLocalPrayerPlayer({
     required this._audioLoader,
     this._logger = const SilentLogger(),
-  });
+    Future<void> Function()? nativeBeep,
+  }) : _nativeBeep = nativeBeep;
 
   static const String beepAssetId = 'beep';
   static const Duration beepTimeout = Duration(seconds: 8);
@@ -21,11 +22,17 @@ final class AudioplayersLocalPrayerPlayer implements LocalPrayerPlayer {
 
   final AdzanAudioLoader _audioLoader;
   final HomeDeliveryLogger _logger;
+  final Future<void> Function()? _nativeBeep;
   AudioPlayer? _player;
   Completer<void>? _playingDone;
 
   @override
-  Future<void> playBeep() {
+  Future<void> playBeep() async {
+    final native = _nativeBeep;
+    if (native != null) {
+      await native();
+      return;
+    }
     return _play(
       assetId: beepAssetId,
       waitUntilDone: true,

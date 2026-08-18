@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -79,6 +81,18 @@ class ExactAlarmPlugin(
                 val prayer = call.argument<String>("prayer") ?: "adzan"
                 AdzanForegroundService.showPhonePlayback(context, prayer)
                 result.success(null)
+            }
+            "playLocalBeep" -> {
+                Thread {
+                    try {
+                        LocalAlarmSound.playBeep(context)
+                        Handler(Looper.getMainLooper()).post { result.success(null) }
+                    } catch (e: Exception) {
+                        Handler(Looper.getMainLooper()).post {
+                            result.error("beep_failed", e.message, null)
+                        }
+                    }
+                }.start()
             }
             "getScheduled" -> {
                 val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

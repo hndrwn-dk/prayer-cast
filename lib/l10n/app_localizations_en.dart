@@ -112,6 +112,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exactAlarmOpenSettings => 'Open alarm settings';
 
   @override
+  String get notificationsBlockedTitle => 'Notifications are blocked';
+
+  @override
+  String get notificationsBlockedBody =>
+      'Adhan on this phone needs notification permission. Open settings and allow notifications for Prayer Cast.';
+
+  @override
+  String get notificationsBlockedAllow => 'Allow notifications';
+
+  @override
   String get language => 'Language';
 
   @override

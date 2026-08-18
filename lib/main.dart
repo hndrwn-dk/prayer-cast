@@ -20,6 +20,7 @@ import 'package:prayer_cast/home_delivery/logging/delivery_database.dart';
 import 'package:prayer_cast/home_delivery/logging/delivery_database_open.dart';
 import 'package:prayer_cast/home_delivery/platform/exact_alarm.dart';
 import 'package:prayer_cast/home_delivery/platform/launch_prayer.dart';
+import 'package:prayer_cast/home_delivery/platform/post_notifications_permission.dart';
 import 'package:prayer_cast/home_delivery/presence/fingerprint_store.dart';
 import 'package:prayer_cast/home_delivery/presence/lan_fingerprint.dart';
 import 'package:prayer_cast/home_delivery/presence/mdns_browser.dart';
@@ -47,7 +48,10 @@ import 'package:prayer_cast/support/open_support_url.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
-const String kAppVersion = '1.0.4+5';
+const String kAppVersion = '1.0.5+6';
+
+/// Android 13+ [POST_NOTIFICATIONS]. Default true so widget tests stay clean.
+final postNotificationsGrantedProvider = StateProvider<bool>((ref) => true);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -199,6 +203,8 @@ class _HomeShell extends ConsumerStatefulWidget {
 class _HomeShellState extends ConsumerState<_HomeShell>
     with WidgetsBindingObserver {
   final LaunchPrayer _launchPrayer = LaunchPrayer();
+  String? _lastLaunchPrayer;
+  DateTime? _lastLaunchAt;
 
   @override
   void initState() {
@@ -208,6 +214,7 @@ class _HomeShellState extends ConsumerState<_HomeShell>
     _launchPrayer.attach();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_consumeLaunchPrayer());
+      unawaited(_refreshNotificationPermission());
     });
   }
 
@@ -229,6 +236,18 @@ class _HomeShellState extends ConsumerState<_HomeShell>
     // Dry-run is for the alarm / Cast path. Opening the benefits card
     // covers the FGS shade the Play demo needs to show.
     if (PrayerDeliveryCoordinator.isDryRunPrayer(prayer)) return;
+    final key = PrayerDeliveryCoordinator.canonicalPrayerName(prayer);
+    final now = DateTime.now();
+    if (isDuplicateLaunchPrayer(
+      prayer: key,
+      previousPrayer: _lastLaunchPrayer,
+      previousAt: _lastLaunchAt,
+      now: now,
+    )) {
+      return;
+    }
+    _lastLaunchPrayer = key;
+    _lastLaunchAt = now;
     _openSpiritualBenefits(prayer);
   }
 
@@ -236,12 +255,35 @@ class _HomeShellState extends ConsumerState<_HomeShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_retrySchedule());
+      unawaited(_refreshNotificationPermission());
       ref.invalidate(homePresenceProvider);
     }
   }
 
   Future<void> _retrySchedule() async {
     await widget.coordinator?.retryScheduleAfterPermissionGranted();
+  }
+
+  Future<void> _refreshNotificationPermission() async {
+    try {
+      final granted = await const PostNotificationsPermission().isGranted();
+      if (!mounted) return;
+      ref.read(postNotificationsGrantedProvider.notifier).state = granted;
+    } catch (_) {}
+  }
+
+  Future<void> _requestNotifications() async {
+    final gate = const PostNotificationsPermission();
+    var granted = await gate.isGranted();
+    if (!granted) {
+      granted = await gate.request();
+    }
+    if (!granted) {
+      await gate.openSettings();
+      granted = await gate.isGranted();
+    }
+    if (!mounted) return;
+    ref.read(postNotificationsGrantedProvider.notifier).state = granted;
   }
 
   Future<void> _openSpeakerSetup() async {
@@ -278,6 +320,7 @@ class _HomeShellState extends ConsumerState<_HomeShell>
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final canSchedule = ref.watch(exactAlarmPermissionGrantedProvider);
+    final notificationsGranted = ref.watch(postNotificationsGrantedProvider);
     final speaker = ref.watch(savedHomeSpeakerProvider);
     final nextPrayer = ref.watch(nextPrayerSnapshotProvider);
     final prefs = ref.watch(prayerPrefsProvider);
@@ -350,6 +393,7 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                 child: _HomeHero(
                   activeLang: activeLang,
                   canSchedule: canSchedule,
+                  notificationsGranted: notificationsGranted,
                   nextHeroConfigured: nextHeroConfigured,
                   nextAt: nextAt,
                   nextTime: nextTime,
@@ -373,6 +417,7 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                         ?.requestExactAlarmPermission();
                     await _retrySchedule();
                   },
+                  onRequestNotifications: _requestNotifications,
                   onUnsetPrayerTap:
                       nextHeroConfigured ? null : _openPrayerSettings,
                   onSpiritualBenefitsTap: nextPrayerKey == null
@@ -438,6 +483,7 @@ class _HomeHero extends StatelessWidget {
   const _HomeHero({
     required this.activeLang,
     required this.canSchedule,
+    required this.notificationsGranted,
     required this.nextHeroConfigured,
     this.nextAt,
     required this.nextTime,
@@ -451,12 +497,14 @@ class _HomeHero extends StatelessWidget {
     required this.speakerLoading,
     required this.onLanguageSelected,
     required this.onRequestExactAlarm,
+    required this.onRequestNotifications,
     this.onUnsetPrayerTap,
     this.onSpiritualBenefitsTap,
   });
 
   final String activeLang;
   final bool canSchedule;
+  final bool notificationsGranted;
   final bool nextHeroConfigured;
   final DateTime? nextAt;
   final String? nextTime;
@@ -470,6 +518,7 @@ class _HomeHero extends StatelessWidget {
   final bool speakerLoading;
   final ValueChanged<String> onLanguageSelected;
   final VoidCallback onRequestExactAlarm;
+  final VoidCallback onRequestNotifications;
   final VoidCallback? onUnsetPrayerTap;
   final VoidCallback? onSpiritualBenefitsTap;
 
@@ -502,6 +551,12 @@ class _HomeHero extends StatelessWidget {
                   if (!canSchedule) ...[
                     const SizedBox(height: 16),
                     _ExactAlarmPermissionBanner(onRequest: onRequestExactAlarm),
+                  ],
+                  if (!notificationsGranted) ...[
+                    const SizedBox(height: 16),
+                    _NotificationPermissionBanner(
+                      onRequest: onRequestNotifications,
+                    ),
                   ],
                   const SizedBox(height: 48),
                   FadeSlideIn(
@@ -1004,6 +1059,57 @@ class _ExactAlarmPermissionBanner extends StatelessWidget {
               child: FilledButton(
                 onPressed: onRequest,
                 child: Text(l10n.exactAlarmOpenSettings),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationPermissionBanner extends StatelessWidget {
+  const _NotificationPermissionBanner({required this.onRequest});
+
+  final VoidCallback onRequest;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Material(
+      color: PrayerCastColors.dawnSoft,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.notificationsBlockedTitle,
+              style: const TextStyle(
+                fontFamily: PrayerCastTheme.bodyFont,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: PrayerCastColors.ink,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l10n.notificationsBlockedBody,
+              style: const TextStyle(
+                fontFamily: PrayerCastTheme.bodyFont,
+                fontSize: 16,
+                height: 1.4,
+                color: PrayerCastColors.inkSoft,
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: PrayerCastTheme.minTap,
+              child: FilledButton(
+                onPressed: onRequest,
+                child: Text(l10n.notificationsBlockedAllow),
               ),
             ),
           ],

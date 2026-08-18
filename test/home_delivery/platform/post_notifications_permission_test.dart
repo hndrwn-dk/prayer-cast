@@ -59,4 +59,18 @@ void main() {
     expect(await gate.isGranted(), isTrue);
     expect(requested, isFalse);
   });
+
+  test('non-Android openSettings does not open the system page', () async {
+    var opened = false;
+    final gate = PostNotificationsPermission(
+      isAndroid: false,
+      androidSdkInt: 34,
+      openSettingsPage: () async {
+        opened = true;
+        return true;
+      },
+    );
+    expect(await gate.openSettings(), isTrue);
+    expect(opened, isFalse);
+  });
 }

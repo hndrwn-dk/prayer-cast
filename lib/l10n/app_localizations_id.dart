@@ -112,6 +112,16 @@ class AppLocalizationsId extends AppLocalizations {
   String get exactAlarmOpenSettings => 'Buka pengaturan alarm';
 
   @override
+  String get notificationsBlockedTitle => 'Notifikasi diblokir';
+
+  @override
+  String get notificationsBlockedBody =>
+      'Adzan di HP ini membutuhkan izin notifikasi. Buka pengaturan dan izinkan notifikasi untuk Prayer Cast.';
+
+  @override
+  String get notificationsBlockedAllow => 'Izinkan notifikasi';
+
+  @override
   String get language => 'Bahasa';
 
   @override

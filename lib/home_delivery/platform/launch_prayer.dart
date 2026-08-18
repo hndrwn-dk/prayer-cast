@@ -40,3 +40,16 @@ final class LaunchPrayer {
     _channel.setMethodCallHandler(null);
   }
 }
+
+/// True when [prayer] was already opened within [window] (FSI + tap, or
+/// consume + onNewIntent).
+bool isDuplicateLaunchPrayer({
+  required String prayer,
+  String? previousPrayer,
+  DateTime? previousAt,
+  required DateTime now,
+  Duration window = const Duration(seconds: 8),
+}) {
+  if (previousPrayer != prayer || previousAt == null) return false;
+  return now.difference(previousAt) < window;
+}
