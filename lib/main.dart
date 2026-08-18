@@ -48,7 +48,7 @@ import 'package:prayer_cast/support/open_support_url.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
-const String kAppVersion = '1.0.5+6';
+const String kAppVersion = '1.0.6+7';
 
 /// Android 13+ [POST_NOTIFICATIONS]. Default true so widget tests stay clean.
 final postNotificationsGrantedProvider = StateProvider<bool>((ref) => true);
@@ -233,8 +233,8 @@ class _HomeShellState extends ConsumerState<_HomeShell>
 
   void _openSpiritualBenefitsFromLaunch(String prayer) {
     if (!mounted) return;
-    // Dry-run is for the alarm / Cast path. Opening the benefits card
-    // covers the FGS shade the Play demo needs to show.
+    // Dry-run is for the alarm / Cast path. The T−120 shade already
+    // shows the teaser; the full card opens only on a user tap.
     if (PrayerDeliveryCoordinator.isDryRunPrayer(prayer)) return;
     final key = PrayerDeliveryCoordinator.canonicalPrayerName(prayer);
     final now = DateTime.now();

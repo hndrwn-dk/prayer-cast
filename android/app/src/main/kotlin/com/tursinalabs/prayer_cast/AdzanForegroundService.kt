@@ -42,7 +42,9 @@ import androidx.core.app.NotificationCompat
  * service. On API 34+ a raw [startActivity] from this FGS is BAL-blocked
  * (Pixel same-UID PendingIntent → BAL_BLOCK), so waiting for [MainActivity]
  * misses azan and replays when the user later opens the app.
- * Still try full-screen intent + PendingIntent BAL opt-in for lockscreen UX.
+ * T−120 therefore stays a heads-up shade (spiritual-benefits summary).
+ * Tapping the notification opens [MainActivity]; do not full-screen
+ * the benefits card over the lockscreen.
  * connectedDevice is API 34+; older platforms startForeground without a type.
  */
 class AdzanForegroundService : Service() {
@@ -128,10 +130,9 @@ class AdzanForegroundService : Service() {
         }
 
         // Dart runs in this process via [PrayerCastFlutter.ensureStarted].
-        // Do not also PendingIntent.send() here: FSI + contentIntent already
-        // open MainActivity. send() + FSI on phones that allow BAL opens the
-        // spiritual-benefits card twice.
-        // Dry-run skips FSI so the FGS shade stays the visible popup.
+        // Do not PendingIntent.send() or setFullScreenIntent: that launched
+        // MainActivity at T−120 and pushed the spiritual-benefits card
+        // over the lockscreen. The shade is the visible popup; tap opens it.
         try {
             PrayerCastFlutter.ensureStarted(this)
         } catch (e: Exception) {
@@ -255,7 +256,7 @@ class AdzanForegroundService : Service() {
         )
     }
 
-    private fun buildNotification(prayer: String, fullScreen: PendingIntent): Notification {
+    private fun buildNotification(prayer: String, content: PendingIntent): Notification {
         val language = SpiritualBenefitsTeaser.shadeLanguage(this)
         val title = if (phonePlayback) {
             SpiritualBenefitsTeaser.playingTitle(language)
@@ -268,7 +269,7 @@ class AdzanForegroundService : Service() {
             .setContentTitle(title)
             .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_lock_silent_mode_off)
-            .setContentIntent(fullScreen)
+            .setContentIntent(content)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
@@ -281,11 +282,8 @@ class AdzanForegroundService : Service() {
                 stopPlaybackPendingIntent(),
             )
         }
-        // Dry-run keeps a heads-up shade. Full-screen intent launches the
-        // activity over the lockscreen and hides that notification.
-        if (!phonePlayback && !SpiritualBenefitsTeaser.isDryRun(prayer)) {
-            builder.setFullScreenIntent(fullScreen, true)
-        }
+        // Heads-up shade only. Full-screen intent used to open MainActivity
+        // at T−120, which felt like the benefits card hijacking the phone.
         return builder.build()
     }
 

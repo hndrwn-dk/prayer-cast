@@ -5,9 +5,9 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 /**
- * Surfaces the existing FSI / notification `prayer` extra to Dart so
+ * Surfaces the notification-tap `prayer` extra to Dart so
  * [SpiritualBenefitsPage] can open after first frame. Does not start
- * or delay delivery.
+ * or delay delivery. The T−120 FGS does not launch the activity.
  */
 object LaunchPrayerPlugin {
     const val CHANNEL = "prayer_cast/launch"

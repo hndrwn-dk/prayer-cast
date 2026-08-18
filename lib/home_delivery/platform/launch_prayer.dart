@@ -2,8 +2,9 @@ import 'package:flutter/services.dart';
 
 /// Reads the `prayer` extra from the Android launch / notification Intent.
 ///
-/// MainActivity already forwards FSI extras. This channel does not start
-/// delivery — [PrayerDeliveryCoordinator.start] runs before first frame.
+/// MainActivity forwards extras when the user taps the T−120 shade.
+/// This channel does not start delivery — [PrayerDeliveryCoordinator.start]
+/// runs before first frame.
 final class LaunchPrayer {
   LaunchPrayer({MethodChannel? channel})
       : _channel = channel ?? const MethodChannel(channelName);
@@ -41,8 +42,8 @@ final class LaunchPrayer {
   }
 }
 
-/// True when [prayer] was already opened within [window] (FSI + tap, or
-/// consume + onNewIntent).
+/// True when [prayer] was already opened within [window] (notification
+/// tap + consume, or consume + onNewIntent).
 bool isDuplicateLaunchPrayer({
   required String prayer,
   String? previousPrayer,
