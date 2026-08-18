@@ -61,6 +61,36 @@ abstract final class PremiumIcons {
   static Widget moonStars({double size = 24, Color? color}) =>
       _Icon(size: size, color: color, paint: _paintMoonStars);
 
+  static Widget sun({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintSun);
+
+  static Widget sunrise({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintSunrise);
+
+  static Widget sunAfternoon({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintSunAfternoon);
+
+  static Widget sunset({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintSunset);
+
+  /// Canonical prayer (`fajr` / `dhuhr` / `asr` / `maghrib` / `isha`).
+  static Widget forPrayer(String prayer, {double size = 24, Color? color}) {
+    switch (prayer) {
+      case 'fajr':
+        return sunrise(size: size, color: color);
+      case 'dhuhr':
+        return sun(size: size, color: color);
+      case 'asr':
+        return sunAfternoon(size: size, color: color);
+      case 'maghrib':
+        return sunset(size: size, color: color);
+      case 'isha':
+        return moon(size: size, color: color);
+      default:
+        return clock(size: size, color: color);
+    }
+  }
+
   static Widget prohibit({double size = 24, Color? color}) =>
       _Icon(size: size, color: color, paint: _paintProhibit);
 
@@ -392,6 +422,83 @@ void _paintMoonStars(Canvas canvas, Size size, Color color) {
   final s = size.shortestSide;
   canvas.drawCircle(Offset(s * 0.72, s * 0.28), s * 0.035, _fill(color));
   canvas.drawCircle(Offset(s * 0.82, s * 0.42), s * 0.025, _fill(color));
+}
+
+void _paintSun(Canvas canvas, Size size, Color color) {
+  final s = size.shortestSide;
+  final c = Offset(s * 0.5, s * 0.5);
+  final p = _stroke(color);
+  canvas.drawCircle(c, s * 0.18, p);
+  for (var i = 0; i < 8; i++) {
+    final a = i * math.pi / 4;
+    final inner = Offset(
+      c.dx + math.cos(a) * s * 0.26,
+      c.dy + math.sin(a) * s * 0.26,
+    );
+    final outer = Offset(
+      c.dx + math.cos(a) * s * 0.38,
+      c.dy + math.sin(a) * s * 0.38,
+    );
+    canvas.drawLine(inner, outer, p);
+  }
+}
+
+void _paintSunrise(Canvas canvas, Size size, Color color) {
+  final s = size.shortestSide;
+  final p = _stroke(color);
+  final c = Offset(s * 0.5, s * 0.62);
+  canvas.drawArc(
+    Rect.fromCircle(center: c, radius: s * 0.22),
+    math.pi,
+    -math.pi,
+    false,
+    p,
+  );
+  canvas.drawLine(Offset(s * 0.16, s * 0.62), Offset(s * 0.84, s * 0.62), p);
+  for (final a in <double>[-math.pi * 0.75, -math.pi / 2, -math.pi * 0.25]) {
+    final inner = Offset(
+      c.dx + math.cos(a) * s * 0.28,
+      c.dy + math.sin(a) * s * 0.28,
+    );
+    final outer = Offset(
+      c.dx + math.cos(a) * s * 0.38,
+      c.dy + math.sin(a) * s * 0.38,
+    );
+    canvas.drawLine(inner, outer, p);
+  }
+}
+
+void _paintSunAfternoon(Canvas canvas, Size size, Color color) {
+  final s = size.shortestSide;
+  final p = _stroke(color);
+  final c = Offset(s * 0.42, s * 0.42);
+  canvas.drawCircle(c, s * 0.16, p);
+  for (final a in <double>[-math.pi * 0.7, -math.pi * 0.35, 0, math.pi * 0.35]) {
+    final inner = Offset(
+      c.dx + math.cos(a) * s * 0.24,
+      c.dy + math.sin(a) * s * 0.24,
+    );
+    final outer = Offset(
+      c.dx + math.cos(a) * s * 0.36,
+      c.dy + math.sin(a) * s * 0.36,
+    );
+    canvas.drawLine(inner, outer, p);
+  }
+  canvas.drawLine(Offset(s * 0.16, s * 0.74), Offset(s * 0.84, s * 0.74), p);
+}
+
+void _paintSunset(Canvas canvas, Size size, Color color) {
+  final s = size.shortestSide;
+  final p = _stroke(color);
+  final c = Offset(s * 0.5, s * 0.52);
+  canvas.drawArc(
+    Rect.fromCircle(center: c, radius: s * 0.22),
+    math.pi,
+    -math.pi,
+    false,
+    p,
+  );
+  canvas.drawLine(Offset(s * 0.16, s * 0.52), Offset(s * 0.84, s * 0.52), p);
 }
 
 void _paintProhibit(Canvas canvas, Size size, Color color) {

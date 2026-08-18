@@ -71,6 +71,7 @@ void main() {
     expect(find.byKey(const ValueKey('delivery-fajr-cast')), findsOneWidget);
     expect(find.text('Cast'), findsOneWidget);
     expect(find.byKey(const ValueKey('voice-fajr-fajr_adhan')), findsOneWidget);
+    expect(find.byKey(const ValueKey('prayer-icon-fajr')), findsOneWidget);
   });
 
   testWidgets('beep mode hides the voice dropdown', (tester) async {
@@ -80,22 +81,22 @@ void main() {
     expect(find.byKey(const ValueKey('voice-fajr-fajr_adhan')), findsNothing);
   });
 
+  testWidgets('dry-run stays collapsed until opened', (tester) async {
+    await _pumpSettings(tester);
+    final toggle = find.byKey(const ValueKey('dry_run_toggle'));
+    await tester.scrollUntilVisible(
+      toggle,
+      300,
+      scrollable: _settingsScrollable(),
+    );
+    expect(find.text('Test scheduled adhan'), findsOneWidget);
+    expect(find.byKey(const ValueKey('dry_run_1m')), findsNothing);
+    expect(find.byKey(const ValueKey('dry_run_5m')), findsNothing);
+  });
+
   testWidgets('dry-run offers 1 and 5 minutes only', (tester) async {
     await _pumpSettings(tester);
-    final dryRun = find.byKey(const ValueKey('dry_run_1m'));
-    await tester.scrollUntilVisible(
-      dryRun,
-      300,
-      scrollable: find
-          .descendant(
-            of: find.byKey(const ValueKey('prayer_settings_list')),
-            matching: find.byType(Scrollable),
-          )
-          .first,
-    );
-    await tester.ensureVisible(dryRun);
-    await tester.pump();
-
+    await _revealDryRun(tester);
     expect(find.text('In 1 minute'), findsOneWidget);
     expect(find.text('In 5 minutes'), findsOneWidget);
     expect(find.text('In 10 minutes'), findsNothing);
@@ -108,19 +109,7 @@ void main() {
 
   testWidgets('dry-run buttons are localized in Indonesian', (tester) async {
     await _pumpSettings(tester, locale: const Locale('id'));
-    final dryRun = find.byKey(const ValueKey('dry_run_1m'));
-    await tester.scrollUntilVisible(
-      dryRun,
-      300,
-      scrollable: find
-          .descendant(
-            of: find.byKey(const ValueKey('prayer_settings_list')),
-            matching: find.byType(Scrollable),
-          )
-          .first,
-    );
-    await tester.ensureVisible(dryRun);
-    await tester.pump();
+    await _revealDryRun(tester);
 
     expect(find.text('Dalam 1 menit'), findsOneWidget);
     expect(find.text('Dalam 5 menit'), findsOneWidget);
@@ -144,21 +133,7 @@ void main() {
     await coordinator.start();
 
     await _pumpSettings(tester, coordinator: coordinator);
-    final dryRun = find.byKey(const ValueKey('dry_run_5m'));
-    await tester.scrollUntilVisible(
-      dryRun,
-      300,
-      scrollable: find
-          .descendant(
-            of: find.byKey(const ValueKey('prayer_settings_list')),
-            matching: find.byType(Scrollable),
-          )
-          .first,
-    );
-    await tester.ensureVisible(dryRun);
-    await tester.pump();
-    await tester.tap(dryRun);
-    await tester.pump();
+    await _tapDryRunButton(tester, const ValueKey('dry_run_5m'));
     await tester.pump();
 
     expect(find.byType(SnackBar), findsNothing);
@@ -197,21 +172,7 @@ void main() {
         },
       ),
     );
-    final dryRun = find.byKey(const ValueKey('dry_run_1m'));
-    await tester.scrollUntilVisible(
-      dryRun,
-      300,
-      scrollable: find
-          .descendant(
-            of: find.byKey(const ValueKey('prayer_settings_list')),
-            matching: find.byType(Scrollable),
-          )
-          .first,
-    );
-    await tester.ensureVisible(dryRun);
-    await tester.pump();
-    await tester.tap(dryRun);
-    await tester.pump();
+    await _tapDryRunButton(tester, const ValueKey('dry_run_1m'));
     await tester.pump();
 
     expect(find.byKey(NotificationDisclosureDialog.dialogKey), findsOneWidget);
@@ -255,21 +216,7 @@ void main() {
         },
       ),
     );
-    final dryRun = find.byKey(const ValueKey('dry_run_5m'));
-    await tester.scrollUntilVisible(
-      dryRun,
-      300,
-      scrollable: find
-          .descendant(
-            of: find.byKey(const ValueKey('prayer_settings_list')),
-            matching: find.byType(Scrollable),
-          )
-          .first,
-    );
-    await tester.ensureVisible(dryRun);
-    await tester.pump();
-    await tester.tap(dryRun);
-    await tester.pump();
+    await _tapDryRunButton(tester, const ValueKey('dry_run_5m'));
     await tester.pump();
     await tester.tap(find.byKey(NotificationDisclosureDialog.skipKey));
     await tester.pump();
@@ -313,21 +260,7 @@ void main() {
     );
 
     await _pumpSettings(tester, coordinator: coordinator);
-    final dryRun = find.byKey(const ValueKey('dry_run_5m'));
-    await tester.scrollUntilVisible(
-      dryRun,
-      300,
-      scrollable: find
-          .descendant(
-            of: find.byKey(const ValueKey('prayer_settings_list')),
-            matching: find.byType(Scrollable),
-          )
-          .first,
-    );
-    await tester.ensureVisible(dryRun);
-    await tester.pump();
-    await tester.tap(dryRun);
-    await tester.pump();
+    await _tapDryRunButton(tester, const ValueKey('dry_run_5m'));
     await tester.pump();
 
     expect(find.byType(SnackBar), findsNothing);
@@ -536,6 +469,50 @@ void main() {
     expect(find.text('Ketik kota saja'), findsOneWidget);
     expect(find.text('Kebijakan privasi'), findsOneWidget);
   });
+}
+
+Finder _settingsScrollable() {
+  return find
+      .descendant(
+        of: find.byKey(const ValueKey('prayer_settings_list')),
+        matching: find.byType(Scrollable),
+      )
+      .first;
+}
+
+Future<void> _revealDryRun(WidgetTester tester) async {
+  final toggle = find.byKey(const ValueKey('dry_run_toggle'));
+  await tester.scrollUntilVisible(
+    toggle,
+    300,
+    scrollable: _settingsScrollable(),
+  );
+  await Scrollable.ensureVisible(
+    tester.element(toggle),
+    alignment: 0.15,
+    duration: Duration.zero,
+  );
+  await tester.pump();
+  await tester.tap(toggle);
+  await tester.pump();
+}
+
+Future<void> _tapDryRunButton(WidgetTester tester, Key key) async {
+  await _revealDryRun(tester);
+  final button = find.byKey(key);
+  await tester.scrollUntilVisible(
+    button,
+    200,
+    scrollable: _settingsScrollable(),
+  );
+  await Scrollable.ensureVisible(
+    tester.element(button),
+    alignment: 0.35,
+    duration: Duration.zero,
+  );
+  await tester.pump();
+  await tester.tap(button);
+  await tester.pump();
 }
 
 Future<void> _pumpSettings(

@@ -14,6 +14,20 @@ abstract final class PrayerCastTheme {
   /// Minimum comfortable tap height for older fingers.
   static const double minTap = 56;
 
+  /// Card outline on forest screens. Slightly heavier than 1px hairline,
+  /// still inkSoft grey — gold is reserved for focus / selection.
+  static const double cardHairline = 1.35;
+
+  /// Selected value inside forest dropdowns. Regular weight so titles
+  /// (titleMedium / dawn section labels) stay the loudest type.
+  static const TextStyle forestDropdown = TextStyle(
+    fontFamily: bodyFont,
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
+    height: 1.35,
+    color: PrayerCastColors.mist,
+  );
+
   static ThemeData light() {
     const textTheme = TextTheme(
       displayLarge: TextStyle(

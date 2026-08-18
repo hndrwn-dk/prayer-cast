@@ -213,10 +213,11 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                   Expanded(
                     child: ListView(
                       key: const ValueKey('prayer_settings_list'),
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                       children: [
                         InkSurface(
                           borderColor: PrayerCastColors.inkSoft,
+                          borderWidth: PrayerCastTheme.cardHairline,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -350,6 +351,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                         const SizedBox(height: 14),
                         InkSurface(
                           borderColor: PrayerCastColors.inkSoft,
+                          borderWidth: PrayerCastTheme.cardHairline,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -369,6 +371,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                     initialValue:
                                         _methodOrFallback(draft.methodId),
                                     isExpanded: true,
+                                    style: PrayerCastTheme.forestDropdown,
                                     items: [
                                       for (final m in AladhanMethods.common)
                                         DropdownMenuItem(
@@ -409,6 +412,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                 key: ValueKey('madhab-${draft.madhabId}'),
                                 initialValue: draft.madhabId,
                                 isExpanded: true,
+                                style: PrayerCastTheme.forestDropdown,
                                 items: [
                                   DropdownMenuItem(
                                     value: PrayerMadhabId.shafi,
@@ -467,6 +471,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                         const SizedBox(height: 14),
                         InkSurface(
                           borderColor: PrayerCastColors.inkSoft,
+                          borderWidth: PrayerCastTheme.cardHairline,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -777,7 +782,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
   }
 }
 
-class _DryRunCard extends StatelessWidget {
+class _DryRunCard extends StatefulWidget {
   const _DryRunCard({
     required this.enabled,
     required this.onIn1Minute,
@@ -793,60 +798,103 @@ class _DryRunCard extends StatelessWidget {
   final bool statusIsError;
 
   @override
+  State<_DryRunCard> createState() => _DryRunCardState();
+}
+
+class _DryRunCardState extends State<_DryRunCard> {
+  bool _expanded = false;
+
+  @override
+  void didUpdateWidget(covariant _DryRunCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.statusText != null &&
+        widget.statusText != oldWidget.statusText) {
+      _expanded = true;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final l10n = context.l10n;
     return InkSurface(
       borderColor: PrayerCastColors.inkSoft,
+      borderWidth: PrayerCastTheme.cardHairline,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            l10n.dryRunTitle,
-            style: text.titleLarge,
+          InkWell(
+            key: const ValueKey('dry_run_toggle'),
+            onTap: () => setState(() => _expanded = !_expanded),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l10n.dryRunTitle,
+                      style: text.titleLarge,
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: _expanded ? 0.25 : 0,
+                    duration: const Duration(milliseconds: 180),
+                    child: PremiumIcons.caretRight(
+                      size: 18,
+                      color: PrayerCastColors.mistDeep,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.dryRunHint,
-            style: text.bodyMedium,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: PrayerCastTheme.minTap,
-                  child: OutlinedButton(
-                    key: const ValueKey('dry_run_1m'),
-                    onPressed: enabled ? onIn1Minute : null,
-                    child: Text(l10n.dryRunIn1Minute),
+          if (_expanded) ...[
+            const SizedBox(height: 6),
+            Text(
+              l10n.dryRunHint,
+              style: text.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: PrayerCastTheme.minTap,
+                    child: OutlinedButton(
+                      key: const ValueKey('dry_run_1m'),
+                      onPressed:
+                          widget.enabled ? widget.onIn1Minute : null,
+                      child: Text(l10n.dryRunIn1Minute),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SizedBox(
-                  height: PrayerCastTheme.minTap,
-                  child: OutlinedButton(
-                    key: const ValueKey('dry_run_5m'),
-                    onPressed: enabled ? onIn5Minutes : null,
-                    child: Text(l10n.dryRunIn5Minutes),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SizedBox(
+                    height: PrayerCastTheme.minTap,
+                    child: OutlinedButton(
+                      key: const ValueKey('dry_run_5m'),
+                      onPressed:
+                          widget.enabled ? widget.onIn5Minutes : null,
+                      child: Text(l10n.dryRunIn5Minutes),
+                    ),
                   ),
+                ),
+              ],
+            ),
+            if (widget.statusText != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                widget.statusText!,
+                key: const ValueKey('dry_run_status'),
+                style: text.bodyMedium?.copyWith(
+                  color: widget.statusIsError
+                      ? PrayerCastColors.dangerSoft
+                      : PrayerCastColors.mist,
                 ),
               ),
             ],
-          ),
-          if (statusText != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              statusText!,
-              key: const ValueKey('dry_run_status'),
-              style: text.bodyMedium?.copyWith(
-                color: statusIsError
-                    ? PrayerCastColors.dangerSoft
-                    : PrayerCastColors.mist,
-              ),
-            ),
           ],
         ],
       ),
@@ -963,6 +1011,15 @@ class PrayerScheduleTile extends StatelessWidget {
       children: [
         Row(
           children: [
+            KeyedSubtree(
+              key: ValueKey('prayer-icon-${prayer.name}'),
+              child: PremiumIcons.forPrayer(
+                prayer.name,
+                size: 22,
+                color: PrayerCastColors.dawn,
+              ),
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 prayerDisplayName(l10n, prayer.name),
@@ -986,6 +1043,7 @@ class PrayerScheduleTile extends StatelessWidget {
                 key: ValueKey('delivery-${prayer.name}-${deliveryMode.name}'),
                 initialValue: deliveryMode,
                 isExpanded: true,
+                style: PrayerCastTheme.forestDropdown,
                 dropdownColor: scheme.surfaceContainerHigh,
                 items: [
                   for (final mode in PrayerDeliveryMode.values)
@@ -1054,6 +1112,7 @@ class PrayerScheduleTile extends StatelessWidget {
                 key: ValueKey('voice-${prayer.name}-$voiceId'),
                 initialValue: voiceId,
                 isExpanded: true,
+                style: PrayerCastTheme.forestDropdown,
                 dropdownColor: scheme.surfaceContainerHigh,
                 items: [
                   for (final voice in AdzanVoices.all)
