@@ -454,11 +454,8 @@ abstract final class PrayerCastTheme {
       ),
       popupMenuTheme: const PopupMenuThemeData(
         color: PrayerCastColors.canopyDeep,
-        textStyle: TextStyle(
-          fontFamily: bodyFont,
-          fontSize: 16,
-          color: PrayerCastColors.surfaceRaised,
-        ),
+        textStyle: forestDropdown,
+        labelTextStyle: WidgetStatePropertyAll(forestDropdown),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: PrayerCastColors.canopyDeep,

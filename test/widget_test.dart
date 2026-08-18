@@ -158,6 +158,25 @@ void main() {
     expect(find.textContaining('Metode perhitungan'), findsOneWidget);
   });
 
+  testWidgets('language menu items use regular weight, not title bold',
+      (tester) async {
+    final db = DeliveryDatabase.memory();
+    addTearDown(db.close);
+
+    await tester.pumpWidget(PrayerCastAppForTest(database: db));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1200));
+
+    await tester.tap(find.byKey(const ValueKey('language_menu')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final idLabel = tester.widget<Text>(find.text('Bahasa Indonesia'));
+    final enLabel = tester.widget<Text>(find.text('English'));
+    expect(idLabel.style?.fontWeight, FontWeight.w400);
+    expect(enLabel.style?.fontWeight, FontWeight.w400);
+  });
+
   testWidgets('home next-adhan chip shows city and country', (tester) async {
     final db = DeliveryDatabase.memory();
     addTearDown(db.close);

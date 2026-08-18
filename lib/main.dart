@@ -48,7 +48,7 @@ import 'package:prayer_cast/support/open_support_url.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
-const String kAppVersion = '1.0.7+8';
+const String kAppVersion = '1.0.8+9';
 
 /// Android 13+ [POST_NOTIFICATIONS]. Default true so widget tests stay clean.
 final postNotificationsGrantedProvider = StateProvider<bool>((ref) => true);
@@ -662,14 +662,14 @@ class _HomeMasthead extends StatelessWidget {
                     value: 'id',
                     child: Text(
                       l10n.languageIndonesian,
-                      style: const TextStyle(color: PrayerCastColors.surfaceRaised),
+                      style: PrayerCastTheme.forestDropdown,
                     ),
                   ),
                   PopupMenuItem(
                     value: 'en',
                     child: Text(
                       l10n.languageEnglish,
-                      style: const TextStyle(color: PrayerCastColors.surfaceRaised),
+                      style: PrayerCastTheme.forestDropdown,
                     ),
                   ),
                 ],
