@@ -302,6 +302,7 @@ class ExactAlarmPlugin(
                 .putLong(KEY_EPOCH, epochMs)
                 .putString(KEY_VOICE_ID, voiceId)
                 .apply()
+            AlarmHealScheduler.enqueue(context)
         }
 
         @JvmStatic
@@ -320,6 +321,23 @@ class ExactAlarmPlugin(
             if (clearPrefs) {
                 context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
             }
+        }
+
+        /**
+         * Same decision [BootReceiver] and [AlarmHealWorker] use.
+         *
+         * Future persisted epoch → [rearmFromPrefsIfFuture].
+         * Past or missing epoch → [armRescheduleRetry] (not a second copy
+         * of that path).
+         *
+         * WorkManager is not immune to ColorOS Auto-launch / MIUI autostart
+         * blocks. This shrinks the window when BOOT_COMPLETED never arrives;
+         * it does not guarantee the next prayer fires.
+         */
+        @JvmStatic
+        fun healPersistedWake(context: Context): Boolean {
+            if (rearmFromPrefsIfFuture(context)) return true
+            return armRescheduleRetry(context)
         }
 
         /**

@@ -131,5 +131,16 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="http" />
         </intent>
+        <!-- OEM Auto-launch / Startup Manager (Android 11+ package visibility).
+             Component names are best-effort; queries only make resolve/start
+             possible, they do not prove the activity exists. -->
+        <package android:name="com.coloros.safecenter" />
+        <package android:name="com.oplus.safecenter" />
+        <package android:name="com.oppo.safe" />
+        <package android:name="com.oplus.battery" />
+        <package android:name="com.miui.securitycenter" />
+        <package android:name="com.miui.powerkeeper" />
+        <package android:name="com.vivo.permissionmanager" />
+        <package android:name="com.iqoo.secure" />
     </queries>
 </manifest>

@@ -26,6 +26,8 @@ object PrayerCastFlutter {
         DeviceConditionsPlugin.registerWith(engine, context)
         NetworkPrefixPlugin.registerWith(engine)
         CastReadyPlugin.registerWith(engine, context)
+        // Ensure WorkManager heal scheduler is running on every app start
+        AlarmHealScheduler.enqueue(context)
     }
 
     fun cacheIfAbsent(engine: FlutterEngine) {

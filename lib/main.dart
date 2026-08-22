@@ -36,6 +36,7 @@ import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/adhan_countdown.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
+import 'package:prayer_cast/home_delivery/ui/widgets/oem_autostart_banner.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/spiritual_benefits_teaser.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
 import 'package:prayer_cast/l10n/locale_controller.dart';
@@ -321,6 +322,10 @@ class _HomeShellState extends ConsumerState<_HomeShell>
     final l10n = context.l10n;
     final canSchedule = ref.watch(exactAlarmPermissionGrantedProvider);
     final notificationsGranted = ref.watch(postNotificationsGrantedProvider);
+    final restrictiveOem = ref.watch(restrictiveOemProvider).maybeWhen(
+          data: (value) => value,
+          orElse: () => false,
+        );
     final speaker = ref.watch(savedHomeSpeakerProvider);
     final nextPrayer = ref.watch(nextPrayerSnapshotProvider);
     final prefs = ref.watch(prayerPrefsProvider);
@@ -394,6 +399,8 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                   activeLang: activeLang,
                   canSchedule: canSchedule,
                   notificationsGranted: notificationsGranted,
+                  showOemAutostart: restrictiveOem &&
+                      (nextHeroConfigured || speakerName != null),
                   nextHeroConfigured: nextHeroConfigured,
                   nextAt: nextAt,
                   nextTime: nextTime,
@@ -418,6 +425,11 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                     await _retrySchedule();
                   },
                   onRequestNotifications: _requestNotifications,
+                  onOpenAutostart: () {
+                    unawaited(
+                      ref.read(oemBatterySettingsProvider).openAutostartSettings(),
+                    );
+                  },
                   onUnsetPrayerTap:
                       nextHeroConfigured ? null : _openPrayerSettings,
                   onSpiritualBenefitsTap: nextPrayerKey == null
@@ -498,6 +510,8 @@ class _HomeHero extends StatelessWidget {
     required this.onLanguageSelected,
     required this.onRequestExactAlarm,
     required this.onRequestNotifications,
+    required this.showOemAutostart,
+    required this.onOpenAutostart,
     this.onUnsetPrayerTap,
     this.onSpiritualBenefitsTap,
   });
@@ -505,6 +519,8 @@ class _HomeHero extends StatelessWidget {
   final String activeLang;
   final bool canSchedule;
   final bool notificationsGranted;
+  final bool showOemAutostart;
+  final VoidCallback onOpenAutostart;
   final bool nextHeroConfigured;
   final DateTime? nextAt;
   final String? nextTime;
@@ -557,6 +573,10 @@ class _HomeHero extends StatelessWidget {
                     _NotificationPermissionBanner(
                       onRequest: onRequestNotifications,
                     ),
+                  ],
+                  if (showOemAutostart) ...[
+                    const SizedBox(height: 16),
+                    OemAutostartBanner(onOpen: onOpenAutostart),
                   ],
                   const SizedBox(height: 48),
                   FadeSlideIn(

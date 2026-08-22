@@ -90,4 +90,6 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     // Same pin as flutter_chrome_cast — probe RemoteMediaClient readiness.
     implementation("com.google.android.gms:play-services-cast-framework:21.5.0")
+    // Periodic alarm heal. Not in pubspec — no Flutter WorkManager plugin.
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -5,12 +7,14 @@ import 'package:prayer_cast/l10n/l10n_ext.dart';
 
 import '../delivery/cast_client.dart';
 import '../delivery/cast_device_kind.dart';
+import 'delivery_log_providers.dart';
 import 'home_setup_providers.dart';
 import 'icons/premium_icons.dart';
 import 'theme/prayer_cast_colors.dart';
 import 'theme/prayer_cast_theme.dart';
 import 'widgets/cast_scan_spinner.dart';
 import 'widgets/editorial_chrome.dart';
+import 'widgets/oem_autostart_banner.dart';
 import 'widgets/speaker_search_pulse.dart';
 
 /// Cast speaker onboarding: scan LAN, pick home target, save Signal A + B.
@@ -319,6 +323,22 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                   padding: const EdgeInsets.fromLTRB(28, 4, 28, 4),
                   child: Text(l10n.speakerSetupIntro, style: text.bodyLarge),
                 ),
+                if (ref.watch(restrictiveOemProvider).maybeWhen(
+                      data: (value) => value,
+                      orElse: () => false,
+                    ))
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
+                    child: OemAutostartBanner(
+                      onOpen: () {
+                        unawaited(
+                          ref
+                              .read(oemBatterySettingsProvider)
+                              .openAutostartSettings(),
+                        );
+                      },
+                    ),
+                  ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(28, 4, 28, 8),
                   child: Text(

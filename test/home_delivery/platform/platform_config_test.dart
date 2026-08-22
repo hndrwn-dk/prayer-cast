@@ -20,6 +20,9 @@ void main() {
     expect(manifest, contains('.AdzanForegroundService'));
     expect(manifest, contains('.BootReceiver'));
     expect(manifest, contains('android.intent.action.BOOT_COMPLETED'));
+    expect(manifest, contains('com.coloros.safecenter'));
+    expect(manifest, contains('com.oplus.safecenter'));
+    expect(manifest, contains('com.miui.securitycenter'));
     expect(manifest, contains('ACCESS_COARSE_LOCATION'));
     expect(manifest, contains('Not used for speaker scan'));
     expect(manifest, contains('NEARBY_WIFI_DEVICES'));
@@ -103,6 +106,60 @@ void main() {
       expect(serviceKt, isNot(contains('MediaSession')));
     },
   );
+
+  test('BootReceiver and AlarmHealWorker share healPersistedWake', () {
+    final boot = File(
+      'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/BootReceiver.kt',
+    ).readAsStringSync();
+    final worker = File(
+      'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/AlarmHealWorker.kt',
+    ).readAsStringSync();
+    final exact = File(
+      'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/ExactAlarmPlugin.kt',
+    ).readAsStringSync();
+    expect(exact, contains('fun healPersistedWake'));
+    expect(exact, contains('armRescheduleRetry(context)'));
+    expect(boot, contains('ExactAlarmPlugin.healPersistedWake'));
+    expect(worker, contains('ExactAlarmPlugin.healPersistedWake'));
+    expect(worker, contains('PeriodicWorkRequestBuilder'));
+    expect(
+      worker,
+      contains('does not guarantee'),
+    );
+  });
+
+  test('healPersistedWake uses correct conditional logic for past/missing epoch', () {
+    final exact = File(
+      'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/ExactAlarmPlugin.kt',
+    ).readAsStringSync();
+
+    // Verify healPersistedWake structure
+    expect(exact, contains('fun healPersistedWake'));
+    expect(exact, contains('rearmFromPrefsIfFuture(context)'));
+    expect(exact, contains('return armRescheduleRetry(context)'));
+
+    // Verify rearmFromPrefsIfFuture checks for future epoch
+    expect(exact, contains('fun rearmFromPrefsIfFuture'));
+    expect(exact, contains('epochMs <= System.currentTimeMillis()'));
+    expect(exact, contains('return false'));
+
+    // Verify armRescheduleRetry is the fallback for past/missing epochs
+    expect(exact, contains('fun armRescheduleRetry'));
+    expect(exact, contains('RESCHEDULE_RETRY_PRAYER'));
+    expect(exact, contains('RESCHEDULE_RETRY_DELAY_MS'));
+
+    // Verify the flow: healPersistedWake calls rearmFromPrefsIfFuture first,
+    // then falls back to armRescheduleRetry if that returns false
+    final healFunction = RegExp(
+      r'fun healPersistedWake.*?\{.*?if \(rearmFromPrefsIfFuture.*?return true.*?return armRescheduleRetry',
+      dotAll: true,
+    );
+    expect(
+      healFunction.hasMatch(exact),
+      isTrue,
+      reason: 'healPersistedWake should call rearmFromPrefsIfFuture first, then armRescheduleRetry as fallback',
+    );
+  });
 
   test('AndroidManifest does not enable global cleartext HTTP', () {
     final manifest = File(

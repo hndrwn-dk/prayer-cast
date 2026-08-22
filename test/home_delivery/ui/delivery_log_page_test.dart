@@ -21,6 +21,12 @@ final class _FakeOem implements OemBatterySettingsPlatform {
     opened = true;
     return true;
   }
+
+  @override
+  Future<bool> openAutostartSettings() async => false;
+
+  @override
+  Future<bool> isRestrictiveOem() async => false;
 }
 
 void main() {

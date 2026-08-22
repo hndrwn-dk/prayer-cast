@@ -122,6 +122,16 @@ class AppLocalizationsId extends AppLocalizations {
   String get notificationsBlockedAllow => 'Izinkan notifikasi';
 
   @override
+  String get oemAutostartTitle => 'Izinkan jalan otomatis setelah restart';
+
+  @override
+  String get oemAutostartBody =>
+      'Di HP ini, Auto-launch bisa tetap mati untuk aplikasi baru. Kalau mati, alarm sholat mungkin tidak kembali setelah baterai habis atau HP restart. Ini tidak menggantikan membuka aplikasi sekali setelah update Play Store.';
+
+  @override
+  String get oemAutostartOpenSettings => 'Buka pengaturan auto-launch';
+
+  @override
   String get language => 'Bahasa';
 
   @override

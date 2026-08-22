@@ -122,6 +122,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationsBlockedAllow => 'Allow notifications';
 
   @override
+  String get oemAutostartTitle => 'Allow auto-launch after reboot';
+
+  @override
+  String get oemAutostartBody =>
+      'On this phone, Auto-launch can stay off for new apps. If it is off, prayer alarms may not come back after the battery dies or the phone restarts. This does not replace opening the app once after a Play Store update.';
+
+  @override
+  String get oemAutostartOpenSettings => 'Open auto-launch settings';
+
+  @override
   String get language => 'Language';
 
   @override

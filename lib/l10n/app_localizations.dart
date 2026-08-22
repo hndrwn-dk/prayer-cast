@@ -302,6 +302,24 @@ abstract class AppLocalizations {
   /// **'Allow notifications'**
   String get notificationsBlockedAllow;
 
+  /// No description provided for @oemAutostartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow auto-launch after reboot'**
+  String get oemAutostartTitle;
+
+  /// No description provided for @oemAutostartBody.
+  ///
+  /// In en, this message translates to:
+  /// **'On this phone, Auto-launch can stay off for new apps. If it is off, prayer alarms may not come back after the battery dies or the phone restarts. This does not replace opening the app once after a Play Store update.'**
+  String get oemAutostartBody;
+
+  /// No description provided for @oemAutostartOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open auto-launch settings'**
+  String get oemAutostartOpenSettings;
+
   /// No description provided for @language.
   ///
   /// In en, this message translates to:
