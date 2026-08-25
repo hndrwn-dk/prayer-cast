@@ -53,6 +53,12 @@ android {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
+            // Keep WorkManager Room (WorkDatabase_Impl). 1.0.9 release
+            // crashed in InitializationProvider before the first frame.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

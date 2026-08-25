@@ -126,6 +126,17 @@ void main() {
       worker,
       contains('does not guarantee'),
     );
+    expect(worker, contains('WorkManager enqueue failed'));
+  });
+
+  test('release ProGuard keeps WorkManager Room database', () {
+    final rules = File('android/app/proguard-rules.pro').readAsStringSync();
+    expect(rules, contains('WorkDatabase_Impl'));
+    expect(rules, contains('androidx.work.impl.WorkDatabase'));
+    expect(rules, contains('AlarmHealWorker'));
+    final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+    expect(gradle, contains('proguard-rules.pro'));
+    expect(gradle, contains('InitializationProvider'));
   });
 
   test('healPersistedWake uses correct conditional logic for past/missing epoch', () {

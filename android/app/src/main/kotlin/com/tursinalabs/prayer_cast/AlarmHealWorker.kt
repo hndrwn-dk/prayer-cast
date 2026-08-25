@@ -1,7 +1,6 @@
 package com.tursinalabs.prayer_cast
 
 import android.content.Context
-import android.os.Build
 import android.util.Log
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -47,29 +46,34 @@ class AlarmHealWorker(
 
 object AlarmHealScheduler {
     const val UNIQUE_NAME = "prayer_cast_alarm_heal"
+    private const val TAG = "AlarmHealScheduler"
+
     fun enqueue(context: Context) {
-        // Minimal constraints to reduce OEM blocking while ensuring
-        // reasonable device state. No network required since we only
-        // read local SharedPreferences.
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
-            .setRequiresBatteryNotLow(false) // Allow even when battery is low
-            .setRequiresCharging(false) // Allow even when not charging
-            .setRequiresDeviceIdle(false) // Allow even when device is in use
-            .build()
+        try {
+            // Minimal constraints: no network. WorkManager can still be
+            // delayed or dropped by the same OEM autostart gate.
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
+                .setRequiresBatteryNotLow(false)
+                .setRequiresCharging(false)
+                .setRequiresDeviceIdle(false)
+                .build()
 
-        val request = PeriodicWorkRequestBuilder<AlarmHealWorker>(
-            4,
-            TimeUnit.HOURS,
-        )
-            .setConstraints(constraints)
-            .build()
-
-        WorkManager.getInstance(context.applicationContext)
-            .enqueueUniquePeriodicWork(
-                UNIQUE_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
-                request,
+            val request = PeriodicWorkRequestBuilder<AlarmHealWorker>(
+                4,
+                TimeUnit.HOURS,
             )
+                .setConstraints(constraints)
+                .build()
+
+            WorkManager.getInstance(context.applicationContext)
+                .enqueueUniquePeriodicWork(
+                    UNIQUE_NAME,
+                    ExistingPeriodicWorkPolicy.KEEP,
+                    request,
+                )
+        } catch (e: Exception) {
+            Log.w(TAG, "WorkManager enqueue failed — BootReceiver / next open still heal", e)
+        }
     }
 }
