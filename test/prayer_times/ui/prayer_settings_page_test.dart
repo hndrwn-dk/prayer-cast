@@ -326,11 +326,11 @@ void main() {
 
     expect(find.byKey(LocationDisclosureDialog.dialogKey), findsOneWidget);
     expect(find.text('Location is optional'), findsOneWidget);
-    expect(find.textContaining('GPS is optional'), findsOneWidget);
     expect(
-      find.textContaining('not used to decide whether you are home'),
+      find.textContaining('fill city and country'),
       findsOneWidget,
     );
+    expect(find.textContaining('not used to track you'), findsOneWidget);
     expect(find.text('Privacy policy'), findsOneWidget);
     expect(resolver.resolveCalls, 0);
 
@@ -465,6 +465,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Lokasi bersifat opsional'), findsOneWidget);
+    expect(find.textContaining('mengisi kota dan negara'), findsOneWidget);
     expect(find.text('Lanjutkan'), findsOneWidget);
     expect(find.text('Ketik kota saja'), findsOneWidget);
     expect(find.text('Kebijakan privasi'), findsOneWidget);

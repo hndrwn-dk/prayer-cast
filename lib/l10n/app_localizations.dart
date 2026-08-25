@@ -161,13 +161,13 @@ abstract class AppLocalizations {
   /// No description provided for @checkingHome.
   ///
   /// In en, this message translates to:
-  /// **'checking home'**
+  /// **'looking for home'**
   String get checkingHome;
 
   /// No description provided for @speakerNotSelected.
   ///
   /// In en, this message translates to:
-  /// **'Speaker not selected yet'**
+  /// **'no speaker'**
   String get speakerNotSelected;
 
   /// No description provided for @speakerCardEmpty.
@@ -941,7 +941,7 @@ abstract class AppLocalizations {
   /// No description provided for @locationDisclosureBody.
   ///
   /// In en, this message translates to:
-  /// **'GPS is optional. It is used only to fill city and country so Prayer Cast can fetch prayer times.\n\nIt is not used to decide whether you are home. Home uses the Wi-Fi / LAN fingerprint on this phone.\n\nLocation stays on this device except when sent to Aladhan and the system geocoder, as described in the privacy policy.\n\nYou can type city and country instead.'**
+  /// **'Location is optional. You can use it to fill city and country so Prayer Cast can show prayer times for your place.\n\nIt is not used to track you. You can type city and country instead.'**
   String get locationDisclosureBody;
 
   /// No description provided for @locationDisclosureContinue.

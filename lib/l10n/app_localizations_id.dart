@@ -44,10 +44,10 @@ class AppLocalizationsId extends AppLocalizations {
   String get notHome => 'tidak di rumah';
 
   @override
-  String get checkingHome => 'memeriksa rumah';
+  String get checkingHome => 'mencari rumah';
 
   @override
-  String get speakerNotSelected => 'Speaker belum dipilih';
+  String get speakerNotSelected => 'tidak ada speaker';
 
   @override
   String get speakerCardEmpty => 'Belum ada speaker';
@@ -497,7 +497,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get locationDisclosureBody =>
-      'GPS bersifat opsional. Hanya dipakai untuk mengisi kota dan negara agar Prayer Cast bisa mengambil waktu sholat.\n\nLokasi tidak dipakai untuk menentukan apakah Anda di rumah. Deteksi rumah memakai sidik LAN / Wi-Fi di ponsel ini.\n\nLokasi tetap di perangkat, kecuali dikirim ke Aladhan dan geocoder sistem, seperti dijelaskan di kebijakan privasi.\n\nAnda bisa mengetik kota dan negara.';
+      'Lokasi bersifat opsional. Bisa dipakai untuk mengisi kota dan negara agar Prayer Cast menampilkan waktu sholat di tempat Anda.\n\nLokasi tidak dipakai untuk melacak Anda. Anda bisa mengetik kota dan negara.';
 
   @override
   String get locationDisclosureContinue => 'Lanjutkan';

@@ -44,10 +44,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notHome => 'not home';
 
   @override
-  String get checkingHome => 'checking home';
+  String get checkingHome => 'looking for home';
 
   @override
-  String get speakerNotSelected => 'Speaker not selected yet';
+  String get speakerNotSelected => 'no speaker';
 
   @override
   String get speakerCardEmpty => 'No speaker selected';
@@ -496,7 +496,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get locationDisclosureBody =>
-      'GPS is optional. It is used only to fill city and country so Prayer Cast can fetch prayer times.\n\nIt is not used to decide whether you are home. Home uses the Wi-Fi / LAN fingerprint on this phone.\n\nLocation stays on this device except when sent to Aladhan and the system geocoder, as described in the privacy policy.\n\nYou can type city and country instead.';
+      'Location is optional. You can use it to fill city and country so Prayer Cast can show prayer times for your place.\n\nIt is not used to track you. You can type city and country instead.';
 
   @override
   String get locationDisclosureContinue => 'Continue';

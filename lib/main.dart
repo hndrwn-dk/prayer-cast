@@ -49,7 +49,7 @@ import 'package:prayer_cast/support/open_support_url.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
-const String kAppVersion = '1.0.8+9';
+const String kAppVersion = '1.0.9+10';
 
 /// Android 13+ [POST_NOTIFICATIONS]. Default true so widget tests stay clean.
 final postNotificationsGrantedProvider = StateProvider<bool>((ref) => true);
@@ -409,7 +409,12 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                   nextEmptyLabel: nextEmptyLabel,
                   cityLabel: cityLabel,
                   countryLabel: countryLabel,
-                  presenceLabel: _presenceLabel(l10n, presence),
+                  presenceLabel: _presenceLabel(
+                    l10n,
+                    presence,
+                    speakerLoading: speakerLoading,
+                    speakerName: speakerName,
+                  ),
                   speakerName: speakerName,
                   speakerLoading: speakerLoading,
                   onLanguageSelected: (code) {
@@ -592,7 +597,7 @@ class _HomeHero extends StatelessWidget {
                       onSpiritualBenefitsTap: onSpiritualBenefitsTap,
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 12),
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 180),
                     child: _PlaceAndPresence(
@@ -851,7 +856,12 @@ class _PlaceAndPresence extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  EditorialEyebrow(presenceLabel),
+                  EditorialEyebrow(
+                    presenceLabel,
+                    color: presenceLabel == l10n.speakerNotSelected
+                        ? PrayerCastColors.dawn
+                        : PrayerCastColors.mistDeep,
+                  ),
                   if (placeDetail != null && placeDetail!.isNotEmpty) ...[
                     const SizedBox(height: 3),
                     Text(
@@ -1025,14 +1035,24 @@ class _PrayerTimesSlab extends StatelessWidget {
   }
 }
 
-String _presenceLabel(AppLocalizations l10n, AsyncValue<PresenceState> presence) {
+String _presenceLabel(
+  AppLocalizations l10n,
+  AsyncValue<PresenceState> presence, {
+  required bool speakerLoading,
+  required String? speakerName,
+}) {
+  final hasSpeaker = speakerName != null && speakerName.isNotEmpty;
+  if (!speakerLoading && !hasSpeaker) {
+    return l10n.speakerNotSelected;
+  }
   return presence.when(
     loading: () => l10n.checkingHome,
     error: (_, __) => l10n.checkingHome,
     data: (state) => switch (state) {
       PresenceState.home => l10n.homeDetected,
       PresenceState.away => l10n.notHome,
-      PresenceState.unknown => l10n.checkingHome,
+      PresenceState.unknown =>
+        hasSpeaker ? l10n.checkingHome : l10n.speakerNotSelected,
     },
   );
 }

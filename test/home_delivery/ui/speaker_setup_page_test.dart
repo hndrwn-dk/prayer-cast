@@ -355,6 +355,15 @@ void main() {
     );
     expect(find.text('May start late'), findsOneWidget);
     expect(find.text('reachable now'), findsOneWidget);
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('speaker_group_delay_hint')))
+          .style
+          ?.fontSize,
+      Theme.of(
+        tester.element(find.byKey(const ValueKey('speaker_group_delay_hint'))),
+      ).textTheme.bodySmall?.fontSize,
+    );
   });
 
   testWidgets(

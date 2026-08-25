@@ -7,6 +7,7 @@ import 'package:prayer_cast/home_delivery/logging/delivery_database.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/adhan_countdown.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
+import 'package:prayer_cast/home_delivery/ui/widgets/spiritual_benefits_teaser.dart';
 import 'package:prayer_cast/main.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 import 'package:prayer_cast/support/open_support_url.dart';
@@ -111,7 +112,13 @@ void main() {
     expect(find.text('Singapore, Singapore'), findsNothing);
     expect(find.text('Singapore'), findsNothing);
     expect(find.text('Belum ada speaker'), findsOneWidget);
-    expect(find.text('MEMERIKSA RUMAH'), findsOneWidget);
+    expect(find.text('TIDAK ADA SPEAKER'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text('TIDAK ADA SPEAKER')).style?.color,
+      PrayerCastColors.dawn,
+    );
+    expect(find.text('MEMERIKSA RUMAH'), findsNothing);
+    expect(find.text('MENCARI RUMAH'), findsNothing);
     expect(find.text('Speaker'), findsOneWidget);
     expect(find.text('Speaker rumah'), findsNothing);
     expect(find.text('PERANGKAT'), findsOneWidget);
@@ -203,6 +210,13 @@ void main() {
     expect(find.text('Singapore, Singapore'), findsNothing);
     expect(find.text('Kota: Singapore'), findsOneWidget);
     expect(find.text('Negara: Singapore'), findsOneWidget);
+    expect(find.byKey(SpiritualBenefitsTeaserLine.keyName), findsOneWidget);
+
+    final teaserBottom =
+        tester.getBottomLeft(find.byKey(SpiritualBenefitsTeaserLine.keyName)).dy;
+    final cityTop = tester.getTopLeft(find.text('Kota: Singapore')).dy;
+    expect(cityTop - teaserBottom, lessThan(16));
+    expect(cityTop - teaserBottom, greaterThan(4));
   });
 
   testWidgets('home colophon scrolls on a short phone without overflow', (

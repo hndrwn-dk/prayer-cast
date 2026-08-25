@@ -344,9 +344,7 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                   child: Text(
                     l10n.speakerGroupDelayHint,
                     key: const ValueKey('speaker_group_delay_hint'),
-                    style: text.bodyMedium?.copyWith(
-                      color: PrayerCastColors.mistDeep,
-                    ),
+                    style: text.bodySmall,
                   ),
                 ),
                 Padding(

@@ -133,3 +133,9 @@ bundles_release/
 
 # Device dry-run captures (logcat, pulled prefs/sqlite) — never commit.
 .dryrun-observe/
+
+# Private engineering spec — keep on disk, never publish.
+ADZAN_HOME_DELIVERY_SPEC.md
+
+# Internal Play / listing notes — keep on disk, never publish.
+/docs/
