@@ -200,6 +200,51 @@ class IconWell extends StatelessWidget {
   }
 }
 
+/// Quiet closing line under a mist hairline. Version and privacy live in Settings.
+class HomeClosingNote extends StatelessWidget {
+  const HomeClosingNote({super.key, required this.message});
+
+  final String message;
+
+  static const Key dividerKey = ValueKey<String>('home_colophon_divider');
+  static const Key messageKey = ValueKey<String>('home_closing_note');
+
+  static Color get dividerColor =>
+      PrayerCastColors.mist.withValues(alpha: 0.22);
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: PrayerCastColors.ink,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ColoredBox(
+            key: dividerKey,
+            color: dividerColor,
+            child: const SizedBox(height: 1),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 14, 28, 16),
+            child: Text(
+              message,
+              key: messageKey,
+              style: const TextStyle(
+                fontFamily: PrayerCastTheme.displayFont,
+                fontSize: 11,
+                fontStyle: FontStyle.italic,
+                height: 1.35,
+                color: PrayerCastColors.mistDeep,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Quiet privacy line + version, separated from Prayer times by a mist hairline.
 class ColophonFootnote extends StatelessWidget {
   const ColophonFootnote({

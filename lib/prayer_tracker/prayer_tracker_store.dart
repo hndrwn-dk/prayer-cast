@@ -78,6 +78,93 @@ class PrayerLogEntry {
 /// One day's prayer log (`YYYY-MM-DD` → prayer → entry).
 typedef PrayerDayLog = Map<String, PrayerLogEntry>;
 
+const kQadhaCacheKey = '__qadha__';
+
+/// Outstanding make-up prayers, stored beside the daily log (same file).
+class QadhaLedger {
+  const QadhaLedger({
+    this.counts = const {},
+    this.dismissedAccrualDay,
+  });
+
+  final Map<String, int> counts;
+  final String? dismissedAccrualDay;
+
+  int of(String prayer) {
+    final n = counts[prayer] ?? 0;
+    return n < 0 ? 0 : n;
+  }
+
+  int get total {
+    var sum = 0;
+    for (final n in counts.values) {
+      if (n > 0) sum += n;
+    }
+    return sum;
+  }
+
+  QadhaLedger incremented(String prayer) {
+    return QadhaLedger(
+      counts: {...counts, prayer: of(prayer) + 1},
+      dismissedAccrualDay: dismissedAccrualDay,
+    );
+  }
+
+  QadhaLedger decremented(String prayer) {
+    final next = of(prayer) - 1;
+    final map = Map<String, int>.from(counts);
+    if (next <= 0) {
+      map.remove(prayer);
+    } else {
+      map[prayer] = next;
+    }
+    return QadhaLedger(
+      counts: map,
+      dismissedAccrualDay: dismissedAccrualDay,
+    );
+  }
+
+  QadhaLedger added(Iterable<String> prayers) {
+    var next = this;
+    for (final prayer in prayers) {
+      next = next.incremented(prayer);
+    }
+    return next;
+  }
+
+  QadhaLedger dismissingAccrual(String dayKey) {
+    return QadhaLedger(counts: counts, dismissedAccrualDay: dayKey);
+  }
+
+  Map<String, dynamic> toJson() => {
+        'counts': {
+          for (final e in counts.entries)
+            if (e.value > 0) e.key: e.value,
+        },
+        if (dismissedAccrualDay != null)
+          'dismissedAccrualDay': dismissedAccrualDay,
+      };
+
+  static QadhaLedger parse(Map<String, dynamic>? raw) {
+    if (raw == null) return const QadhaLedger();
+    final countsRaw = raw['counts'];
+    final counts = <String, int>{};
+    if (countsRaw is Map) {
+      for (final e in countsRaw.entries) {
+        if (e.key is! String) continue;
+        final n = e.value;
+        final value = n is int ? n : int.tryParse('$n') ?? 0;
+        if (value > 0) counts[e.key as String] = value;
+      }
+    }
+    final dismissed = raw['dismissedAccrualDay'];
+    return QadhaLedger(
+      counts: counts,
+      dismissedAccrualDay: dismissed is String ? dismissed : null,
+    );
+  }
+}
+
 abstract interface class PrayerTrackerStore {
   Future<PrayerDayLog> readDay(String dayKey);
 
@@ -85,6 +172,10 @@ abstract interface class PrayerTrackerStore {
 
   /// Inclusive `YYYY-MM-DD` range. Missing days are omitted.
   Future<Map<String, PrayerDayLog>> readRange(String fromKey, String toKey);
+
+  Future<QadhaLedger> readQadha();
+
+  Future<void> writeQadha(QadhaLedger ledger);
 }
 
 final class FilePrayerTrackerStore implements PrayerTrackerStore {
@@ -151,6 +242,7 @@ final class FilePrayerTrackerStore implements PrayerTrackerStore {
     await _ensureLoaded();
     final out = <String, PrayerDayLog>{};
     for (final entry in _cache.entries) {
+      if (!_isDayKey(entry.key)) continue;
       if (entry.key.compareTo(fromKey) < 0) continue;
       if (entry.key.compareTo(toKey) > 0) continue;
       final decoded = decodeDay(entry.value);
@@ -158,6 +250,26 @@ final class FilePrayerTrackerStore implements PrayerTrackerStore {
     }
     return out;
   }
+
+  @override
+  Future<QadhaLedger> readQadha() async {
+    await _ensureLoaded();
+    return QadhaLedger.parse(_cache[kQadhaCacheKey]);
+  }
+
+  @override
+  Future<void> writeQadha(QadhaLedger ledger) async {
+    await _ensureLoaded();
+    if (ledger.total == 0 && ledger.dismissedAccrualDay == null) {
+      _cache.remove(kQadhaCacheKey);
+    } else {
+      _cache[kQadhaCacheKey] = ledger.toJson();
+    }
+    await _persist();
+  }
+
+  static bool _isDayKey(String key) =>
+      key.length == 10 && key[4] == '-' && key[7] == '-';
 
   @override
   Future<void> writeDay(String dayKey, PrayerDayLog log) async {
@@ -176,6 +288,7 @@ final class FilePrayerTrackerStore implements PrayerTrackerStore {
 
 final class MemoryPrayerTrackerStore implements PrayerTrackerStore {
   final Map<String, PrayerDayLog> _days = {};
+  QadhaLedger _qadha = const QadhaLedger();
 
   @override
   Future<PrayerDayLog> readDay(String dayKey) async {
@@ -204,5 +317,13 @@ final class MemoryPrayerTrackerStore implements PrayerTrackerStore {
       out[entry.key] = Map<String, PrayerLogEntry>.from(entry.value);
     }
     return out;
+  }
+
+  @override
+  Future<QadhaLedger> readQadha() async => _qadha;
+
+  @override
+  Future<void> writeQadha(QadhaLedger ledger) async {
+    _qadha = ledger;
   }
 }

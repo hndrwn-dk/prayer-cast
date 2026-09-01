@@ -47,6 +47,7 @@ export 'platform/exact_alarm.dart';
 export 'platform/network_prefix.dart';
 export 'platform/oem_battery_settings.dart';
 export 'platform/persisted_wake_heal.dart';
+export 'ui/app_settings_page.dart';
 export 'ui/delivery_log_page.dart';
 export 'ui/delivery_log_providers.dart';
 export 'ui/home_setup_providers.dart';

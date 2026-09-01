@@ -1,7 +1,7 @@
 name: prayer_cast
 description: Tursina Labs prayer times app — offline adzan cast to home speakers.
 publish_to: 'none'
-version: 1.0.11+12
+version: 1.0.12+13
 
 environment:
   sdk: ^3.12.0
@@ -42,6 +42,11 @@ dependencies:
   # (was already transitive via geolocator).
   permission_handler: ^12.0.3
   audioplayers: ^6.8.1
+  # Kiblat heading from magnetometer / rotation vector (no fine GPS).
+  flutter_device_compass: ^2.2.0
+  # Nearby mosques on OpenStreetMap tiles (Overpass query is http).
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

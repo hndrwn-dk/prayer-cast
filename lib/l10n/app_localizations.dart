@@ -254,6 +254,114 @@ abstract class AppLocalizations {
   /// **'Schedule'**
   String get scheduleEyebrow;
 
+  /// No description provided for @worshipEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Worship'**
+  String get worshipEyebrow;
+
+  /// No description provided for @directionEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Direction'**
+  String get directionEyebrow;
+
+  /// No description provided for @prayerTracker.
+  ///
+  /// In en, this message translates to:
+  /// **'Prayer tracker'**
+  String get prayerTracker;
+
+  /// No description provided for @qibla.
+  ///
+  /// In en, this message translates to:
+  /// **'Qibla'**
+  String get qibla;
+
+  /// Home gear icon and settings page title
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settings;
+
+  /// No description provided for @deliveryLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Adhan history'**
+  String get deliveryLog;
+
+  /// No description provided for @deliveryLogHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Whether adhan reached the speaker, on this phone only.'**
+  String get deliveryLogHint;
+
+  /// No description provided for @deliveryLogPageIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'The last 30 attempts on this phone. Nothing is sent to a server.'**
+  String get deliveryLogPageIntro;
+
+  /// No description provided for @appVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'App version'**
+  String get appVersion;
+
+  /// No description provided for @languageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your preferred language'**
+  String get languageHint;
+
+  /// No description provided for @aboutEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get aboutEyebrow;
+
+  /// No description provided for @legalEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Legal'**
+  String get legalEyebrow;
+
+  /// No description provided for @rateApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate Prayer Cast'**
+  String get rateApp;
+
+  /// No description provided for @rateAppHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the Play Store'**
+  String get rateAppHint;
+
+  /// No description provided for @shareApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Share Prayer Cast'**
+  String get shareApp;
+
+  /// No description provided for @shareAppHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite a friend to use this app'**
+  String get shareAppHint;
+
+  /// No description provided for @shareAppMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Prayer Cast plays adhan on your home speaker when you are actually home.\n{url}'**
+  String shareAppMessage(String url);
+
+  /// No description provided for @privacyPolicyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'How Prayer Cast uses data on this phone'**
+  String get privacyPolicyHint;
+
   /// No description provided for @dataOnDeviceOnly.
   ///
   /// In en, this message translates to:

@@ -96,6 +96,65 @@ class AppLocalizationsId extends AppLocalizations {
   String get scheduleEyebrow => 'Jadwal';
 
   @override
+  String get worshipEyebrow => 'Ibadah';
+
+  @override
+  String get directionEyebrow => 'Arah';
+
+  @override
+  String get prayerTracker => 'Catatan sholat';
+
+  @override
+  String get qibla => 'Kiblat';
+
+  @override
+  String get settings => 'Pengaturan';
+
+  @override
+  String get deliveryLog => 'Riwayat adzan';
+
+  @override
+  String get deliveryLogHint =>
+      'Apakah adzan sampai ke speaker, hanya di ponsel ini.';
+
+  @override
+  String get deliveryLogPageIntro =>
+      '30 percobaan terakhir di perangkat ini. Tidak dikirim ke server.';
+
+  @override
+  String get appVersion => 'Versi aplikasi';
+
+  @override
+  String get languageHint => 'Pilih bahasa yang Anda pakai';
+
+  @override
+  String get aboutEyebrow => 'Tentang';
+
+  @override
+  String get legalEyebrow => 'Legal';
+
+  @override
+  String get rateApp => 'Beri rating aplikasi';
+
+  @override
+  String get rateAppHint => 'Buka Play Store';
+
+  @override
+  String get shareApp => 'Bagikan Prayer Cast';
+
+  @override
+  String get shareAppHint => 'Undang teman memakai app ini';
+
+  @override
+  String shareAppMessage(String url) {
+    return 'Prayer Cast memutar adzan di speaker rumah saat Anda benar-benar di rumah.\n$url';
+  }
+
+  @override
+  String get privacyPolicyHint =>
+      'Bagaimana Prayer Cast memakai data di ponsel ini';
+
+  @override
   String get dataOnDeviceOnly => 'Data hanya tersimpan di ponsel Anda.';
 
   @override

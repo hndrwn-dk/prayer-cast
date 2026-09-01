@@ -4,30 +4,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prayer_cast/home_delivery/coordinator/next_prayer_provider.dart';
 import 'package:prayer_cast/home_delivery/logging/delivery_database.dart';
+import 'package:prayer_cast/home_delivery/ui/app_settings_page.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/adhan_countdown.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/spiritual_benefits_teaser.dart';
 import 'package:prayer_cast/main.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
+import 'package:prayer_cast/support/app_links.dart';
 import 'package:prayer_cast/support/open_support_url.dart';
+import 'package:prayer_cast/support/share_plain_text.dart';
 
-const _privacyLine = 'Kebijakan privasi';
 const _prayerTimesSlab = ValueKey<String>('home_prayer_times_slab');
+const _prayerTrackerSlab = ValueKey<String>('home_prayer_tracker_slab');
+const _destinationsStrip = ValueKey<String>('home_destinations_strip');
+const _pipe0 = ValueKey<String>('home_destination_pipe_0');
+const _pipe1 = ValueKey<String>('home_destination_pipe_1');
 
-/// Notch + gesture inset typical of modern Android / iPhone-class phones.
-const _phonePadding = FakeViewPadding(top: 20, bottom: 34);
-
-Future<void> _scrollHomeToBottom(WidgetTester tester) async {
+Future<void> _scrollHomeToClosingNote(WidgetTester tester) async {
   final scrollable = find.byType(Scrollable).first;
   await tester.dragUntilVisible(
-    find.byKey(ColophonFootnote.dividerKey),
+    find.byKey(HomeClosingNote.dividerKey),
     scrollable,
     const Offset(0, -120),
   );
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 400));
 }
+const _phonePadding = FakeViewPadding(top: 20, bottom: 34);
 
 Future<void> _pumpHomeAtSize(
   WidgetTester tester, {
@@ -63,25 +67,11 @@ Future<void> _pumpHomeAtSize(
   await tester.pump(const Duration(milliseconds: 800));
 }
 
-Future<void> _expectHairlineImmediatelyAboveFootnotes(WidgetTester tester) async {
-  await _scrollHomeToBottom(tester);
-  final divider = find.byKey(ColophonFootnote.dividerKey);
-  expect(divider, findsOneWidget);
-  expect(find.text(_privacyLine), findsOneWidget);
-  expect(find.text('version: $kAppVersion'), findsOneWidget);
-  expect(tester.takeException(), isNull);
-
-  final dividerBottom = tester.getBottomLeft(divider).dy;
-  final footnoteTop = tester.getTopLeft(find.text(_privacyLine)).dy;
-  expect(footnoteTop - dividerBottom, closeTo(14, 1));
-
-  final prayerRect = tester.getRect(find.byKey(_prayerTimesSlab));
-  final footnoteRect = tester.getRect(find.text(_privacyLine));
-  expect(prayerRect.overlaps(footnoteRect), isFalse);
-  expect(
-    tester.getTopLeft(divider).dy,
-    greaterThanOrEqualTo(prayerRect.bottom - 1),
-  );
+Future<void> _openSettings(WidgetTester tester) async {
+  await tester.tap(find.byKey(const ValueKey('home_settings')));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+  expect(find.byKey(AppSettingsPage.keyName), findsOneWidget);
 }
 
 void main() {
@@ -90,6 +80,7 @@ void main() {
   });
   tearDown(() {
     debugLaunchExternalUrl = null;
+    debugShareText = null;
   });
 
   testWidgets('app shell loads speaker and prayer entry points', (
@@ -99,16 +90,16 @@ void main() {
     addTearDown(db.close);
 
     await tester.pumpWidget(PrayerCastAppForTest(database: db));
-    // Entrance delays + fade controllers (avoid pumpAndSettle: BreathPulse loops).
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1200));
 
     expect(find.text('PRAYER'), findsOneWidget);
     expect(find.text('Cast'), findsOneWidget);
     expect(find.byKey(const ValueKey('support_on_kofi')), findsOneWidget);
-    expect(find.byKey(const ValueKey('home_delivery_log')), findsOneWidget);
-    expect(find.byKey(const ValueKey('language_menu')), findsOneWidget);
-    expect(find.byIcon(Icons.language), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_settings')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_delivery_log')), findsNothing);
+    expect(find.byKey(const ValueKey('language_menu')), findsNothing);
+    expect(find.byIcon(Icons.language), findsNothing);
     expect(find.text('EN'), findsNothing);
     expect(find.text('ID'), findsNothing);
     expect(find.text('Beranda'), findsNothing);
@@ -129,58 +120,49 @@ void main() {
     expect(find.text('Speaker rumah'), findsNothing);
     expect(find.text('PERANGKAT'), findsOneWidget);
     expect(find.text('JADWAL'), findsOneWidget);
+    expect(find.text('IBADAH'), findsOneWidget);
+    expect(find.text('ARAH'), findsOneWidget);
     expect(find.text('Waktu sholat'), findsOneWidget);
     expect(find.text('Catatan sholat'), findsOneWidget);
+    expect(find.text('Kiblat'), findsOneWidget);
+    expect(find.text('|'), findsNothing);
+    expect(find.byKey(_pipe0), findsOneWidget);
+    expect(find.byKey(_pipe1), findsOneWidget);
+    final timesRect = tester.getRect(find.byKey(_prayerTimesSlab));
+    final trackerRect = tester.getRect(find.byKey(_prayerTrackerSlab));
+    final pipe0 = tester.getRect(find.byKey(_pipe0));
+    expect(pipe0.width, 24);
+    expect(
+      pipe0.center.dx - timesRect.right,
+      closeTo(trackerRect.left - pipe0.center.dx, 1),
+    );
+    expect(
+      tester.getSize(find.byKey(_prayerTrackerSlab)).height,
+      closeTo(tester.getSize(find.byKey(_prayerTimesSlab)).height, 1),
+    );
     expect(find.text('Riwayat pengiriman'), findsNothing);
+    expect(find.text('Kebijakan privasi'), findsNothing);
+    expect(find.text('version: $kAppVersion'), findsNothing);
     expect(find.textContaining('Adzan di rumah'), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('home_delivery_log')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(find.text('Riwayat pengiriman'), findsOneWidget);
-    expect(find.textContaining('30 percobaan terakhir'), findsOneWidget);
-    await tester.tap(find.byTooltip('Kembali'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-
-    await _scrollHomeToBottom(tester);
-
-    expect(find.text('Kebijakan privasi'), findsOneWidget);
-    expect(find.text('version: $kAppVersion'), findsOneWidget);
-    final privacy = tester.widget<Text>(
-      find.text('Kebijakan privasi'),
-    );
-    expect(privacy.style?.color, PrayerCastColors.mistDeep);
-    final version = tester.widget<Text>(find.text('version: $kAppVersion'));
-    expect(version.style?.color, PrayerCastColors.mistDeep);
-    final homeScaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
-    expect(homeScaffold.backgroundColor, PrayerCastColors.ink);
-
-    final divider = find.byKey(ColophonFootnote.dividerKey);
+    await _scrollHomeToClosingNote(tester);
+    expect(find.byKey(HomeClosingNote.dividerKey), findsOneWidget);
+    expect(tester.getSize(find.byKey(HomeClosingNote.dividerKey)).height, 1);
     expect(
-      tester.widget<ColoredBox>(divider).color,
-      ColophonFootnote.dividerColor,
+      tester.widget<ColoredBox>(find.byKey(HomeClosingNote.dividerKey)).color,
+      HomeClosingNote.dividerColor,
     );
-    expect(tester.getSize(divider).height, 1);
-    final prayerBottom = tester.getBottomLeft(
-      find.byKey(const ValueKey('home_prayer_times_slab')),
-    );
-    final dividerTop = tester.getTopLeft(divider);
-    final footnoteTop = tester.getTopLeft(
-      find.text('Kebijakan privasi'),
-    );
-    expect(dividerTop.dy, greaterThan(prayerBottom.dy));
-    expect(footnoteTop.dy, greaterThan(dividerTop.dy));
-    final homeSize = tester.getSize(find.byType(Scaffold).first);
     expect(
-      tester.getBottomLeft(find.text('version: $kAppVersion')).dy,
-      greaterThan(homeSize.height * 0.75),
+      find.text('Data hanya tersimpan di ponsel Anda.'),
+      findsOneWidget,
     );
-
-    await tester.tap(find.text('Kebijakan privasi'));
+    await tester.tap(find.byKey(HomeClosingNote.messageKey));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.textContaining('Gunakan lokasi saat ini'), findsNothing);
+
+    final homeScaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
+    expect(homeScaffold.backgroundColor, PrayerCastColors.ink);
 
     await tester.tap(find.text('Waktu sholat'));
     await tester.pump();
@@ -193,9 +175,17 @@ void main() {
     expect(find.textContaining('Metode perhitungan'), findsOneWidget);
   });
 
-  testWidgets('language menu items use regular weight, not title bold', (
+  testWidgets('settings holds language, adhan history, about, and legal', (
     tester,
   ) async {
+    final launched = <Uri>[];
+    final shared = <String>[];
+    debugLaunchExternalUrl = (uri) async {
+      launched.add(uri);
+      return true;
+    };
+    debugShareText = (text) async => shared.add(text);
+
     final db = DeliveryDatabase.memory();
     addTearDown(db.close);
 
@@ -203,14 +193,64 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1200));
 
-    await tester.tap(find.byKey(const ValueKey('language_menu')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
+    await _openSettings(tester);
+    expect(find.text('Pengaturan'), findsOneWidget);
+    expect(find.text('Pilih bahasa yang Anda pakai'), findsOneWidget);
+    expect(find.text('Bahasa Indonesia'), findsOneWidget);
+    expect(find.text('English'), findsOneWidget);
+    expect(find.text('Riwayat adzan'), findsOneWidget);
+    expect(
+      find.text('Apakah adzan sampai ke speaker, hanya di ponsel ini.'),
+      findsOneWidget,
+    );
+    expect(find.text('TENTANG'), findsOneWidget);
+    expect(find.text('Versi aplikasi'), findsOneWidget);
+    expect(find.text(kAppVersion), findsOneWidget);
+    expect(find.text('Beri rating aplikasi'), findsOneWidget);
+    expect(find.text('Buka Play Store'), findsOneWidget);
+    expect(find.text('Bagikan Prayer Cast'), findsOneWidget);
+    expect(find.text('Undang teman memakai app ini'), findsOneWidget);
+    expect(find.text('LEGAL'), findsOneWidget);
+    expect(find.text('Kebijakan privasi'), findsOneWidget);
+    expect(
+      find.text('Bagaimana Prayer Cast memakai data di ponsel ini'),
+      findsOneWidget,
+    );
 
     final idLabel = tester.widget<Text>(find.text('Bahasa Indonesia'));
     final enLabel = tester.widget<Text>(find.text('English'));
     expect(idLabel.style?.fontWeight, FontWeight.w400);
     expect(enLabel.style?.fontWeight, FontWeight.w400);
+
+    await tester.tap(find.byKey(AppSettingsPage.deliveryLogKey));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Riwayat adzan'), findsWidgets);
+    expect(find.textContaining('30 percobaan terakhir'), findsWidgets);
+    await tester.tap(find.byTooltip('Kembali').last);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    await tester.ensureVisible(find.byKey(AppSettingsPage.rateKey));
+    await tester.tap(find.byKey(AppSettingsPage.rateKey));
+    await tester.pump();
+    expect(launched, [Uri.parse(AppLinks.playStoreUrl)]);
+
+    await tester.ensureVisible(find.byKey(AppSettingsPage.shareKey));
+    await tester.tap(find.byKey(AppSettingsPage.shareKey));
+    await tester.pump();
+    expect(shared, hasLength(1));
+    expect(shared.single, contains(AppLinks.playStoreUrl));
+
+    await tester.ensureVisible(find.byKey(AppSettingsPage.privacyKey));
+    await tester.tap(find.byKey(AppSettingsPage.privacyKey));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(launched, [
+      Uri.parse(AppLinks.playStoreUrl),
+      Uri.parse(AppLinks.privacyPolicyUrl),
+    ]);
+    expect(find.textContaining('Gunakan lokasi saat ini'), findsNothing);
   });
 
   testWidgets('home next-adhan chip shows city and country', (tester) async {
@@ -249,79 +289,47 @@ void main() {
     expect(cityTop - teaserBottom, greaterThan(4));
   });
 
-  testWidgets('home colophon scrolls on a short phone without overflow', (
+  testWidgets('home destinations fit a short phone without overflow', (
     tester,
   ) async {
     await _pumpHomeAtSize(tester, size: const Size(320, 568));
     expect(find.text('PRAYER'), findsOneWidget);
     expect(tester.takeException(), isNull);
-
-    final offstageDivider = find.byKey(
-      ColophonFootnote.dividerKey,
-      skipOffstage: false,
-    );
-    expect(offstageDivider, findsOneWidget);
-
-    final scrollable = tester.state<ScrollableState>(
-      find.byType(Scrollable).first,
-    );
-    expect(scrollable.position.maxScrollExtent, greaterThan(0));
+    expect(find.text('Kebijakan privasi'), findsNothing);
 
     await tester.scrollUntilVisible(
-      offstageDivider,
+      find.byKey(HomeClosingNote.dividerKey, skipOffstage: false),
       64,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pump();
     expect(tester.takeException(), isNull);
-
-    await _expectHairlineImmediatelyAboveFootnotes(tester);
-
-    final scaffoldH = tester.getSize(find.byType(Scaffold).first).height;
-    expect(
-      tester.getTopLeft(find.byKey(ColophonFootnote.dividerKey)).dy,
-      greaterThanOrEqualTo(-1),
-    );
-    expect(
-      tester.getBottomLeft(find.text('version: $kAppVersion')).dy,
-      lessThanOrEqualTo(scaffoldH + 1),
-    );
-
-    await tester.tap(find.text(_privacyLine));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.textContaining('Gunakan lokasi saat ini'), findsNothing);
+    expect(find.text('Data hanya tersimpan di ponsel Anda.'), findsOneWidget);
+    expect(find.text('Kiblat'), findsOneWidget);
+    expect(find.byKey(_prayerTimesSlab), findsOneWidget);
   });
 
-  testWidgets('home colophon pins to the bottom on a tall phone', (
+  testWidgets('home destinations stay on-screen on a tall phone', (
     tester,
   ) async {
     await _pumpHomeAtSize(tester, size: const Size(448, 1080));
-    await _expectHairlineImmediatelyAboveFootnotes(tester);
+    expect(tester.takeException(), isNull);
 
     final scrollable = tester.state<ScrollableState>(
       find.byType(Scrollable).first,
     );
     expect(scrollable.position.maxScrollExtent, lessThan(80));
-
+    expect(find.byKey(_prayerTimesSlab), findsOneWidget);
+    expect(find.text('Kiblat'), findsOneWidget);
+    expect(find.byKey(HomeClosingNote.dividerKey), findsOneWidget);
     final scaffoldH = tester.getSize(find.byType(Scaffold).first).height;
     expect(
-      scaffoldH - tester.getBottomLeft(find.byType(ColophonFootnote)).dy,
+      scaffoldH - tester.getBottomLeft(find.byType(HomeClosingNote)).dy,
       closeTo(tester.view.padding.bottom, 2),
     );
-    expect(
-      tester.getBottomLeft(find.text('version: $kAppVersion')).dy,
-      greaterThan(scaffoldH * 0.85),
-    );
-
-    final prayerBottom = tester.getBottomLeft(find.byKey(_prayerTimesSlab)).dy;
-    final dividerTop = tester
-        .getTopLeft(find.byKey(ColophonFootnote.dividerKey))
-        .dy;
-    expect(dividerTop - prayerBottom, greaterThan(80));
   });
 
-  testWidgets('home colophon sits above the Android navigation inset', (
+  testWidgets('home destinations sit above the Android navigation inset', (
     tester,
   ) async {
     const navInset = 48.0;
@@ -331,10 +339,9 @@ void main() {
       padding: FakeViewPadding.zero,
       viewPadding: const FakeViewPadding(top: 40, bottom: navInset),
     );
-    await _scrollHomeToBottom(tester);
 
     expect(
-      tester.getRect(find.byType(ColophonFootnote)).bottom,
+      tester.getRect(find.byType(HomeClosingNote)).bottom,
       lessThanOrEqualTo(1080 - navInset),
     );
     expect(tester.getTopLeft(find.text('PRAYER')).dy, greaterThanOrEqualTo(40));

@@ -48,6 +48,32 @@
   "prayerTimesHint": "City, method, and today’s schedule",
   "deviceEyebrow": "Device",
   "scheduleEyebrow": "Schedule",
+  "worshipEyebrow": "Worship",
+  "directionEyebrow": "Direction",
+  "prayerTracker": "Prayer tracker",
+  "qibla": "Qibla",
+  "settings": "Settings",
+  "@settings": {
+    "description": "Home gear icon and settings page title"
+  },
+  "deliveryLog": "Adhan history",
+  "deliveryLogHint": "Whether adhan reached the speaker, on this phone only.",
+  "deliveryLogPageIntro": "The last 30 attempts on this phone. Nothing is sent to a server.",
+  "appVersion": "App version",
+  "languageHint": "Choose your preferred language",
+  "aboutEyebrow": "About",
+  "legalEyebrow": "Legal",
+  "rateApp": "Rate Prayer Cast",
+  "rateAppHint": "Open the Play Store",
+  "shareApp": "Share Prayer Cast",
+  "shareAppHint": "Invite a friend to use this app",
+  "shareAppMessage": "Prayer Cast plays adhan on your home speaker when you are actually home.\n{url}",
+  "@shareAppMessage": {
+    "placeholders": {
+      "url": {"type": "String"}
+    }
+  },
+  "privacyPolicyHint": "How Prayer Cast uses data on this phone",
   "dataOnDeviceOnly": "Data stays only on your phone.",
   "privacyPolicy": "Privacy policy",
   "@privacyPolicy": {

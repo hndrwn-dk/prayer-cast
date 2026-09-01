@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prayer_cast/home_delivery/logging/delivery_database.dart';
@@ -8,7 +7,9 @@ import 'package:prayer_cast/home_delivery/logging/outcome.dart';
 import 'package:prayer_cast/home_delivery/platform/oem_battery_settings.dart';
 import 'package:prayer_cast/home_delivery/ui/delivery_log_page.dart';
 import 'package:prayer_cast/home_delivery/ui/delivery_log_providers.dart';
+import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
+import 'package:prayer_cast/l10n/app_localizations.dart';
 
 final class _FakeOem implements OemBatterySettingsPlatform {
   bool opened = false;
@@ -56,12 +57,8 @@ void main() {
         ],
         child: MaterialApp(
           locale: const Locale('id'),
-          supportedLocales: const [Locale('id'), Locale('en')],
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
           theme: PrayerCastTheme.light(),
           home: const DeliveryLogPage(),
         ),
@@ -87,6 +84,10 @@ void main() {
     expect(
       find.textContaining('Adzan berhasil diputar'),
       findsOneWidget,
+    );
+    expect(
+      tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor,
+      PrayerCastColors.ink,
     );
   });
 

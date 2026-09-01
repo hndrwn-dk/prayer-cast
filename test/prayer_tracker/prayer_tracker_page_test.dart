@@ -67,7 +67,7 @@ void main() {
     );
 
     await tester.scrollUntilVisible(
-      find.text('Fajr'),
+      find.byKey(const ValueKey('prayer-icon-fajr')),
       40,
       scrollable: find.byType(Scrollable).first,
     );
@@ -81,11 +81,10 @@ void main() {
     expect(find.text('On time · Alone'), findsNothing);
 
     await tester.scrollUntilVisible(
-      find.text('Isha'),
+      find.byKey(const ValueKey('prayer-icon-isha')),
       40,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Isha'), findsOneWidget);
     expect(find.byKey(const ValueKey('prayer-icon-isha')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -197,6 +196,79 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(const ValueKey('prayer_heat_grid')), findsOneWidget);
     expect(find.text('Insights'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('qadha plus adds an outstanding make-up prayer', (tester) async {
+    await _pumpTracker(tester);
+    await tester.scrollUntilVisible(
+      find.text('Qadha'),
+      40,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -48));
+    await tester.pump();
+    expect(find.text('No outstanding qadha.'), findsOneWidget);
+    expect(find.text('Yesterday 5 prayers were not logged.'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('prayer_tracker_qadha_plus_fajr')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('1 prayer outstanding.'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('prayer_tracker_qadha_count_fajr')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('qadha accrue adds yesterday unlogged prayers', (tester) async {
+    await _pumpTracker(tester);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('prayer_tracker_qadha_accrue')),
+      40,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -48));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('prayer_tracker_qadha_accrue')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('5 prayers outstanding.'), findsOneWidget);
+    expect(find.text('Yesterday 5 prayers were not logged.'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('rhythm insights name outstanding qadha', (tester) async {
+    final store = MemoryPrayerTrackerStore();
+    await store.writeQadha(const QadhaLedger(counts: {'fajr': 2, 'asr': 1}));
+
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          prayerTrackerStoreProvider.overrideWithValue(store),
+        ],
+        child: const MaterialApp(
+          locale: Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PrayerTrackerPage(),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    await tester.tap(find.byKey(const ValueKey('prayer_tracker_stats_button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('3 qadha still on the list.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

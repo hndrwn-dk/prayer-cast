@@ -22,6 +22,29 @@ void main() {
     expect(log.containsKey('dhuhr'), isFalse);
   });
 
+  test('qadha ledger persists beside days and stays out of readRange', () async {
+    final file = await _tempFile();
+    final store = FilePrayerTrackerStore(file);
+    await store.writeDay('2026-09-01', {
+      'fajr': const PrayerLogEntry(timing: PrayerLogTiming.onTime),
+    });
+    await store.writeQadha(
+      const QadhaLedger(counts: {'fajr': 2, 'isha': 1}),
+    );
+
+    final ledger = await store.readQadha();
+    expect(ledger.of('fajr'), 2);
+    expect(ledger.of('isha'), 1);
+    expect(ledger.total, 3);
+
+    final range = await store.readRange('2026-01-01', '2026-12-31');
+    expect(range.keys, ['2026-09-01']);
+    expect(range.containsKey(kQadhaCacheKey), isFalse);
+
+    final reloaded = FilePrayerTrackerStore(file);
+    expect((await reloaded.readQadha()).total, 3);
+  });
+
   test('migrates legacy single-status wire values', () async {
     final file = await _tempFile();
     final store = FilePrayerTrackerStore(file);

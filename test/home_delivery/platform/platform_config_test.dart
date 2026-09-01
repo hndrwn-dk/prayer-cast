@@ -4,40 +4,36 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// Spec §5.5 platform configuration checks (manifest / Info.plist).
 void main() {
-  test('AndroidManifest declares SCHEDULE_EXACT_ALARM but not USE_EXACT_ALARM', () {
-    final manifest = File(
-      'android/app/src/main/AndroidManifest.xml',
-    ).readAsStringSync();
-    expect(manifest, contains('android.permission.SCHEDULE_EXACT_ALARM'));
-    // Comment may mention the forbidden permission; the uses-permission must not.
-    expect(
-      RegExp(
-        r'android:name="android\.permission\.USE_EXACT_ALARM"',
-      ).hasMatch(manifest),
-      isFalse,
-    );
-    expect(manifest, contains('.AdzanAlarmReceiver'));
-    expect(manifest, contains('.AdzanForegroundService'));
-    expect(manifest, contains('.BootReceiver'));
-    expect(manifest, contains('android.intent.action.BOOT_COMPLETED'));
-    expect(manifest, contains('com.coloros.safecenter'));
-    expect(manifest, contains('com.oplus.safecenter'));
-    expect(manifest, contains('com.miui.securitycenter'));
-    expect(manifest, contains('ACCESS_COARSE_LOCATION'));
-    expect(manifest, contains('Not used for speaker scan'));
-    expect(manifest, contains('NEARBY_WIFI_DEVICES'));
-    expect(manifest, contains('neverForLocation'));
+  test(
+    'AndroidManifest declares SCHEDULE_EXACT_ALARM but not USE_EXACT_ALARM',
+    () {
+      final manifest = File(
+        'android/app/src/main/AndroidManifest.xml',
+      ).readAsStringSync();
+      expect(manifest, contains('android.permission.SCHEDULE_EXACT_ALARM'));
+      // Comment may mention the forbidden permission; the uses-permission must not.
+      expect(
+        RegExp(
+          r'android:name="android\.permission\.USE_EXACT_ALARM"',
+        ).hasMatch(manifest),
+        isFalse,
+      );
+      expect(manifest, contains('.AdzanAlarmReceiver'));
+      expect(manifest, contains('.AdzanForegroundService'));
+      expect(manifest, contains('.BootReceiver'));
+      expect(manifest, contains('android.intent.action.BOOT_COMPLETED'));
+      expect(manifest, contains('com.coloros.safecenter'));
+      expect(manifest, contains('com.oplus.safecenter'));
+      expect(manifest, contains('com.miui.securitycenter'));
+      expect(manifest, contains('ACCESS_COARSE_LOCATION'));
+      expect(manifest, contains('ACCESS_FINE_LOCATION'));
+      expect(manifest, contains('Not used for speaker scan'));
+      expect(manifest, contains('NEARBY_WIFI_DEVICES'));
+      expect(manifest, contains('neverForLocation'));
 
-    final fineGrant = RegExp(
-      r'<uses-permission\s+android:name="android\.permission\.ACCESS_FINE_LOCATION"\s*/>',
-    );
-    expect(fineGrant.hasMatch(manifest), isFalse);
-    final fineBlock = RegExp(
-      r'<uses-permission[^>]*ACCESS_FINE_LOCATION[^>]*/?>',
-    ).firstMatch(manifest);
-    expect(fineBlock, isNotNull);
-    expect(fineBlock!.group(0), contains('tools:node="remove"'));
-  });
+      expect(RegExp(r'tools:node="remove"').hasMatch(manifest), isFalse);
+    },
+  );
 
   test(
     'AdzanForegroundService is connectedDevice; Cast SDK stays mediaPlayback',
@@ -122,10 +118,7 @@ void main() {
     expect(boot, contains('ExactAlarmPlugin.healPersistedWake'));
     expect(worker, contains('ExactAlarmPlugin.healPersistedWake'));
     expect(worker, contains('PeriodicWorkRequestBuilder'));
-    expect(
-      worker,
-      contains('does not guarantee'),
-    );
+    expect(worker, contains('does not guarantee'));
     expect(worker, contains('WorkManager enqueue failed'));
   });
 
@@ -168,7 +161,8 @@ void main() {
     expect(
       healFunction.hasMatch(exact),
       isTrue,
-      reason: 'healPersistedWake should call rearmFromPrefsIfFuture first, then armRescheduleRetry as fallback',
+      reason:
+          'healPersistedWake should call rearmFromPrefsIfFuture first, then armRescheduleRetry as fallback',
     );
   });
 

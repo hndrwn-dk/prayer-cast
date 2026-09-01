@@ -96,6 +96,64 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scheduleEyebrow => 'Schedule';
 
   @override
+  String get worshipEyebrow => 'Worship';
+
+  @override
+  String get directionEyebrow => 'Direction';
+
+  @override
+  String get prayerTracker => 'Prayer tracker';
+
+  @override
+  String get qibla => 'Qibla';
+
+  @override
+  String get settings => 'Settings';
+
+  @override
+  String get deliveryLog => 'Adhan history';
+
+  @override
+  String get deliveryLogHint =>
+      'Whether adhan reached the speaker, on this phone only.';
+
+  @override
+  String get deliveryLogPageIntro =>
+      'The last 30 attempts on this phone. Nothing is sent to a server.';
+
+  @override
+  String get appVersion => 'App version';
+
+  @override
+  String get languageHint => 'Choose your preferred language';
+
+  @override
+  String get aboutEyebrow => 'About';
+
+  @override
+  String get legalEyebrow => 'Legal';
+
+  @override
+  String get rateApp => 'Rate Prayer Cast';
+
+  @override
+  String get rateAppHint => 'Open the Play Store';
+
+  @override
+  String get shareApp => 'Share Prayer Cast';
+
+  @override
+  String get shareAppHint => 'Invite a friend to use this app';
+
+  @override
+  String shareAppMessage(String url) {
+    return 'Prayer Cast plays adhan on your home speaker when you are actually home.\n$url';
+  }
+
+  @override
+  String get privacyPolicyHint => 'How Prayer Cast uses data on this phone';
+
+  @override
   String get dataOnDeviceOnly => 'Data stays only on your phone.';
 
   @override

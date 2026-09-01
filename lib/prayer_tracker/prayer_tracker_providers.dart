@@ -18,6 +18,23 @@ final todayPrayerLogProvider =
 final prayerStatsPeriodProvider =
     StateProvider<PrayerStatsPeriod>((ref) => PrayerStatsPeriod.week);
 
+final qadhaLedgerProvider = FutureProvider.autoDispose<QadhaLedger>((ref) async {
+  final store = ref.watch(prayerTrackerStoreProvider);
+  return store.readQadha();
+});
+
+final yesterdayUnloggedProvider =
+    FutureProvider.autoDispose<List<String>>((ref) async {
+  final store = ref.watch(prayerTrackerStoreProvider);
+  final now = DateTime.now();
+  final yesterday = DateTime(now.year, now.month, now.day - 1);
+  final log = await store.readDay(FilePrayerTrackerStore.dayKey(yesterday));
+  return [
+    for (final prayer in kTrackedPrayers)
+      if (!(log[prayer]?.isLogged ?? false)) prayer,
+  ];
+});
+
 final prayerPeriodStatsProvider =
     FutureProvider.autoDispose<PrayerPeriodStats>((ref) async {
   final period = ref.watch(prayerStatsPeriodProvider);

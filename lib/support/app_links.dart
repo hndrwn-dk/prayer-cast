@@ -6,4 +6,8 @@ abstract final class AppLinks {
   /// Prayer Cast-specific policy (not the generic studio /privacy page).
   static const String privacyPolicyUrl =
       'https://tursinalabs.com/privacy/prayer-cast';
+
+  /// Google Play listing.
+  static const String playStoreUrl =
+      'https://play.google.com/store/apps/details?id=com.tursinalabs.prayer_cast';
 }

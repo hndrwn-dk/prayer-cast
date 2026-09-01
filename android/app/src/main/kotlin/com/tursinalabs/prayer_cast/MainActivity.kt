@@ -41,6 +41,7 @@ class MainActivity : FlutterFragmentActivity() {
         super.configureFlutterEngine(flutterEngine)
         // Always bind: a cached FGS engine would otherwise skip this channel.
         LaunchPrayerPlugin.bind(flutterEngine, this)
+        ShareTextPlugin.bind(flutterEngine, this)
         if (PrayerCastFlutter.cached() === flutterEngine) {
             return
         }

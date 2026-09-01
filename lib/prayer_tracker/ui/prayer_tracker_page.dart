@@ -96,6 +96,8 @@ class _PrayerTrackerPageState extends ConsumerState<PrayerTrackerPage> {
                             _clearPrayer(kTrackedPrayers[i], draft),
                       ),
                     ],
+                    const SizedBox(height: 16),
+                    _QadhaCard(isId: isId),
                   ]),
                 ),
               );
@@ -635,6 +637,303 @@ class _StreakCard extends ConsumerWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QadhaCard extends ConsumerWidget {
+  const _QadhaCard({required this.isId});
+
+  final bool isId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final text = Theme.of(context).textTheme;
+    final ledger = ref.watch(qadhaLedgerProvider).valueOrNull ?? const QadhaLedger();
+    final missed = ref.watch(yesterdayUnloggedProvider).valueOrNull ?? const <String>[];
+    final now = DateTime.now();
+    final yesterdayKey = FilePrayerTrackerStore.dayKey(
+      DateTime(now.year, now.month, now.day - 1),
+    );
+    final showAccrual = missed.isNotEmpty &&
+        ledger.dismissedAccrualDay != yesterdayKey;
+    final total = ledger.total;
+    final subtitle = total == 0
+        ? (isId
+            ? 'Belum ada qadha tertunggak.'
+            : 'No outstanding qadha.')
+        : (isId
+            ? '$total sholat tertunggak.'
+            : (total == 1
+                ? '1 prayer outstanding.'
+                : '$total prayers outstanding.'));
+
+    return Material(
+      color: PrayerCastColors.canopyDeep,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _DawnTitle('Qadha'),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              key: const ValueKey<String>('prayer_tracker_qadha_total'),
+              style: text.bodySmall?.copyWith(
+                color: PrayerCastColors.mist,
+                fontSize: 12,
+              ),
+            ),
+            if (showAccrual) ...[
+              const SizedBox(height: 10),
+              _YesterdayQadhaPrompt(
+                isId: isId,
+                missed: missed,
+                onAdd: () => _write(
+                  ref,
+                  ledger.added(missed).dismissingAccrual(yesterdayKey),
+                ),
+                onDismiss: () => _write(
+                  ref,
+                  ledger.dismissingAccrual(yesterdayKey),
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            for (var i = 0; i < kTrackedPrayers.length; i++) ...[
+              if (i > 0) const SizedBox(height: 4),
+              _QadhaRow(
+                prayerId: kTrackedPrayers[i],
+                prayerName: prayerDisplayName(l10n, kTrackedPrayers[i]),
+                count: ledger.of(kTrackedPrayers[i]),
+                onAdd: () => _write(
+                  ref,
+                  ledger.incremented(kTrackedPrayers[i]),
+                ),
+                onComplete: ledger.of(kTrackedPrayers[i]) > 0
+                    ? () => _write(
+                          ref,
+                          ledger.decremented(kTrackedPrayers[i]),
+                        )
+                    : null,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _write(WidgetRef ref, QadhaLedger next) async {
+    await ref.read(prayerTrackerStoreProvider).writeQadha(next);
+    ref.invalidate(qadhaLedgerProvider);
+  }
+}
+
+class _YesterdayQadhaPrompt extends StatelessWidget {
+  const _YesterdayQadhaPrompt({
+    required this.isId,
+    required this.missed,
+    required this.onAdd,
+    required this.onDismiss,
+  });
+
+  final bool isId;
+  final List<String> missed;
+  final VoidCallback onAdd;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final n = missed.length;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: PrayerCastColors.ink.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isId
+                  ? 'Kemarin $n sholat belum tercatat.'
+                  : 'Yesterday $n prayers were not logged.',
+              style: text.bodySmall?.copyWith(
+                color: PrayerCastColors.mist,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _QadhaTextButton(
+                    key: const ValueKey<String>('prayer_tracker_qadha_accrue'),
+                    label: isId ? 'Tambah ke qadha' : 'Add to qadha',
+                    filled: true,
+                    onTap: onAdd,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _QadhaTextButton(
+                    key: const ValueKey<String>('prayer_tracker_qadha_skip'),
+                    label: isId ? 'Bukan terlewat' : 'Not missed',
+                    filled: false,
+                    onTap: onDismiss,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QadhaTextButton extends StatelessWidget {
+  const _QadhaTextButton({
+    super.key,
+    required this.label,
+    required this.filled,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool filled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: filled
+          ? PrayerCastColors.leaf.withValues(alpha: 0.35)
+          : PrayerCastColors.inkSoft,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: PrayerCastTheme.bodyFont,
+              fontSize: 12,
+              color: filled
+                  ? PrayerCastColors.surfaceRaised
+                  : PrayerCastColors.mist,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QadhaRow extends StatelessWidget {
+  const _QadhaRow({
+    required this.prayerId,
+    required this.prayerName,
+    required this.count,
+    required this.onAdd,
+    required this.onComplete,
+  });
+
+  final String prayerId;
+  final String prayerName;
+  final int count;
+  final VoidCallback onAdd;
+  final VoidCallback? onComplete;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        PremiumIcons.forPrayer(
+          prayerId,
+          size: 20,
+          color: PrayerCastColors.dawn,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            prayerName,
+            style: text.titleMedium?.copyWith(fontSize: 15),
+          ),
+        ),
+        Text(
+          '$count',
+          key: ValueKey<String>('prayer_tracker_qadha_count_$prayerId'),
+          style: text.titleMedium?.copyWith(fontSize: 16),
+        ),
+        const SizedBox(width: 8),
+        _QadhaStep(
+          label: '-',
+          enabled: onComplete != null,
+          onTap: onComplete,
+        ),
+        const SizedBox(width: 4),
+        _QadhaStep(
+          key: ValueKey<String>('prayer_tracker_qadha_plus_$prayerId'),
+          label: '+',
+          enabled: true,
+          onTap: onAdd,
+        ),
+      ],
+    );
+  }
+}
+
+class _QadhaStep extends StatelessWidget {
+  const _QadhaStep({
+    super.key,
+    required this.label,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: enabled
+          ? PrayerCastColors.inkSoft
+          : PrayerCastColors.ink.withValues(alpha: 0.35),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontFamily: PrayerCastTheme.bodyFont,
+                fontSize: 18,
+                height: 1,
+                color: enabled
+                    ? PrayerCastColors.surfaceRaised
+                    : PrayerCastColors.mistDeep,
+              ),
+            ),
+          ),
         ),
       ),
     );

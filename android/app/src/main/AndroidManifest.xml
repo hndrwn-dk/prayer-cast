@@ -12,17 +12,14 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
-    <!-- Optional prayer-city only. Coarse is enough for reverse-geocode
-         and Aladhan. Not used to decide if the user is home (LAN
-         fingerprint). Not used for speaker scan. Do not request on
-         launch. ACCESS_BACKGROUND_LOCATION is requested only if the
-         user turns on travel schedule updates. -->
+    <!-- Optional location. Coarse fills city for prayer times.
+         Fine is for nearby mosques (current GPS). Not used to decide
+         if the user is home (LAN fingerprint). Not used for speaker scan.
+         Do not request on launch. ACCESS_BACKGROUND_LOCATION is requested
+         only if the user turns on travel schedule updates. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-    <!-- Do not declare FINE. Libraries must not re-add it for Cast/NSD. -->
-    <uses-permission
-        android:name="android.permission.ACCESS_FINE_LOCATION"
-        tools:node="remove" />
 
     <!-- Speaker scan on API 33+. neverForLocation: Wi-Fi is not a
          location source. Requested at scan time only.
@@ -148,6 +145,10 @@
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="http" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
         </intent>
         <!-- OEM Auto-launch / Startup Manager (Android 11+ package visibility).
              Component names are best-effort; queries only make resolve/start

@@ -45,11 +45,11 @@ void main() {
     expect(launched, [Uri.parse(AppLinks.donateUrl)]);
   });
 
-  testWidgets('openPrivacyPolicyUrl launches the Prayer Cast policy', (
+  testWidgets('openPlayStoreUrl launches the Prayer Cast listing', (
     tester,
   ) async {
-    await pumpAndTap(tester, openPrivacyPolicyUrl);
-    expect(launched, [Uri.parse(AppLinks.privacyPolicyUrl)]);
+    await pumpAndTap(tester, openPlayStoreUrl);
+    expect(launched, [Uri.parse(AppLinks.playStoreUrl)]);
   });
 
   testWidgets('openExternalUrl shows a snackbar when launch fails', (

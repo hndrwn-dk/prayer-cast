@@ -5,10 +5,7 @@ import 'package:prayer_cast/prayer_times/location_resolver.dart';
 void main() {
   test('prayer-city GPS uses balanced approximate settings, not fine GPS', () {
     expect(LocationResolver.coarseSettings, isA<AndroidSettings>());
-    expect(
-      LocationResolver.coarseSettings.accuracy,
-      LocationAccuracy.medium,
-    );
+    expect(LocationResolver.coarseSettings.accuracy, LocationAccuracy.medium);
     expect(LocationResolver.coarseSettings.timeLimit, isNull);
     expect(
       LocationResolver.coarseSettings.accuracy,
@@ -21,6 +18,10 @@ void main() {
     final android = LocationResolver.coarseSettings as AndroidSettings;
     expect(android.intervalDuration, Duration.zero);
     expect(android.forceLocationManager, isFalse);
+  });
+
+  test('nearby mosques GPS uses high accuracy', () {
+    expect(LocationResolver.preciseSettings.accuracy, LocationAccuracy.high);
   });
 
   test('last known with finite coords is usable for approximate location', () {

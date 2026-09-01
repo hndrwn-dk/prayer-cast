@@ -237,8 +237,21 @@ class PrayerTrackerInsights extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stats = ref.watch(prayerPeriodStatsProvider);
+    final qadha = ref.watch(qadhaLedgerProvider).valueOrNull;
     return stats.maybeWhen(
-      data: (value) => _InsightsBody(insights: value.observations(isId: isId), isId: isId),
+      data: (value) {
+        final insights = [
+          if (qadha != null && qadha.total > 0)
+            PrayerStatInsight(
+              positive: false,
+              text: isId
+                  ? '${qadha.total} qadha masih tertunggak.'
+                  : '${qadha.total} qadha still on the list.',
+            ),
+          ...value.observations(isId: isId),
+        ];
+        return _InsightsBody(insights: insights, isId: isId);
+      },
       orElse: () => const SizedBox.shrink(),
     );
   }

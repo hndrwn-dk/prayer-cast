@@ -96,7 +96,7 @@ abstract final class CastFailureNotificationCopy {
         'FAILED_CAST_CONNECT' =>
           'Gagal hubung ke speaker untuk $prayer. Buka app dan coba tes adzan.',
         'FAILED_LOAD_MEDIA' =>
-          'Speaker menolak audio adzan $prayer. Buka Riwayat pengiriman untuk detail.',
+          'Speaker menolak audio adzan $prayer. Buka Riwayat adzan untuk detail.',
         _ => 'Adzan $prayer tidak bisa diputar ke speaker. Buka app untuk detail.',
       };
       return (title: 'Adzan $prayer gagal', body: body);
@@ -109,7 +109,7 @@ abstract final class CastFailureNotificationCopy {
       'FAILED_CAST_CONNECT' =>
         'Could not connect to the speaker for $prayer. Open the app and run a test.',
       'FAILED_LOAD_MEDIA' =>
-        'Speaker rejected the $prayer adzan audio. See Delivery log for details.',
+        'Speaker rejected the $prayer adzan audio. See Adhan history for details.',
       _ => '$prayer adzan could not play on the speaker. Open the app for details.',
     };
     return (title: '$prayer adzan failed', body: body);

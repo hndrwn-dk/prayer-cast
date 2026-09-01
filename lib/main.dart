@@ -26,8 +26,8 @@ import 'package:prayer_cast/home_delivery/presence/lan_fingerprint.dart';
 import 'package:prayer_cast/home_delivery/presence/mdns_browser.dart';
 import 'package:prayer_cast/home_delivery/presence/presence_service.dart';
 import 'package:prayer_cast/home_delivery/presence/presence_state.dart';
+import 'package:prayer_cast/home_delivery/ui/app_settings_page.dart';
 import 'package:prayer_cast/home_delivery/ui/delivery_log_providers.dart';
-import 'package:prayer_cast/home_delivery/ui/delivery_log_page.dart';
 import 'package:prayer_cast/home_delivery/ui/home_setup_providers.dart';
 import 'package:prayer_cast/home_delivery/ui/icons/premium_icons.dart';
 import 'package:prayer_cast/home_delivery/ui/speaker_setup_page.dart';
@@ -49,11 +49,13 @@ import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 import 'package:prayer_cast/prayer_times/prayer_times_providers.dart';
 import 'package:prayer_cast/prayer_times/spiritual_benefits.dart';
 import 'package:prayer_cast/prayer_times/ui/prayer_settings_page.dart';
-import 'package:prayer_cast/support/open_support_url.dart';
+import 'package:prayer_cast/qibla/compass_heading.dart';
+import 'package:prayer_cast/qibla/qibla_providers.dart';
+import 'package:prayer_cast/qibla/ui/qibla_page.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
-const String kAppVersion = '1.0.11+12';
+const String kAppVersion = '1.0.12+13';
 
 /// Android 13+ [POST_NOTIFICATIONS]. Default true so widget tests stay clean.
 final postNotificationsGrantedProvider = StateProvider<bool>((ref) => true);
@@ -336,8 +338,17 @@ class _HomeShellState extends ConsumerState<_HomeShell>
     ref.invalidate(todayPrayerLogProvider);
   }
 
-  Future<void> _openDeliveryLog() async {
-    await Navigator.of(context).push(_fadeRoute(const DeliveryLogPage()));
+  Future<void> _openQibla() async {
+    await Navigator.of(
+      context,
+    ).push(_fadeRoute(QiblaPage(coordinator: widget.coordinator)));
+    ref.invalidate(prayerPrefsProvider);
+  }
+
+  Future<void> _openSettings() async {
+    await Navigator.of(
+      context,
+    ).push(_fadeRoute(AppSettingsPage(version: kAppVersion)));
   }
 
   void _openSpiritualBenefits(String prayer) {
@@ -440,7 +451,6 @@ class _HomeShellState extends ConsumerState<_HomeShell>
             slivers: [
               SliverToBoxAdapter(
                 child: _HomeHero(
-                  activeLang: activeLang,
                   canSchedule: canSchedule,
                   notificationsGranted: notificationsGranted,
                   showOemBatteryBanner:
@@ -464,14 +474,7 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                   ),
                   speakerName: speakerName,
                   speakerLoading: speakerLoading,
-                  onOpenDeliveryLog: _openDeliveryLog,
-                  onLanguageSelected: (code) {
-                    unawaited(
-                      ref
-                          .read(appLocaleProvider.notifier)
-                          .setLocale(Locale(code)),
-                    );
-                  },
+                  onOpenSettings: _openSettings,
                   onRequestExactAlarm: () async {
                     await widget.exactAlarm?.requestExactAlarmPermission();
                     await _retrySchedule();
@@ -503,13 +506,11 @@ class _HomeShellState extends ConsumerState<_HomeShell>
               SliverToBoxAdapter(
                 child: FadeSlideIn(
                   delay: const Duration(milliseconds: 240),
-                  child: _PrayerTimesSlab(onTap: _openPrayerSettings),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: FadeSlideIn(
-                  delay: const Duration(milliseconds: 280),
-                  child: _PrayerTrackerSlab(onTap: _openPrayerTracker),
+                  child: _HomeDestinationsStrip(
+                    onPrayerTimes: _openPrayerSettings,
+                    onPrayerTracker: _openPrayerTracker,
+                    onQibla: _openQibla,
+                  ),
                 ),
               ),
               SliverFillRemaining(
@@ -532,11 +533,8 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                             left: MediaQuery.viewPaddingOf(context).left,
                             right: MediaQuery.viewPaddingOf(context).right,
                           ),
-                          child: ColophonFootnote(
-                            message: l10n.privacyPolicy,
-                            versionLine: 'version: $kAppVersion',
-                            privacyTooltip: l10n.privacyPolicy,
-                            onPrivacyTap: () => openPrivacyPolicyUrl(context),
+                          child: HomeClosingNote(
+                            message: l10n.dataOnDeviceOnly,
                           ),
                         ),
                       ),
@@ -554,7 +552,6 @@ class _HomeShellState extends ConsumerState<_HomeShell>
 
 class _HomeHero extends StatelessWidget {
   const _HomeHero({
-    required this.activeLang,
     required this.canSchedule,
     required this.notificationsGranted,
     required this.nextHeroConfigured,
@@ -568,8 +565,7 @@ class _HomeHero extends StatelessWidget {
     required this.presenceLabel,
     required this.speakerName,
     required this.speakerLoading,
-    required this.onLanguageSelected,
-    required this.onOpenDeliveryLog,
+    required this.onOpenSettings,
     required this.onRequestExactAlarm,
     required this.onRequestNotifications,
     required this.showOemBatteryBanner,
@@ -578,7 +574,6 @@ class _HomeHero extends StatelessWidget {
     this.onSpiritualBenefitsTap,
   });
 
-  final String activeLang;
   final bool canSchedule;
   final bool notificationsGranted;
   final bool showOemBatteryBanner;
@@ -594,8 +589,7 @@ class _HomeHero extends StatelessWidget {
   final String presenceLabel;
   final String? speakerName;
   final bool speakerLoading;
-  final ValueChanged<String> onLanguageSelected;
-  final VoidCallback onOpenDeliveryLog;
+  final VoidCallback onOpenSettings;
   final VoidCallback onRequestExactAlarm;
   final VoidCallback onRequestNotifications;
   final VoidCallback? onUnsetPrayerTap;
@@ -625,9 +619,7 @@ class _HomeHero extends StatelessWidget {
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 40),
                   child: _HomeMasthead(
-                    activeLang: activeLang,
-                    onLanguageSelected: onLanguageSelected,
-                    onOpenDeliveryLog: onOpenDeliveryLog,
+                    onOpenSettings: onOpenSettings,
                   ),
                 ),
                 if (!canSchedule) ...[
@@ -678,15 +670,9 @@ class _HomeHero extends StatelessWidget {
 }
 
 class _HomeMasthead extends StatelessWidget {
-  const _HomeMasthead({
-    required this.activeLang,
-    required this.onLanguageSelected,
-    required this.onOpenDeliveryLog,
-  });
+  const _HomeMasthead({required this.onOpenSettings});
 
-  final String activeLang;
-  final ValueChanged<String> onLanguageSelected;
-  final VoidCallback onOpenDeliveryLog;
+  final VoidCallback onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -738,54 +724,17 @@ class _HomeMasthead extends StatelessWidget {
             children: [
               const SupportIconButton(color: PrayerCastColors.mist),
               IconButton(
-                key: const ValueKey<String>('home_delivery_log'),
-                tooltip: activeLang == 'id'
-                    ? 'Riwayat pengiriman'
-                    : 'Delivery log',
-                onPressed: onOpenDeliveryLog,
+                key: const ValueKey<String>('home_settings'),
+                tooltip: l10n.settings,
+                onPressed: onOpenSettings,
                 style: IconButton.styleFrom(
                   minimumSize: const Size(44, 44),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   padding: const EdgeInsets.all(8),
                 ),
-                icon: PremiumIcons.logLines(
+                icon: PremiumIcons.gear(
                   size: 22,
                   color: PrayerCastColors.mist,
-                ),
-              ),
-              PopupMenuButton<String>(
-                key: const ValueKey('language_menu'),
-                tooltip: '${l10n.language} (${activeLang.toUpperCase()})',
-                padding: EdgeInsets.zero,
-                initialValue: activeLang,
-                color: PrayerCastColors.canopyDeep,
-                onSelected: onLanguageSelected,
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'id',
-                    child: Text(
-                      l10n.languageIndonesian,
-                      style: PrayerCastTheme.forestDropdown,
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'en',
-                    child: Text(
-                      l10n.languageEnglish,
-                      style: PrayerCastTheme.forestDropdown,
-                    ),
-                  ),
-                ],
-                child: const SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Center(
-                    child: Icon(
-                      Icons.language,
-                      size: 22,
-                      color: PrayerCastColors.mist,
-                    ),
-                  ),
                 ),
               ),
             ],
@@ -1070,110 +1019,137 @@ class _SpeakerBand extends StatelessWidget {
   }
 }
 
-class _PrayerTimesSlab extends StatelessWidget {
-  const _PrayerTimesSlab({required this.onTap});
+class _HomeDestinationsStrip extends StatelessWidget {
+  const _HomeDestinationsStrip({
+    required this.onPrayerTimes,
+    required this.onPrayerTracker,
+    required this.onQibla,
+  });
 
-  final VoidCallback onTap;
+  final VoidCallback onPrayerTimes;
+  final VoidCallback onPrayerTracker;
+  final VoidCallback onQibla;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Semantics(
-      button: true,
-      label: l10n.prayerTimes,
-      child: Material(
-        key: const ValueKey<String>('home_prayer_times_slab'),
-        color: PrayerCastColors.ink,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(28, 22, 28, 22),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                EditorialEyebrow(
-                  l10n.scheduleEyebrow,
-                  color: PrayerCastColors.leaf,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  l10n.prayerTimes,
-                  style: const TextStyle(
-                    fontFamily: PrayerCastTheme.displayFont,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: -0.2,
-                    color: PrayerCastColors.surfaceRaised,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  l10n.prayerTimesHint,
-                  style: const TextStyle(
-                    fontFamily: PrayerCastTheme.bodyFont,
-                    fontSize: 13,
-                    height: 1.4,
-                    color: PrayerCastColors.mistDeep,
-                  ),
-                ),
-              ],
+    return Padding(
+      key: const ValueKey<String>('home_destinations_strip'),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _DestinationCell(
+                cellKey: const ValueKey<String>('home_prayer_times_slab'),
+                eyebrow: l10n.scheduleEyebrow,
+                title: l10n.prayerTimes,
+                onTap: onPrayerTimes,
+              ),
             ),
-          ),
+            const _PipeDivider(slot: 0),
+            Expanded(
+              child: _DestinationCell(
+                cellKey: const ValueKey<String>('home_prayer_tracker_slab'),
+                eyebrow: l10n.worshipEyebrow,
+                title: l10n.prayerTracker,
+                onTap: onPrayerTracker,
+              ),
+            ),
+            const _PipeDivider(slot: 1),
+            Expanded(
+              child: _DestinationCell(
+                cellKey: const ValueKey<String>('home_qibla_slab'),
+                eyebrow: l10n.directionEyebrow,
+                title: l10n.qibla,
+                onTap: onQibla,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _PrayerTrackerSlab extends StatelessWidget {
-  const _PrayerTrackerSlab({required this.onTap});
+class _PipeDivider extends StatelessWidget {
+  const _PipeDivider({required this.slot});
 
+  final int slot;
+
+  static const double slotWidth = 24;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      key: ValueKey<String>('home_destination_pipe_$slot'),
+      width: slotWidth,
+      child: Center(
+        child: ColoredBox(
+          color: PrayerCastColors.mistDeep.withValues(alpha: 0.55),
+          child: const SizedBox(width: 1, height: 20),
+        ),
+      ),
+    );
+  }
+}
+
+class _DestinationCell extends StatelessWidget {
+  const _DestinationCell({
+    required this.cellKey,
+    required this.eyebrow,
+    required this.title,
+    required this.onTap,
+  });
+
+  final Key cellKey;
+  final String eyebrow;
+  final String title;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final isId = Localizations.localeOf(context).languageCode == 'id';
     return Semantics(
       button: true,
-      label: isId ? 'Catatan sholat' : 'Prayer tracker',
+      label: title,
       child: Material(
-        key: const ValueKey<String>('home_prayer_tracker_slab'),
+        key: cellKey,
         color: PrayerCastColors.ink,
         child: InkWell(
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(28, 0, 28, 22),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                EditorialEyebrow(
-                  isId ? 'Ibadah' : 'Worship',
-                  color: PrayerCastColors.dawn,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  isId ? 'Catatan sholat' : 'Prayer tracker',
-                  style: const TextStyle(
-                    fontFamily: PrayerCastTheme.displayFont,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: -0.2,
-                    color: PrayerCastColors.surfaceRaised,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: PrayerCastTheme.minTap),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  EditorialEyebrow(eyebrow, color: PrayerCastColors.dawn),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        softWrap: false,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: PrayerCastTheme.displayFont,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          height: 1.15,
+                          letterSpacing: -0.2,
+                          color: PrayerCastColors.surfaceRaised,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  isId
-                      ? 'Catat waktu dan tempat sholat hari ini'
-                      : 'Log timing and where for today\'s prayers',
-                  style: const TextStyle(
-                    fontFamily: PrayerCastTheme.bodyFont,
-                    fontSize: 13,
-                    height: 1.4,
-                    color: PrayerCastColors.mistDeep,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -1389,7 +1365,12 @@ class PrayerCastAppForTest extends StatelessWidget {
           const SilentLocalPrayerPlayer(),
         ),
         localeStoreProvider.overrideWithValue(MemoryLocaleStore('id')),
-        prayerTrackerStoreProvider.overrideWithValue(MemoryPrayerTrackerStore()),
+        prayerTrackerStoreProvider.overrideWithValue(
+          MemoryPrayerTrackerStore(),
+        ),
+        compassHeadingSourceProvider.overrideWithValue(
+          StreamCompassHeadingSource(Stream<double?>.value(0)),
+        ),
       ],
       child: const PrayerCastApp(),
     );

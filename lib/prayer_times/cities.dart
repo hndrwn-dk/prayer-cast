@@ -103,6 +103,20 @@ abstract final class PrayerCities {
     return null;
   }
 
+  /// Case-insensitive name or id, then substring (e.g. "KOTA JAKARTA PUSAT").
+  static PrayerCity? match(String city) {
+    final n = city.trim().toLowerCase();
+    if (n.isEmpty) return null;
+    for (final c in all) {
+      if (c.id == n || c.name.toLowerCase() == n) return c;
+    }
+    for (final c in all) {
+      final name = c.name.toLowerCase();
+      if (n.contains(name) || name.contains(n)) return c;
+    }
+    return null;
+  }
+
   static const PrayerCity defaultCity = PrayerCity(
     id: 'singapore',
     name: 'Singapore',

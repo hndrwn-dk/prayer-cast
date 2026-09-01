@@ -53,18 +53,21 @@ abstract interface class LocationResolving {
 
 /// GPS + reverse-geocode helper for prayer times.
 ///
-/// Android: COARSE only (FINE is tools:node="remove"). Approximate location
-/// is a fused *cached* city-block fix, not a new GPS sample.
-/// [getCurrentPosition] with [LocationAccuracy.low] + a 20s Dart [timeLimit]
-/// waits for a new PRIORITY_LOW_POWER update and cancels before the network
-/// provider typically returns.
+/// Prayer-city fill uses [coarseSettings]. Nearby mosques use
+/// [preciseSettings] (ACCESS_FINE_LOCATION).
 final class LocationResolver implements LocationResolving {
   const LocationResolver();
 
-  /// Balanced / approximate — not GPS (high/best). No Dart timeLimit.
+  /// Balanced / approximate — city-block, not a house pin. No Dart timeLimit.
   static final LocationSettings coarseSettings = AndroidSettings(
     accuracy: LocationAccuracy.medium,
     intervalDuration: Duration.zero,
+  );
+
+  /// GNSS / fused high accuracy for the mosque map pin.
+  static const LocationSettings preciseSettings = LocationSettings(
+    accuracy: LocationAccuracy.high,
+    timeLimit: Duration(seconds: 15),
   );
 
   @override
@@ -173,7 +176,7 @@ final class LocationResolver implements LocationResolving {
   /// hint prefers kabupaten/kota so a kelurahan-only city can still
   /// match Kemenag.
   static ({String city, String country, String administrativeArea})
-      labelsFromGeocode({
+  labelsFromGeocode({
     String? country,
     String? isoCountryCode,
     String? locality,
@@ -181,26 +184,11 @@ final class LocationResolver implements LocationResolving {
     String? administrativeArea,
   }) {
     final resolvedCountry = _firstNonEmpty([country, isoCountryCode]);
-    final admin = _firstNonEmpty([
-      subAdministrativeArea,
-      administrativeArea,
-    ]);
+    final admin = _firstNonEmpty([subAdministrativeArea, administrativeArea]);
     final city = isIndonesiaCountry(resolvedCountry)
-        ? _firstNonEmpty([
-            subAdministrativeArea,
-            locality,
-            administrativeArea,
-          ])
-        : _firstNonEmpty([
-            locality,
-            subAdministrativeArea,
-            administrativeArea,
-          ]);
-    return (
-      city: city,
-      country: resolvedCountry,
-      administrativeArea: admin,
-    );
+        ? _firstNonEmpty([subAdministrativeArea, locality, administrativeArea])
+        : _firstNonEmpty([locality, subAdministrativeArea, administrativeArea]);
+    return (city: city, country: resolvedCountry, administrativeArea: admin);
   }
 
   static String _firstNonEmpty(List<String?> candidates) {
