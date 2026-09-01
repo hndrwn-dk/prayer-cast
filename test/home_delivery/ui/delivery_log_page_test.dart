@@ -27,6 +27,9 @@ final class _FakeOem implements OemBatterySettingsPlatform {
 
   @override
   Future<bool> isRestrictiveOem() async => false;
+
+  @override
+  Future<bool> isBatteryUnrestricted() async => true;
 }
 
 void main() {

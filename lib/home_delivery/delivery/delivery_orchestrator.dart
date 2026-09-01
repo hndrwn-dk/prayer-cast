@@ -113,7 +113,7 @@ final class DeliveryOrchestrator {
   Future<DeliveryAttemptResult> run(DeliveryRequest request) async {
     final firedAt = request.firedAt ?? _scheduler.now();
     final scheduled = request.scheduledAzan;
-    final castId = await _fingerprintStore.readHomeCastId();
+    final castId = await _fingerprintStore.readHomeCastIdResilient();
     final hashes = await _fingerprintStore.readHashes();
     // Household fp must match on every phone that saved the same speaker.
     // shortHash(hashes) is per-install (salted) and broke multi-phone election.
@@ -346,7 +346,7 @@ final class DeliveryOrchestrator {
       }
 
       // Log CLOCK_SKEW as detail when demoted; outcome already set by election.
-      return _finish(
+      return await _finish(
         request: request,
         sessionId: sessionId,
         firedAt: firedAt,

@@ -596,6 +596,12 @@ abstract class AppLocalizations {
   /// **'Beep on phone'**
   String get deliveryBeep;
 
+  /// No description provided for @deliveryTakbir.
+  ///
+  /// In en, this message translates to:
+  /// **'Takbir on phone'**
+  String get deliveryTakbir;
+
   /// No description provided for @deliveryAdhanPhone.
   ///
   /// In en, this message translates to:
@@ -613,6 +619,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Beep played on this phone.'**
   String get beepPlayed;
+
+  /// No description provided for @takbirPlayed.
+  ///
+  /// In en, this message translates to:
+  /// **'Takbir played on this phone.'**
+  String get takbirPlayed;
 
   /// No description provided for @adhanPhonePlayed.
   ///

@@ -17,16 +17,21 @@ object LocalAlarmSound {
     private const val GAP_MS = 180L
 
     fun playBeep(context: Context) {
-        if (playAsset(context.applicationContext)) return
+        if (playRaw(context.applicationContext, R.raw.beep, REPEAT_COUNT)) return
         playToneFallback()
     }
 
-    private fun playAsset(context: Context): Boolean {
+    fun playTakbir(context: Context) {
+        if (playRaw(context.applicationContext, R.raw.takbir, 1)) return
+        playToneFallback()
+    }
+
+    private fun playRaw(context: Context, rawId: Int, repeats: Int): Boolean {
         var played = false
         try {
-            repeat(REPEAT_COUNT) { index ->
+            repeat(repeats) { index ->
                 val player = MediaPlayer()
-                val afd = context.resources.openRawResourceFd(R.raw.beep)
+                val afd = context.resources.openRawResourceFd(rawId)
                 try {
                     player.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
                 } finally {
@@ -69,13 +74,14 @@ object LocalAlarmSound {
                 } catch (_: Exception) {
                 }
                 player.release()
-                if (index < REPEAT_COUNT - 1) {
+                if (index < repeats - 1) {
                     Thread.sleep(GAP_MS)
                 }
             }
             return played
         } catch (e: Exception) {
-            Log.w(TAG, "beep asset failed", e)
+            Log.w(TAG, "raw asset failed", e)
+            if (rawId == R.raw.beep) playToneFallback()
             return played
         }
     }

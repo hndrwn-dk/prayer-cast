@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../coordinator/home_onboarding.dart';
 import '../platform/nearby_wifi_scan_permission.dart';
+import '../presence/fingerprint_store.dart';
 import '../presence/presence_service.dart';
 import '../presence/presence_state.dart';
 
@@ -23,6 +24,13 @@ final homeOnboardingProvider = Provider<HomeOnboarding>((ref) {
 ///
 /// Null in widget tests / shells that do not bootstrap presence.
 final presenceServiceProvider = Provider<PresenceService?>((ref) => null);
+
+/// File-backed fingerprint store from [HomeDeliveryRuntime.bootstrap].
+final fingerprintStoreProvider = Provider<FingerprintStore>((ref) {
+  throw UnimplementedError(
+    'Override fingerprintStoreProvider with HomeDeliveryRuntime.fingerprintStore',
+  );
+});
 
 /// Saved home Cast speaker (Signal A), if any.
 final savedHomeSpeakerProvider = FutureProvider.autoDispose<SavedHomeSpeaker?>((
@@ -72,6 +80,16 @@ final speakerDiscoveryProvider = FutureProvider<SpeakerScanResult>((ref) async {
     if (cached != null) return cached;
     rethrow;
   }
+});
+
+/// Whether the saved home speaker appeared in the last scan cache.
+final savedSpeakerReachableProvider =
+    FutureProvider.autoDispose<bool?>((ref) async {
+  final saved = await ref.watch(savedHomeSpeakerProvider.future);
+  if (saved == null) return null;
+  final cached = await ref.read(homeOnboardingProvider).readCachedSpeakerScan();
+  if (cached == null) return null;
+  return cached.devices.any((d) => d.deviceId == saved.deviceId);
 });
 
 /// Home presence for the status chip — Signal A (saved Cast) then B (LAN fp).

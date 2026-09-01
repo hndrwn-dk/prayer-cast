@@ -18,6 +18,18 @@ abstract final class PrayerCastTheme {
   /// still inkSoft grey — gold is reserved for focus / selection.
   static const double cardHairline = 1.35;
 
+  /// Light icons on transparent bars so forest chrome can draw behind them.
+  static const SystemUiOverlayStyle forestSystemUi = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    statusBarBrightness: Brightness.dark,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarDividerColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.light,
+    systemNavigationBarContrastEnforced: false,
+    systemStatusBarContrastEnforced: false,
+  );
+
   /// Selected value inside forest dropdowns. Regular weight so titles
   /// (titleMedium / dawn section labels) stay the loudest type.
   static const TextStyle forestDropdown = TextStyle(
@@ -161,9 +173,12 @@ abstract final class PrayerCastTheme {
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
-          backgroundColor: const WidgetStatePropertyAll(PrayerCastColors.canopy),
-          foregroundColor:
-              const WidgetStatePropertyAll(PrayerCastColors.surfaceRaised),
+          backgroundColor: const WidgetStatePropertyAll(
+            PrayerCastColors.canopy,
+          ),
+          foregroundColor: const WidgetStatePropertyAll(
+            PrayerCastColors.surfaceRaised,
+          ),
           textStyle: const WidgetStatePropertyAll(
             TextStyle(
               fontFamily: bodyFont,
@@ -177,7 +192,9 @@ abstract final class PrayerCastTheme {
       textButtonTheme: TextButtonThemeData(
         style: ButtonStyle(
           minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
-          foregroundColor: const WidgetStatePropertyAll(PrayerCastColors.canopy),
+          foregroundColor: const WidgetStatePropertyAll(
+            PrayerCastColors.canopy,
+          ),
           textStyle: const WidgetStatePropertyAll(
             TextStyle(
               fontFamily: bodyFont,
@@ -356,7 +373,7 @@ abstract final class PrayerCastTheme {
         scrolledUnderElevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: PrayerCastColors.mist,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
+        systemOverlayStyle: forestSystemUi,
         titleTextStyle: TextStyle(
           fontFamily: displayFont,
           fontSize: 22,
@@ -375,9 +392,12 @@ abstract final class PrayerCastTheme {
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
-          backgroundColor: const WidgetStatePropertyAll(PrayerCastColors.canopy),
-          foregroundColor:
-              const WidgetStatePropertyAll(PrayerCastColors.surfaceRaised),
+          backgroundColor: const WidgetStatePropertyAll(
+            PrayerCastColors.canopy,
+          ),
+          foregroundColor: const WidgetStatePropertyAll(
+            PrayerCastColors.surfaceRaised,
+          ),
           textStyle: const WidgetStatePropertyAll(
             TextStyle(
               fontFamily: bodyFont,
@@ -432,8 +452,10 @@ abstract final class PrayerCastTheme {
           fontFamily: bodyFont,
           color: PrayerCastColors.quiet,
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: PrayerCastColors.inkSoft),
@@ -444,7 +466,10 @@ abstract final class PrayerCastTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: PrayerCastColors.dawn, width: 1.4),
+          borderSide: const BorderSide(
+            color: PrayerCastColors.dawn,
+            width: 1.4,
+          ),
         ),
       ),
       dropdownMenuTheme: const DropdownMenuThemeData(
@@ -480,13 +505,13 @@ abstract final class PrayerCastTheme {
   }
 
   static TextStyle editorialEyebrow(Color color) => TextStyle(
-        fontFamily: bodyFont,
-        fontSize: 10,
-        fontWeight: FontWeight.w500,
-        letterSpacing: 2.4,
-        height: 1.2,
-        color: color,
-      );
+    fontFamily: bodyFont,
+    fontSize: 10,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 2.4,
+    height: 1.2,
+    color: color,
+  );
 
   static const TextStyle heroTime = TextStyle(
     fontFamily: displayFont,

@@ -21,6 +21,9 @@ abstract interface class FingerprintStore {
   /// Saved home Cast device id for Signal A (Cast `id` TXT, not friendly name).
   Future<String?> readHomeCastId();
 
+  /// Cast id with backup-file / scan-cache recovery (alarm + UI safe).
+  Future<String?> readHomeCastIdResilient();
+
   Future<void> writeHomeCastId(String castId);
 
   /// Friendly name for UI only — matching always uses [readHomeCastId].
@@ -81,6 +84,9 @@ final class MemoryFingerprintStore implements FingerprintStore {
 
   @override
   Future<String?> readHomeCastId() async => _homeCastId;
+
+  @override
+  Future<String?> readHomeCastIdResilient() async => _homeCastId;
 
   @override
   Future<void> writeHomeCastId(String castId) async => _homeCastId = castId;

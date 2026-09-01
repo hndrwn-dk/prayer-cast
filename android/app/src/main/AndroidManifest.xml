@@ -15,8 +15,10 @@
     <!-- Optional prayer-city only. Coarse is enough for reverse-geocode
          and Aladhan. Not used to decide if the user is home (LAN
          fingerprint). Not used for speaker scan. Do not request on
-         launch or in the background. -->
+         launch. ACCESS_BACKGROUND_LOCATION is requested only if the
+         user turns on travel schedule updates. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <!-- Do not declare FINE. Libraries must not re-add it for Cast/NSD. -->
     <uses-permission
         android:name="android.permission.ACCESS_FINE_LOCATION"
@@ -84,6 +86,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".PrePrayerAlertReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".BootReceiver"
             android:exported="true"
             android:enabled="true">
@@ -91,6 +97,18 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".NextPrayerWidget"
+            android:exported="true"
+            android:label="@string/next_prayer_widget_eyebrow">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/next_prayer_widget_info" />
         </receiver>
 
         <!-- Play-honest type: keep Wi-Fi up and start Dart so Cast
@@ -142,5 +160,6 @@
         <package android:name="com.miui.powerkeeper" />
         <package android:name="com.vivo.permissionmanager" />
         <package android:name="com.iqoo.secure" />
+        <package android:name="com.oneplus.security" />
     </queries>
 </manifest>

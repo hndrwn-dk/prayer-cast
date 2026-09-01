@@ -19,9 +19,9 @@ final oemBatterySettingsProvider = Provider<OemBatterySettingsPlatform>((ref) {
   return OemBatterySettings();
 });
 
-/// ColorOS / MIUI / Funtouch Auto-launch prompt. False on Pixel / iOS.
-final restrictiveOemProvider = FutureProvider<bool>((ref) {
-  return ref.watch(oemBatterySettingsProvider).isRestrictiveOem();
+/// Show battery-unrestricted prompt when optimisation is still enabled.
+final batteryUnrestrictedProvider = FutureProvider<bool>((ref) {
+  return ref.watch(oemBatterySettingsProvider).isBatteryUnrestricted();
 });
 
 /// Last 30 delivery attempts, newest first (§6.3).

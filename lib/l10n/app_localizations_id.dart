@@ -286,6 +286,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get deliveryBeep => 'Beep di HP';
 
   @override
+  String get deliveryTakbir => 'Takbir di HP';
+
+  @override
   String get deliveryAdhanPhone => 'Adzan di HP';
 
   @override
@@ -293,6 +296,9 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get beepPlayed => 'Beep diputar di HP ini.';
+
+  @override
+  String get takbirPlayed => 'Takbir diputar di HP ini.';
 
   @override
   String adhanPhonePlayed(String prayer, String voice) {

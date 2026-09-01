@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="next_prayer_widget_description">Next prayer time on the home screen</string>
+    <string name="next_prayer_widget_eyebrow">Next adhan</string>
+    <string name="next_prayer_widget_empty">Prayer times not set</string>
+    <string name="next_prayer_widget_in">in %1$s</string>
+    <string name="next_prayer_widget_now">now</string>
+    <string name="prayer_name_fajr">Fajr</string>
+    <string name="prayer_name_dhuhr">Dhuhr</string>
+    <string name="prayer_name_asr">Asr</string>
+    <string name="prayer_name_maghrib">Maghrib</string>
+    <string name="prayer_name_isha">Isha</string>
+</resources>

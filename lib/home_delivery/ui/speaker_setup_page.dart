@@ -14,7 +14,8 @@ import 'theme/prayer_cast_colors.dart';
 import 'theme/prayer_cast_theme.dart';
 import 'widgets/cast_scan_spinner.dart';
 import 'widgets/editorial_chrome.dart';
-import 'widgets/oem_autostart_banner.dart';
+import 'widgets/oem_battery_banner.dart';
+import 'widgets/saved_speaker_offline_banner.dart';
 import 'widgets/speaker_search_pulse.dart';
 
 /// Cast speaker onboarding: scan LAN, pick home target, save Signal A + B.
@@ -295,6 +296,14 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
           ).where((d) => !hiddenIds.contains(d.deviceId)).toList()
         : const <CastReceiver>[];
     final showSelect = visibleSpeakers.isNotEmpty && !isInitialLoading;
+    final savedOffline = savedSpeaker != null &&
+        !isInitialLoading &&
+        !isRefreshing &&
+        !visibleSpeakers.any((d) => d.deviceId == savedSpeaker.deviceId);
+    final batteryUnrestricted = ref.watch(batteryUnrestrictedProvider).maybeWhen(
+          data: (value) => value,
+          orElse: () => true,
+        );
 
     return Theme(
       data: PrayerCastTheme.forest(),
@@ -323,20 +332,23 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                   padding: const EdgeInsets.fromLTRB(28, 4, 28, 4),
                   child: Text(l10n.speakerSetupIntro, style: text.bodyLarge),
                 ),
-                if (ref.watch(restrictiveOemProvider).maybeWhen(
-                      data: (value) => value,
-                      orElse: () => false,
-                    ))
+                if (!batteryUnrestricted)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
-                    child: OemAutostartBanner(
+                    child: OemBatteryBanner(
                       onOpen: () {
                         unawaited(
-                          ref
-                              .read(oemBatterySettingsProvider)
-                              .openAutostartSettings(),
+                          ref.read(oemBatterySettingsProvider).open(),
                         );
                       },
+                    ),
+                  ),
+                if (savedOffline)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
+                    child: SavedSpeakerOfflineBanner(
+                      speakerName: savedSpeaker.displayName,
+                      onRescan: _busy || _selecting ? null : _rescan,
                     ),
                   ),
                 Padding(

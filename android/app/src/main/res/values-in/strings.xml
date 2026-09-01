@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="next_prayer_widget_description">Waktu sholat berikutnya di layar utama</string>
+    <string name="next_prayer_widget_eyebrow">Adzan berikutnya</string>
+    <string name="next_prayer_widget_empty">Waktu sholat belum diatur</string>
+    <string name="next_prayer_widget_in">dalam %1$s</string>
+    <string name="next_prayer_widget_now">sekarang</string>
+    <string name="prayer_name_fajr">Subuh</string>
+    <string name="prayer_name_dhuhr">Zuhur</string>
+    <string name="prayer_name_asr">Asar</string>
+    <string name="prayer_name_maghrib">Magrib</string>
+    <string name="prayer_name_isha">Isya</string>
+</resources>

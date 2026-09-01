@@ -45,29 +45,10 @@ class DeliveryLogPage extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
                 child: Text(
                   '30 percobaan terakhir di perangkat ini. Tidak dikirim ke server.',
                   style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    PremiumIcons.info(
-                      size: 22,
-                      color: PrayerCastColors.quiet,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Untuk adzan andal tanpa pengawasan di iOS, gunakan perangkat hub yang selalu menyala.',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                  ],
                 ),
               ),
               missed.when(

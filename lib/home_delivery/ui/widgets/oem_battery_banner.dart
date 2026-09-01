@@ -1,21 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:prayer_cast/l10n/l10n_ext.dart';
 
 import '../theme/prayer_cast_colors.dart';
 import '../theme/prayer_cast_theme.dart';
 
-/// First-run / Cast-setup prompt for ColorOS Auto-launch and kin.
-class OemAutostartBanner extends StatelessWidget {
-  const OemAutostartBanner({super.key, required this.onOpen});
+/// Prompt to open battery-unrestricted settings when optimisation is on.
+class OemBatteryBanner extends StatelessWidget {
+  const OemBatteryBanner({super.key, required this.onOpen});
 
-  static const Key bannerKey = ValueKey('oem_autostart_banner');
-  static const Key openKey = ValueKey('oem_autostart_open');
+  static const Key bannerKey = ValueKey('oem_battery_banner');
+  static const Key openKey = ValueKey('oem_battery_open');
 
   final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
     return Material(
       key: bannerKey,
       color: PrayerCastColors.dawnSoft,
@@ -26,7 +24,7 @@ class OemAutostartBanner extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              l10n.oemAutostartTitle,
+              _title(context),
               style: const TextStyle(
                 fontFamily: PrayerCastTheme.bodyFont,
                 fontSize: 18,
@@ -36,7 +34,7 @@ class OemAutostartBanner extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              l10n.oemAutostartBody,
+              _body(context),
               style: const TextStyle(
                 fontFamily: PrayerCastTheme.bodyFont,
                 fontSize: 16,
@@ -51,12 +49,33 @@ class OemAutostartBanner extends StatelessWidget {
               child: FilledButton(
                 key: openKey,
                 onPressed: onOpen,
-                child: Text(l10n.oemAutostartOpenSettings),
+                child: Text(_button(context)),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  static String _title(BuildContext context) {
+    final code = Localizations.localeOf(context).languageCode;
+    return code == 'id'
+        ? 'Batasi penghemat baterai'
+        : 'Disable battery restrictions';
+  }
+
+  static String _body(BuildContext context) {
+    final code = Localizations.localeOf(context).languageCode;
+    return code == 'id'
+        ? 'Agar alarm sholat dan adzan tetap jalan saat HP tidur, set Prayer Cast ke Tanpa batasan / Unrestricted di pengaturan baterai.'
+        : 'So prayer alarms and adhan still fire while the phone sleeps, set Prayer Cast to Unrestricted in battery settings.';
+  }
+
+  static String _button(BuildContext context) {
+    final code = Localizations.localeOf(context).languageCode;
+    return code == 'id'
+        ? 'Buka pengaturan baterai'
+        : 'Open battery settings';
   }
 }

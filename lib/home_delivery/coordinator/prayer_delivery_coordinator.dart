@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../prayer_times/prayer_prefs.dart';
+import '../../prayer_times/travel_schedule_refresher.dart';
 import '../common/clock.dart';
 import '../common/logger.dart';
 import '../common/scheduler.dart';
@@ -17,6 +18,7 @@ import 'adzan_audio_loader.dart';
 import 'delivery_settings.dart';
 import 'local_prayer_player.dart';
 import 'next_prayer_provider.dart';
+import 'pre_prayer_alert_scheduler.dart';
 import 'prayer_delivery_mode_source.dart';
 
 /// Whether Android can schedule exact alarms (`SCHEDULE_EXACT_ALARM`).
@@ -58,6 +60,9 @@ final class PrayerDeliveryCoordinator {
     PrayerDeliveryModeSource? deliveryModes,
     LocalPrayerPlayer? localPlayer,
     DeliveryLogDao? logDao,
+    PrePrayerAlertScheduler? prePrayerAlerts,
+    TravelScheduleRefresher? travelRefresher,
+    Future<String?> Function()? readLocaleCode,
     void Function(bool granted)? onPermissionChanged,
     HomeDeliveryLogger logger = const SilentLogger(),
   })  : _exactAlarm = exactAlarm,
@@ -70,6 +75,9 @@ final class PrayerDeliveryCoordinator {
         _deliveryModes = deliveryModes ?? const AlwaysCastDeliveryModeSource(),
         _localPlayer = localPlayer ?? const SilentLocalPrayerPlayer(),
         _logDao = logDao,
+        _prePrayerAlerts = prePrayerAlerts,
+        _travelRefresher = travelRefresher,
+        _readLocaleCode = readLocaleCode ?? (() async => null),
         _onPermissionChanged = onPermissionChanged,
         _logger = logger;
 
@@ -121,6 +129,9 @@ final class PrayerDeliveryCoordinator {
   final PrayerDeliveryModeSource _deliveryModes;
   final LocalPrayerPlayer _localPlayer;
   final DeliveryLogDao? _logDao;
+  final PrePrayerAlertScheduler? _prePrayerAlerts;
+  final TravelScheduleRefresher? _travelRefresher;
+  final Future<String?> Function() _readLocaleCode;
   final void Function(bool granted)? _onPermissionChanged;
   final HomeDeliveryLogger _logger;
 
@@ -199,6 +210,7 @@ final class PrayerDeliveryCoordinator {
       return;
     }
 
+    await _travelRefresher?.refreshIfMoved();
     await _scheduleNextAfter(_clock.now());
   }
 
@@ -249,7 +261,7 @@ final class PrayerDeliveryCoordinator {
     var name = 'isha';
     var voiceId = defaultVoiceId;
     try {
-      final upcoming = await _nextPrayer.next(after: now);
+      final upcoming = await _nextPrayer.next(after: now, preferCache: false);
       final canonical = canonicalPrayerName(upcoming.name);
       if (canonical.isNotEmpty) name = canonical;
       if (upcoming.voiceId.isNotEmpty) voiceId = upcoming.voiceId;
@@ -340,6 +352,11 @@ final class PrayerDeliveryCoordinator {
           error: e,
           stackTrace: st,
         );
+        await _logRescheduleFailure(
+          event: event,
+          azanEpoch: azanEpoch,
+          exception: e,
+        );
         await _armRescheduleRetry();
       }
     } finally {
@@ -389,6 +406,18 @@ final class PrayerDeliveryCoordinator {
       await _localPlayer.playBeep();
       return;
     }
+    if (mode == PrayerDeliveryMode.takbir) {
+      _logger.info(
+        'Local takbir for ${event.prayer} (skip Cast)',
+        tag: 'PrayerDeliveryCoordinator',
+      );
+      await _waitUntilAzan(azanEpoch);
+      if (DeliveryTiming.isTooLate(scheduledAzan: azanEpoch, now: _clock.now())) {
+        return;
+      }
+      await _localPlayer.playTakbir();
+      return;
+    }
     if (mode == PrayerDeliveryMode.adhanPhone) {
       final voiceId = _resolveVoiceId(event.voiceId);
       _logger.info(
@@ -429,7 +458,36 @@ final class PrayerDeliveryCoordinator {
       deviceConditions: conditions,
       firedAt: firedAt,
     );
-    await _runDelivery(request);
+    final result = await _runDelivery(request);
+    await _maybeNotifyCastFailure(
+      result: result,
+      prayerName: event.prayer,
+    );
+  }
+
+  static const _castFailureOutcomes = {
+    Outcome.failedNoTarget,
+    Outcome.failedNoRoute,
+    Outcome.failedCastConnect,
+    Outcome.failedLoadMedia,
+  };
+
+  Future<void> _maybeNotifyCastFailure({
+    required DeliveryAttemptResult result,
+    required String prayerName,
+  }) async {
+    if (!_castFailureOutcomes.contains(result.outcome)) return;
+    final localeCode = await _readLocaleCode();
+    final isId = localeCode != 'en';
+    final copy = CastFailureNotificationCopy.forOutcome(
+      outcomeCode: result.outcome.code,
+      prayerName: prayerName,
+      isId: isId,
+    );
+    await _exactAlarm.showDeliveryFailureNotification(
+      title: copy.title,
+      body: copy.body,
+    );
   }
 
   Future<void> _logStaleMiss({
@@ -488,10 +546,42 @@ final class PrayerDeliveryCoordinator {
     return defaultVoiceId;
   }
 
+  /// Re-sync the pre-prayer reminder after prefs change (e.g. minutes toggle).
+  Future<void> refreshPrePrayerAlert() async {
+    if (!_started) return;
+    final scheduler = _prePrayerAlerts;
+    if (scheduler == null) return;
+    final scheduled = await _exactAlarm.readScheduled();
+    if (scheduled == null) {
+      await scheduler.cancel();
+      return;
+    }
+    if (PrayerDeliveryCoordinator.isDryRunPrayer(scheduled.prayer) ||
+        PrayerDeliveryCoordinator.isRescheduleRetry(scheduled.prayer)) {
+      await scheduler.cancel();
+      return;
+    }
+    final wakeAt = DateTime.fromMillisecondsSinceEpoch(
+      scheduled.epochMs,
+      isUtc: true,
+    );
+    final azanAt = wakeAt.subtract(PresenceSchedule.scanOffset);
+    final prayer = NextPrayer(
+      name: scheduled.prayer,
+      scheduledAt: azanAt,
+      voiceId: scheduled.voiceId,
+    );
+    await scheduler.syncForPrayer(prayer, _clock.now());
+  }
+
+  Future<void> syncTravelLocation() async {
+    await _travelRefresher?.syncFromStore();
+  }
+
   Future<void> _scheduleNextAfter(DateTime after) async {
     var cursor = after;
     for (var i = 0; i < 16; i++) {
-      final prayer = await _nextPrayer.next(after: cursor);
+      final prayer = await _nextPrayer.next(after: cursor, preferCache: true);
       final wakeEpochMs = prayer.scheduledAt
           .add(PresenceSchedule.scanOffset)
           .millisecondsSinceEpoch;
@@ -521,6 +611,7 @@ final class PrayerDeliveryCoordinator {
             voiceId: prayer.voiceId,
           );
           _scheduledWakeEpochMs = wakeEpochMs;
+          await _prePrayerAlerts?.syncForPrayer(prayer, now);
           return;
         }
         _logger.warn(
@@ -537,6 +628,7 @@ final class PrayerDeliveryCoordinator {
         voiceId: prayer.voiceId,
       );
       _scheduledWakeEpochMs = wakeEpochMs;
+      await _prePrayerAlerts?.syncForPrayer(prayer, now);
       _logger.info(
         'Scheduled wake at $wakeEpochMs for ${prayer.name} '
         '(azan ${prayer.scheduledAt.millisecondsSinceEpoch}, '
@@ -569,9 +661,84 @@ final class PrayerDeliveryCoordinator {
         'Armed $rescheduleRetryPrayer at $epochMs',
         tag: 'PrayerDeliveryCoordinator',
       );
+      await _logRescheduleRetryArmed(epochMs);
     } catch (e, st) {
       _logger.error(
         'Failed to arm reschedule retry',
+        tag: 'PrayerDeliveryCoordinator',
+        error: e,
+        stackTrace: st,
+      );
+      await _logRescheduleRetryFailure(exception: e);
+    }
+  }
+
+  /// Log a post-delivery reschedule failure to the persistent delivery log.
+  Future<void> _logRescheduleFailure({
+    required AlarmFiredEvent event,
+    required DateTime azanEpoch,
+    required Object exception,
+  }) async {
+    final dao = _logDao;
+    if (dao == null) return;
+    try {
+      await dao.insertAttempt(
+        sessionId: 'reschedule-${event.scheduledEpochMs}',
+        prayer: event.prayer,
+        scheduledAtMs: azanEpoch.millisecondsSinceEpoch,
+        firedAtMs: _clock.now().millisecondsSinceEpoch,
+        outcome: Outcome.failedReschedule,
+        detail: exception.toString(),
+      );
+    } catch (e, st) {
+      _logger.warn(
+        'Failed to log reschedule failure for ${event.prayer}',
+        tag: 'PrayerDeliveryCoordinator',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  /// Log that a reschedule retry was armed (informational marker).
+  Future<void> _logRescheduleRetryArmed(int epochMs) async {
+    final dao = _logDao;
+    if (dao == null) return;
+    try {
+      await dao.insertAttempt(
+        sessionId: 'retry-$epochMs',
+        prayer: rescheduleRetryPrayer,
+        scheduledAtMs: epochMs,
+        firedAtMs: _clock.now().millisecondsSinceEpoch,
+        outcome: Outcome.rescheduleRetryArmed,
+        detail: '15-second retry wake armed',
+      );
+    } catch (e, st) {
+      _logger.warn(
+        'Failed to log reschedule retry armed',
+        tag: 'PrayerDeliveryCoordinator',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  /// Log failure to arm the reschedule retry itself.
+  Future<void> _logRescheduleRetryFailure({required Object exception}) async {
+    final dao = _logDao;
+    if (dao == null) return;
+    try {
+      await dao.insertAttempt(
+        sessionId: 'retry-fail-${_clock.now().millisecondsSinceEpoch}',
+        prayer: rescheduleRetryPrayer,
+        scheduledAtMs: _clock.now().millisecondsSinceEpoch,
+        firedAtMs: _clock.now().millisecondsSinceEpoch,
+        outcome: Outcome.failedReschedule,
+        detail: 'Failed to arm retry: ${exception.toString()}',
+      );
+    } catch (e, st) {
+      _logger.warn(
+        'Failed to log reschedule retry failure',
         tag: 'PrayerDeliveryCoordinator',
         error: e,
         stackTrace: st,

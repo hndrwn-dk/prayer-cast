@@ -153,7 +153,7 @@ final class LanFingerprint {
   }
 
   Future<String> shortHashForHome() async {
-    final castId = await _store.readHomeCastId();
+    final castId = await _store.readHomeCastIdResilient();
     if (castId != null && castId.isNotEmpty) {
       return householdFingerprintShort(castId);
     }
@@ -174,7 +174,7 @@ final class LanFingerprint {
   }
 
   Future<String> _ensureElectionSecret() async {
-    final castId = await _store.readHomeCastId();
+    final castId = await _store.readHomeCastIdResilient();
     if (castId != null && castId.isNotEmpty) {
       final derived = householdElectionSecret(castId);
       final existing = await _store.readElectionSecret();

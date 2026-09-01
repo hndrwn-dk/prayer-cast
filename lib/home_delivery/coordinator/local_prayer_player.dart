@@ -3,6 +3,9 @@ abstract interface class LocalPrayerPlayer {
   /// Short distinctive tone. Completes when playback ends.
   Future<void> playBeep();
 
+  /// Three-note takbir tone. Completes when playback ends.
+  Future<void> playTakbir();
+
   /// Bundled adhan for [voiceId]. When [waitUntilDone] is false, returns after
   /// start so a settings test does not block the UI for the full recording.
   Future<void> playAdhan({
@@ -19,6 +22,9 @@ final class SilentLocalPrayerPlayer implements LocalPrayerPlayer {
 
   @override
   Future<void> playBeep() async {}
+
+  @override
+  Future<void> playTakbir() async {}
 
   @override
   Future<void> playAdhan({

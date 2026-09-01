@@ -27,6 +27,7 @@ import 'package:prayer_cast/home_delivery/presence/mdns_browser.dart';
 import 'package:prayer_cast/home_delivery/presence/presence_service.dart';
 import 'package:prayer_cast/home_delivery/presence/presence_state.dart';
 import 'package:prayer_cast/home_delivery/ui/delivery_log_providers.dart';
+import 'package:prayer_cast/home_delivery/ui/delivery_log_page.dart';
 import 'package:prayer_cast/home_delivery/ui/home_setup_providers.dart';
 import 'package:prayer_cast/home_delivery/ui/icons/premium_icons.dart';
 import 'package:prayer_cast/home_delivery/ui/speaker_setup_page.dart';
@@ -36,10 +37,13 @@ import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/adhan_countdown.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
-import 'package:prayer_cast/home_delivery/ui/widgets/oem_autostart_banner.dart';
+import 'package:prayer_cast/home_delivery/ui/widgets/oem_battery_banner.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/spiritual_benefits_teaser.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
 import 'package:prayer_cast/l10n/locale_controller.dart';
+import 'package:prayer_cast/prayer_tracker/prayer_tracker_providers.dart';
+import 'package:prayer_cast/prayer_tracker/prayer_tracker_store.dart';
+import 'package:prayer_cast/prayer_tracker/ui/prayer_tracker_page.dart';
 import 'package:prayer_cast/prayer_times/adhan_next_prayer_provider.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 import 'package:prayer_cast/prayer_times/prayer_times_providers.dart';
@@ -49,13 +53,15 @@ import 'package:prayer_cast/support/open_support_url.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
-const String kAppVersion = '1.0.10+11';
+const String kAppVersion = '1.0.11+12';
 
 /// Android 13+ [POST_NOTIFICATIONS]. Default true so widget tests stay clean.
 final postNotificationsGrantedProvider = StateProvider<bool>((ref) => true);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(PrayerCastTheme.forestSystemUi);
   await initGoogleCast();
 
   final db = await openDeliveryDatabase();
@@ -65,6 +71,9 @@ Future<void> main() async {
   );
   final localeStore = FileLocaleStore(
     File(p.join(docs.path, 'app_locale.txt')),
+  );
+  final prayerTrackerStore = FilePrayerTrackerStore(
+    File(p.join(docs.path, 'prayer_tracker.json')),
   );
 
   const logger = ConsoleLogger();
@@ -76,12 +85,14 @@ Future<void> main() async {
   final castTesterHolder = _CastTesterHolder();
   final localPlayerHolder = _LocalPlayerHolder();
   final presenceHolder = _PresenceHolder();
+  final fingerprintHolder = _FingerprintHolder();
 
   final appContainer = ProviderContainer(
     overrides: [
       deliveryDatabaseProvider.overrideWithValue(db),
       prayerPrefsStoreProvider.overrideWithValue(prayerPrefsStore),
       localeStoreProvider.overrideWithValue(localeStore),
+      prayerTrackerStoreProvider.overrideWithValue(prayerTrackerStore),
       adhanNextPrayerProvider.overrideWithValue(nextPrayer),
       homeOnboardingProvider.overrideWith((ref) {
         final onboarding = onboardingHolder.value;
@@ -105,6 +116,13 @@ Future<void> main() async {
         return player;
       }),
       presenceServiceProvider.overrideWith((ref) => presenceHolder.value),
+      fingerprintStoreProvider.overrideWith((ref) {
+        final store = fingerprintHolder.value;
+        if (store == null) {
+          throw StateError('FingerprintStore not ready');
+        }
+        return store;
+      }),
     ],
   );
 
@@ -122,6 +140,7 @@ Future<void> main() async {
   castTesterHolder.value = runtime.castTester;
   localPlayerHolder.value = runtime.localPlayer;
   presenceHolder.value = runtime.presence;
+  fingerprintHolder.value = runtime.fingerprintStore;
 
   // Listen to onFired before first frame so buffered native pendingFire is kept.
   await runtime.coordinator.start();
@@ -153,13 +172,13 @@ final class _PresenceHolder {
   PresenceService? value;
 }
 
+final class _FingerprintHolder {
+  FingerprintStore? value;
+}
+
 /// App shell with speaker setup, prayer times, and delivery log.
 class PrayerCastApp extends ConsumerWidget {
-  const PrayerCastApp({
-    super.key,
-    this.exactAlarm,
-    this.coordinator,
-  });
+  const PrayerCastApp({super.key, this.exactAlarm, this.coordinator});
 
   final ExactAlarmPlatform? exactAlarm;
   final PrayerDeliveryCoordinator? coordinator;
@@ -183,10 +202,7 @@ class PrayerCastApp extends ConsumerWidget {
         return const Locale('id');
       },
       theme: PrayerCastTheme.light(),
-      home: _HomeShell(
-        exactAlarm: exactAlarm,
-        coordinator: coordinator,
-      ),
+      home: _HomeShell(exactAlarm: exactAlarm, coordinator: coordinator),
     );
   }
 }
@@ -255,10 +271,24 @@ class _HomeShellState extends ConsumerState<_HomeShell>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      unawaited(_reloadSpeakerFromDisk());
       unawaited(_retrySchedule());
       unawaited(_refreshNotificationPermission());
       ref.invalidate(homePresenceProvider);
+      ref.invalidate(batteryUnrestrictedProvider);
     }
+  }
+
+  Future<void> _reloadSpeakerFromDisk() async {
+    try {
+      final store = ref.read(fingerprintStoreProvider);
+      if (store is FileFingerprintStore) {
+        await store.reloadFromDisk();
+      }
+      ref.invalidate(savedHomeSpeakerProvider);
+      ref.invalidate(savedSpeakerReachableProvider);
+      ref.invalidate(homePresenceProvider);
+    } catch (_) {}
   }
 
   Future<void> _retrySchedule() async {
@@ -288,19 +318,26 @@ class _HomeShellState extends ConsumerState<_HomeShell>
   }
 
   Future<void> _openSpeakerSetup() async {
-    await Navigator.of(context).push(
-      _fadeRoute(const SpeakerSetupPage()),
-    );
+    await Navigator.of(context).push(_fadeRoute(const SpeakerSetupPage()));
     ref.invalidate(savedHomeSpeakerProvider);
     ref.invalidate(homePresenceProvider);
   }
 
   Future<void> _openPrayerSettings() async {
-    await Navigator.of(context).push(
-      _fadeRoute(PrayerSettingsPage(coordinator: widget.coordinator)),
-    );
+    await Navigator.of(
+      context,
+    ).push(_fadeRoute(PrayerSettingsPage(coordinator: widget.coordinator)));
     ref.invalidate(prayerPrefsProvider);
     ref.invalidate(nextPrayerSnapshotProvider);
+  }
+
+  Future<void> _openPrayerTracker() async {
+    await Navigator.of(context).push(_fadeRoute(const PrayerTrackerPage()));
+    ref.invalidate(todayPrayerLogProvider);
+  }
+
+  Future<void> _openDeliveryLog() async {
+    await Navigator.of(context).push(_fadeRoute(const DeliveryLogPage()));
   }
 
   void _openSpiritualBenefits(String prayer) {
@@ -322,17 +359,18 @@ class _HomeShellState extends ConsumerState<_HomeShell>
     final l10n = context.l10n;
     final canSchedule = ref.watch(exactAlarmPermissionGrantedProvider);
     final notificationsGranted = ref.watch(postNotificationsGrantedProvider);
-    final restrictiveOem = ref.watch(restrictiveOemProvider).maybeWhen(
-          data: (value) => value,
-          orElse: () => false,
-        );
+    final batteryUnrestricted = ref
+        .watch(batteryUnrestrictedProvider)
+        .maybeWhen(data: (value) => value, orElse: () => true);
     final speaker = ref.watch(savedHomeSpeakerProvider);
+    final speakerReachable = ref.watch(savedSpeakerReachableProvider);
     final nextPrayer = ref.watch(nextPrayerSnapshotProvider);
     final prefs = ref.watch(prayerPrefsProvider);
     final presence = ref.watch(homePresenceProvider);
     final localeOverride = ref.watch(appLocaleProvider);
     final activeLang =
-        localeOverride?.languageCode ?? Localizations.localeOf(context).languageCode;
+        localeOverride?.languageCode ??
+        Localizations.localeOf(context).languageCode;
 
     final speakerName = speaker.when(
       data: (s) => s?.displayName,
@@ -340,6 +378,15 @@ class _HomeShellState extends ConsumerState<_HomeShell>
       error: (_, __) => null,
     );
     final speakerLoading = speaker.isLoading;
+    final speakerOffline = speakerReachable.maybeWhen(
+      data: (reachable) => reachable == false,
+      orElse: () => false,
+    );
+
+    final speakerNeedsRelink = speaker.maybeWhen(
+      data: (s) => s?.needsRelink ?? false,
+      orElse: () => false,
+    );
 
     final nextHeroConfigured = nextPrayer.maybeWhen(
       data: (n) => n != null,
@@ -384,10 +431,7 @@ class _HomeShellState extends ConsumerState<_HomeShell>
     );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(
-        statusBarColor: Colors.transparent,
-        systemNavigationBarColor: PrayerCastColors.ink,
-      ),
+      value: PrayerCastTheme.forestSystemUi,
       child: Scaffold(
         backgroundColor: PrayerCastColors.ink,
         body: ColoredBox(
@@ -399,7 +443,8 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                   activeLang: activeLang,
                   canSchedule: canSchedule,
                   notificationsGranted: notificationsGranted,
-                  showOemAutostart: restrictiveOem &&
+                  showOemBatteryBanner:
+                      !batteryUnrestricted &&
                       (nextHeroConfigured || speakerName != null),
                   nextHeroConfigured: nextHeroConfigured,
                   nextAt: nextAt,
@@ -412,11 +457,14 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                   presenceLabel: _presenceLabel(
                     l10n,
                     presence,
+                    isIndonesian: activeLang == 'id',
                     speakerLoading: speakerLoading,
                     speakerName: speakerName,
+                    speakerNeedsRelink: speakerNeedsRelink,
                   ),
                   speakerName: speakerName,
                   speakerLoading: speakerLoading,
+                  onOpenDeliveryLog: _openDeliveryLog,
                   onLanguageSelected: (code) {
                     unawaited(
                       ref
@@ -425,18 +473,16 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                     );
                   },
                   onRequestExactAlarm: () async {
-                    await widget.exactAlarm
-                        ?.requestExactAlarmPermission();
+                    await widget.exactAlarm?.requestExactAlarmPermission();
                     await _retrySchedule();
                   },
                   onRequestNotifications: _requestNotifications,
-                  onOpenAutostart: () {
-                    unawaited(
-                      ref.read(oemBatterySettingsProvider).openAutostartSettings(),
-                    );
+                  onOpenBatterySettings: () {
+                    unawaited(ref.read(oemBatterySettingsProvider).open());
                   },
-                  onUnsetPrayerTap:
-                      nextHeroConfigured ? null : _openPrayerSettings,
+                  onUnsetPrayerTap: nextHeroConfigured
+                      ? null
+                      : _openPrayerSettings,
                   onSpiritualBenefitsTap: nextPrayerKey == null
                       ? null
                       : () => _openSpiritualBenefits(nextPrayerKey),
@@ -448,6 +494,8 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                   child: _SpeakerBand(
                     speakerName: speakerName,
                     speakerLoading: speakerLoading,
+                    speakerOffline: speakerOffline,
+                    speakerNeedsRelink: speakerNeedsRelink,
                     onTap: _openSpeakerSetup,
                   ),
                 ),
@@ -455,9 +503,13 @@ class _HomeShellState extends ConsumerState<_HomeShell>
               SliverToBoxAdapter(
                 child: FadeSlideIn(
                   delay: const Duration(milliseconds: 240),
-                  child: _PrayerTimesSlab(
-                    onTap: _openPrayerSettings,
-                  ),
+                  child: _PrayerTimesSlab(onTap: _openPrayerSettings),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: FadeSlideIn(
+                  delay: const Duration(milliseconds: 280),
+                  child: _PrayerTrackerSlab(onTap: _openPrayerTracker),
                 ),
               ),
               SliverFillRemaining(
@@ -474,10 +526,14 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                       ),
                       FadeSlideIn(
                         delay: const Duration(milliseconds: 300),
-                        child: SafeArea(
-                          top: false,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            bottom: MediaQuery.viewPaddingOf(context).bottom,
+                            left: MediaQuery.viewPaddingOf(context).left,
+                            right: MediaQuery.viewPaddingOf(context).right,
+                          ),
                           child: ColophonFootnote(
-                            message: l10n.dataOnDeviceOnly,
+                            message: l10n.privacyPolicy,
                             versionLine: 'version: $kAppVersion',
                             privacyTooltip: l10n.privacyPolicy,
                             onPrivacyTap: () => openPrivacyPolicyUrl(context),
@@ -513,10 +569,11 @@ class _HomeHero extends StatelessWidget {
     required this.speakerName,
     required this.speakerLoading,
     required this.onLanguageSelected,
+    required this.onOpenDeliveryLog,
     required this.onRequestExactAlarm,
     required this.onRequestNotifications,
-    required this.showOemAutostart,
-    required this.onOpenAutostart,
+    required this.showOemBatteryBanner,
+    required this.onOpenBatterySettings,
     this.onUnsetPrayerTap,
     this.onSpiritualBenefitsTap,
   });
@@ -524,8 +581,8 @@ class _HomeHero extends StatelessWidget {
   final String activeLang;
   final bool canSchedule;
   final bool notificationsGranted;
-  final bool showOemAutostart;
-  final VoidCallback onOpenAutostart;
+  final bool showOemBatteryBanner;
+  final VoidCallback onOpenBatterySettings;
   final bool nextHeroConfigured;
   final DateTime? nextAt;
   final String? nextTime;
@@ -538,6 +595,7 @@ class _HomeHero extends StatelessWidget {
   final String? speakerName;
   final bool speakerLoading;
   final ValueChanged<String> onLanguageSelected;
+  final VoidCallback onOpenDeliveryLog;
   final VoidCallback onRequestExactAlarm;
   final VoidCallback onRequestNotifications;
   final VoidCallback? onUnsetPrayerTap;
@@ -546,69 +604,71 @@ class _HomeHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final placeDetail = speakerLoading
-        ? l10n.speakerLoading
-        : speakerName;
+    final placeDetail = speakerLoading ? l10n.speakerLoading : speakerName;
 
+    final insets = MediaQuery.viewPaddingOf(context);
     return ColoredBox(
       color: PrayerCastColors.canopyDeep,
       child: Stack(
         children: [
           const Positioned.fill(child: CrescentField()),
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(28, 8, 16, 36),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  FadeSlideIn(
-                    delay: const Duration(milliseconds: 40),
-                    child: _HomeMasthead(
-                      activeLang: activeLang,
-                      onLanguageSelected: onLanguageSelected,
-                    ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              28 + insets.left,
+              8 + insets.top,
+              16 + insets.right,
+              36,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 40),
+                  child: _HomeMasthead(
+                    activeLang: activeLang,
+                    onLanguageSelected: onLanguageSelected,
+                    onOpenDeliveryLog: onOpenDeliveryLog,
                   ),
-                  if (!canSchedule) ...[
-                    const SizedBox(height: 16),
-                    _ExactAlarmPermissionBanner(onRequest: onRequestExactAlarm),
-                  ],
-                  if (!notificationsGranted) ...[
-                    const SizedBox(height: 16),
-                    _NotificationPermissionBanner(
-                      onRequest: onRequestNotifications,
-                    ),
-                  ],
-                  if (showOemAutostart) ...[
-                    const SizedBox(height: 16),
-                    OemAutostartBanner(onOpen: onOpenAutostart),
-                  ],
-                  const SizedBox(height: 48),
-                  FadeSlideIn(
-                    delay: const Duration(milliseconds: 120),
-                    child: _NextAdhanJewel(
-                      configured: nextHeroConfigured,
-                      scheduledAt: nextAt,
-                      time: nextTime,
-                      prayerName: nextName,
-                      prayerKey: nextPrayerKey,
-                      emptyLabel: nextEmptyLabel,
-                      onUnsetTap: onUnsetPrayerTap,
-                      onSpiritualBenefitsTap: onSpiritualBenefitsTap,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  FadeSlideIn(
-                    delay: const Duration(milliseconds: 180),
-                    child: _PlaceAndPresence(
-                      city: cityLabel,
-                      country: countryLabel,
-                      presenceLabel: presenceLabel,
-                      placeDetail: placeDetail,
-                    ),
+                ),
+                if (!canSchedule) ...[
+                  const SizedBox(height: 16),
+                  _ExactAlarmPermissionBanner(onRequest: onRequestExactAlarm),
+                ],
+                if (!notificationsGranted) ...[
+                  const SizedBox(height: 16),
+                  _NotificationPermissionBanner(
+                    onRequest: onRequestNotifications,
                   ),
                 ],
-              ),
+                if (showOemBatteryBanner) ...[
+                  const SizedBox(height: 16),
+                  OemBatteryBanner(onOpen: onOpenBatterySettings),
+                ],
+                const SizedBox(height: 48),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 120),
+                  child: _NextAdhanJewel(
+                    configured: nextHeroConfigured,
+                    scheduledAt: nextAt,
+                    time: nextTime,
+                    prayerName: nextName,
+                    prayerKey: nextPrayerKey,
+                    emptyLabel: nextEmptyLabel,
+                    onUnsetTap: onUnsetPrayerTap,
+                    onSpiritualBenefitsTap: onSpiritualBenefitsTap,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 180),
+                  child: _PlaceAndPresence(
+                    city: cityLabel,
+                    country: countryLabel,
+                    presenceLabel: presenceLabel,
+                    placeDetail: placeDetail,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -621,10 +681,12 @@ class _HomeMasthead extends StatelessWidget {
   const _HomeMasthead({
     required this.activeLang,
     required this.onLanguageSelected,
+    required this.onOpenDeliveryLog,
   });
 
   final String activeLang;
   final ValueChanged<String> onLanguageSelected;
+  final VoidCallback onOpenDeliveryLog;
 
   @override
   Widget build(BuildContext context) {
@@ -675,6 +737,22 @@ class _HomeMasthead extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const SupportIconButton(color: PrayerCastColors.mist),
+              IconButton(
+                key: const ValueKey<String>('home_delivery_log'),
+                tooltip: activeLang == 'id'
+                    ? 'Riwayat pengiriman'
+                    : 'Delivery log',
+                onPressed: onOpenDeliveryLog,
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(44, 44),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const EdgeInsets.all(8),
+                ),
+                icon: PremiumIcons.logLines(
+                  size: 22,
+                  color: PrayerCastColors.mist,
+                ),
+              ),
               PopupMenuButton<String>(
                 key: const ValueKey('language_menu'),
                 tooltip: '${l10n.language} (${activeLang.toUpperCase()})',
@@ -890,19 +968,34 @@ class _SpeakerBand extends StatelessWidget {
   const _SpeakerBand({
     required this.speakerName,
     required this.speakerLoading,
+    required this.speakerOffline,
+    required this.speakerNeedsRelink,
     required this.onTap,
   });
 
   final String? speakerName;
   final bool speakerLoading;
+  final bool speakerOffline;
+  final bool speakerNeedsRelink;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final isId = Localizations.localeOf(context).languageCode == 'id';
     final subtitle = speakerLoading
         ? l10n.speakerLoading
-        : (speakerName ?? l10n.speakerCardEmpty);
+        : speakerName == null
+        ? l10n.speakerCardEmpty
+        : speakerNeedsRelink
+        ? (isId
+              ? '$speakerName · ketuk untuk hubungkan ulang'
+              : '$speakerName · tap to re-link')
+        : speakerOffline
+        ? (isId
+              ? '$speakerName · tidak terdeteksi di WiFi'
+              : '$speakerName · not on WiFi')
+        : speakerName!;
     return ColoredBox(
       color: PrayerCastColors.canopyDeep,
       child: Padding(
@@ -910,10 +1003,7 @@ class _SpeakerBand extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            EditorialEyebrow(
-              l10n.deviceEyebrow,
-              color: PrayerCastColors.dawn,
-            ),
+            EditorialEyebrow(l10n.deviceEyebrow, color: PrayerCastColors.dawn),
             const SizedBox(height: 10),
             Semantics(
               button: true,
@@ -1035,15 +1125,79 @@ class _PrayerTimesSlab extends StatelessWidget {
   }
 }
 
+class _PrayerTrackerSlab extends StatelessWidget {
+  const _PrayerTrackerSlab({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isId = Localizations.localeOf(context).languageCode == 'id';
+    return Semantics(
+      button: true,
+      label: isId ? 'Catatan sholat' : 'Prayer tracker',
+      child: Material(
+        key: const ValueKey<String>('home_prayer_tracker_slab'),
+        color: PrayerCastColors.ink,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(28, 0, 28, 22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                EditorialEyebrow(
+                  isId ? 'Ibadah' : 'Worship',
+                  color: PrayerCastColors.dawn,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  isId ? 'Catatan sholat' : 'Prayer tracker',
+                  style: const TextStyle(
+                    fontFamily: PrayerCastTheme.displayFont,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: -0.2,
+                    color: PrayerCastColors.surfaceRaised,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  isId
+                      ? 'Catat waktu dan tempat sholat hari ini'
+                      : 'Log timing and where for today\'s prayers',
+                  style: const TextStyle(
+                    fontFamily: PrayerCastTheme.bodyFont,
+                    fontSize: 13,
+                    height: 1.4,
+                    color: PrayerCastColors.mistDeep,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 String _presenceLabel(
   AppLocalizations l10n,
   AsyncValue<PresenceState> presence, {
+  required bool isIndonesian,
   required bool speakerLoading,
   required String? speakerName,
+  required bool speakerNeedsRelink,
 }) {
   final hasSpeaker = speakerName != null && speakerName.isNotEmpty;
   if (!speakerLoading && !hasSpeaker) {
     return l10n.speakerNotSelected;
+  }
+  if (speakerNeedsRelink) {
+    return isIndonesian
+        ? 'speaker perlu dihubungkan ulang'
+        : 'speaker needs re-link';
   }
   return presence.when(
     loading: () => l10n.checkingHome,
@@ -1165,20 +1319,15 @@ PageRouteBuilder<void> _fadeRoute(Widget page, {RouteSettings? settings}) {
     pageBuilder: (_, __, ___) => page,
     transitionsBuilder: (_, animation, __, child) {
       return FadeTransition(
-        opacity: CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-        ),
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
         child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0.04, 0),
-            end: Offset.zero,
-          ).animate(
-            CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            ),
-          ),
+          position:
+              Tween<Offset>(
+                begin: const Offset(0.04, 0),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              ),
           child: child,
         ),
       );
@@ -1240,6 +1389,7 @@ class PrayerCastAppForTest extends StatelessWidget {
           const SilentLocalPrayerPlayer(),
         ),
         localeStoreProvider.overrideWithValue(MemoryLocaleStore('id')),
+        prayerTrackerStoreProvider.overrideWithValue(MemoryPrayerTrackerStore()),
       ],
       child: const PrayerCastApp(),
     );
@@ -1249,10 +1399,10 @@ class PrayerCastAppForTest extends StatelessWidget {
 final class _EmptyAudioLoader implements AdzanAudioLoader {
   @override
   Future<AdzanAudioData> load(String voiceId) async => AdzanAudioData(
-        bytes: Uint8List(0),
-        contentType: 'audio/mpeg',
-        extension: 'mp3',
-      );
+    bytes: Uint8List(0),
+    contentType: 'audio/mpeg',
+    extension: 'mp3',
+  );
 }
 
 final class _NoopCastPlatform implements CastPlatform {
@@ -1263,8 +1413,7 @@ final class _NoopCastPlatform implements CastPlatform {
   Future<List<CastReceiver>> discover({
     required Duration budget,
     String? matchId,
-  }) async =>
-      const [];
+  }) async => const [];
 
   @override
   Future<void> connect(CastReceiver receiver) async {}
@@ -1304,6 +1453,5 @@ final class _EmptyMdnsBrowser implements MdnsBrowser {
     required List<String> serviceTypes,
     required Duration budget,
     bool Function(List<DiscoveredService> soFar)? shouldStop,
-  }) async =>
-      const [];
+  }) async => const [];
 }

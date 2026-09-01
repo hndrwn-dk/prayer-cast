@@ -20,6 +20,9 @@ abstract interface class OemBatterySettingsPlatform {
 
   /// ColorOS / MIUI / Funtouch-class OEM that hides Auto-launch.
   Future<bool> isRestrictiveOem();
+
+  /// True when the app is exempt from battery optimisation (Doze).
+  Future<bool> isBatteryUnrestricted();
 }
 
 /// MethodChannel bridge to Android OEM battery and autostart intents.
@@ -103,6 +106,24 @@ final class OemBatterySettings implements OemBatterySettingsPlatform {
         stackTrace: st,
       );
       return false;
+    }
+  }
+
+  @override
+  Future<bool> isBatteryUnrestricted() async {
+    try {
+      final value = await _methods.invokeMethod<bool>('isBatteryUnrestricted');
+      return value ?? true;
+    } on MissingPluginException {
+      return true;
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'OemBatterySettings.isBatteryUnrestricted failed',
+        tag: 'OemBattery',
+        error: e,
+        stackTrace: st,
+      );
+      return true;
     }
   }
 }

@@ -285,6 +285,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deliveryBeep => 'Beep on phone';
 
   @override
+  String get deliveryTakbir => 'Takbir on phone';
+
+  @override
   String get deliveryAdhanPhone => 'Adhan on phone';
 
   @override
@@ -292,6 +295,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get beepPlayed => 'Beep played on this phone.';
+
+  @override
+  String get takbirPlayed => 'Takbir played on this phone.';
 
   @override
   String adhanPhonePlayed(String prayer, String voice) {

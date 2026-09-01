@@ -13,7 +13,7 @@ import 'package:prayer_cast/home_delivery/platform/oem_battery_settings.dart';
 import 'package:prayer_cast/home_delivery/ui/delivery_log_providers.dart';
 import 'package:prayer_cast/home_delivery/ui/home_setup_providers.dart';
 import 'package:prayer_cast/home_delivery/ui/speaker_setup_page.dart';
-import 'package:prayer_cast/home_delivery/ui/widgets/oem_autostart_banner.dart';
+import 'package:prayer_cast/home_delivery/ui/widgets/oem_battery_banner.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/speaker_search_pulse.dart';
@@ -763,7 +763,7 @@ void main() {
     expect(find.text('1 selected'), findsWidgets);
   });
 
-  testWidgets('restrictive OEM shows autostart banner on speaker setup',
+  testWidgets('restricted battery shows battery banner on speaker setup',
       (tester) async {
     await _pumpPage(
       tester,
@@ -771,14 +771,14 @@ void main() {
         speakerDiscoveryProvider.overrideWith(
           (ref) async => SpeakerScanResult(devices: [_speaker()]),
         ),
-        oemBatterySettingsProvider.overrideWithValue(_RestrictiveOem()),
+        batteryUnrestrictedProvider.overrideWith((ref) async => false),
       ],
     );
     await tester.pump();
     await tester.pump();
 
-    expect(find.byKey(OemAutostartBanner.bannerKey), findsOneWidget);
-    expect(find.text('Open auto-launch settings'), findsOneWidget);
+    expect(find.byKey(OemBatteryBanner.bannerKey), findsOneWidget);
+    expect(find.text('Open battery settings'), findsOneWidget);
   });
 }
 
@@ -794,6 +794,9 @@ final class _RestrictiveOem implements OemBatterySettingsPlatform {
 
   @override
   Future<bool> isRestrictiveOem() async => true;
+
+  @override
+  Future<bool> isBatteryUnrestricted() async => false;
 }
 
 class _HomeSpeakerStub extends ConsumerWidget {

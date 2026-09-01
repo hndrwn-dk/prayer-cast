@@ -94,6 +94,25 @@ class ExactAlarmPlugin(
                     }
                 }.start()
             }
+            "playLocalTakbir" -> {
+                Thread {
+                    try {
+                        LocalAlarmSound.playTakbir(context)
+                        Handler(Looper.getMainLooper()).post { result.success(null) }
+                    } catch (e: Exception) {
+                        Handler(Looper.getMainLooper()).post {
+                            result.error("takbir_failed", e.message, null)
+                        }
+                    }
+                }.start()
+            }
+            "syncTravelLocation" -> {
+                val enabled = call.argument<Boolean>("enabled") ?: false
+                val lat = call.argument<Number>("latitude")?.toDouble()
+                val lng = call.argument<Number>("longitude")?.toDouble()
+                TravelLocationStore.sync(context, enabled, lat, lng)
+                result.success(null)
+            }
             "getScheduled" -> {
                 val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 if (!prefs.contains(KEY_EPOCH)) {
@@ -107,6 +126,38 @@ class ExactAlarmPlugin(
                         "voiceId" to (prefs.getString(KEY_VOICE_ID, "") ?: ""),
                     ),
                 )
+            }
+            "schedulePreAlert" -> {
+                val epochMs = call.argument<Number>("epochMs")?.toLong()
+                val title = call.argument<String>("title")
+                val body = call.argument<String>("body")
+                val sound = call.argument<String>("sound") ?: "beep"
+                if (epochMs == null || title == null || body == null) {
+                    result.error("bad_args", "epochMs, title, and body required", null)
+                    return
+                }
+                try {
+                    PrePrayerAlert.schedule(context, epochMs, title, body, sound)
+                    result.success(null)
+                } catch (e: SecurityException) {
+                    result.error("no_permission", e.message, null)
+                } catch (e: Exception) {
+                    result.error("schedule_failed", e.message, null)
+                }
+            }
+            "cancelPreAlert" -> {
+                PrePrayerAlert.cancel(context)
+                result.success(null)
+            }
+            "showDeliveryFailureNotification" -> {
+                val title = call.argument<String>("title")
+                val body = call.argument<String>("body")
+                if (title == null || body == null) {
+                    result.error("bad_args", "title and body required", null)
+                    return
+                }
+                DeliveryFailureNotifier.show(context, title, body)
+                result.success(null)
             }
             else -> result.notImplemented()
         }
@@ -303,6 +354,9 @@ class ExactAlarmPlugin(
                 .putString(KEY_VOICE_ID, voiceId)
                 .apply()
             AlarmHealScheduler.enqueue(context)
+            if (prayer != RESCHEDULE_RETRY_PRAYER) {
+                NextPrayerWidget.refresh(context)
+            }
         }
 
         @JvmStatic
@@ -320,6 +374,7 @@ class ExactAlarmPlugin(
             alarmManager.cancel(operation)
             if (clearPrefs) {
                 context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+                NextPrayerWidget.refresh(context)
             }
         }
 

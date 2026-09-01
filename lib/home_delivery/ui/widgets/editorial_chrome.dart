@@ -63,6 +63,7 @@ class EditorialPageHeader extends StatelessWidget {
     this.onBack,
     this.backTooltip,
     this.trailing,
+    this.padding = const EdgeInsets.fromLTRB(8, 4, 16, 8),
   });
 
   final String title;
@@ -70,16 +71,19 @@ class EditorialPageHeader extends StatelessWidget {
   final VoidCallback? onBack;
   final String? backTooltip;
   final Widget? trailing;
+  /// Default 8px bottom. Tracker pages use 10 to match the period-chip gap.
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 16, 8),
+      padding: padding,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           IconButton(
-            tooltip: backTooltip ??
+            tooltip:
+                backTooltip ??
                 MaterialLocalizations.of(context).backButtonTooltip,
             onPressed: onBack,
             icon: PremiumIcons.caretLeft(
@@ -92,10 +96,7 @@ class EditorialPageHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (eyebrow != null) ...[
-                  EditorialEyebrow(
-                    eyebrow!,
-                    color: PrayerCastColors.dawn,
-                  ),
+                  EditorialEyebrow(eyebrow!, color: PrayerCastColors.dawn),
                   const SizedBox(height: 4),
                 ],
                 Text(
@@ -286,10 +287,7 @@ class CrescentField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const IgnorePointer(
-      child: CustomPaint(
-        painter: _CrescentPainter(),
-        child: SizedBox.expand(),
-      ),
+      child: CustomPaint(painter: _CrescentPainter(), child: SizedBox.expand()),
     );
   }
 }
@@ -329,6 +327,64 @@ class _CrescentPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+/// Forest page with a pinned [SliverAppBar] so scrolled cards clip under the title.
+class ForestScrollScaffold extends StatelessWidget {
+  const ForestScrollScaffold({
+    super.key,
+    required this.header,
+    required this.slivers,
+    this.toolbarHeight = 64,
+    this.backgroundColor = PrayerCastColors.ink,
+    this.wash = true,
+  });
+
+  final Widget header;
+  final List<Widget> slivers;
+  final double toolbarHeight;
+  final Color backgroundColor;
+  final bool wash;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: PrayerCastTheme.forestSystemUi,
+      child: Scaffold(
+        backgroundColor: backgroundColor,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (wash) const CrescentField(),
+            CustomScrollView(
+              clipBehavior: Clip.hardEdge,
+              slivers: [
+                SliverAppBar(
+                  pinned: true,
+                  primary: true,
+                  automaticallyImplyLeading: false,
+                  toolbarHeight: toolbarHeight,
+                  backgroundColor: backgroundColor,
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  forceMaterialTransparency: false,
+                  flexibleSpace: ColoredBox(
+                    color: backgroundColor,
+                    child: SafeArea(
+                      bottom: false,
+                      child: header,
+                    ),
+                  ),
+                ),
+                ...slivers,
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Dark forest page chrome: overlay, optional wash, header, body, bottom bar.
 class ForestScaffold extends StatelessWidget {
   const ForestScaffold({
@@ -348,32 +404,30 @@ class ForestScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+    final insets = MediaQuery.viewPaddingOf(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(
-        statusBarColor: Colors.transparent,
-        systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.light,
-        systemNavigationBarContrastEnforced: false,
-      ),
+      value: PrayerCastTheme.forestSystemUi,
       child: Scaffold(
         backgroundColor: backgroundColor,
         body: Stack(
           fit: StackFit.expand,
           children: [
             if (wash) const CrescentField(),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SafeArea(bottom: false, child: header),
-                Expanded(child: body),
-                if (bottom != null)
-                  Padding(
-                    padding: EdgeInsets.only(bottom: bottomInset),
-                    child: bottom!,
-                  ),
-              ],
+            Padding(
+              padding: EdgeInsets.only(
+                top: insets.top,
+                bottom: insets.bottom,
+                left: insets.left,
+                right: insets.right,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  header,
+                  Expanded(child: body),
+                  if (bottom != null) bottom!,
+                ],
+              ),
             ),
           ],
         ),

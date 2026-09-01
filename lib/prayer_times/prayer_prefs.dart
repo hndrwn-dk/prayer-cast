@@ -10,6 +10,7 @@ import 'indonesia_location.dart';
 /// keep speaker playback unchanged.
 enum PrayerDeliveryMode {
   beep,
+  takbir,
   adhanPhone,
   cast,
 }
@@ -21,13 +22,31 @@ extension PrayerDeliveryModeX on PrayerDeliveryMode {
   static PrayerDeliveryMode parse(String? raw) {
     return switch (raw) {
       'beep' => PrayerDeliveryMode.beep,
+      'takbir' => PrayerDeliveryMode.takbir,
       'adhanPhone' => PrayerDeliveryMode.adhanPhone,
       _ => PrayerDeliveryMode.cast,
     };
   }
 
-  /// Voice selection applies to Cast and phone Adhan, not beep.
-  bool get usesVoice => this != PrayerDeliveryMode.beep;
+  /// Voice selection applies to Cast and phone Adhan, not beep/takbir.
+  bool get usesVoice =>
+      this != PrayerDeliveryMode.beep && this != PrayerDeliveryMode.takbir;
+}
+
+enum PrePrayerAlertSound {
+  beep,
+  takbir,
+}
+
+extension PrePrayerAlertSoundX on PrePrayerAlertSound {
+  String get wire => name;
+
+  static PrePrayerAlertSound parse(String? raw) {
+    return switch (raw) {
+      'takbir' => PrePrayerAlertSound.takbir,
+      _ => PrePrayerAlertSound.beep,
+    };
+  }
 }
 
 /// Asr school for Aladhan (`school` query param).
@@ -58,6 +77,9 @@ final class PrayerPrefs {
     this.latitude,
     this.longitude,
     this.administrativeArea = '',
+    this.prePrayerAlertMinutes = 0,
+    this.prePrayerAlertSound = PrePrayerAlertSound.beep,
+    this.travelScheduleUpdates = false,
   });
 
   /// City name for Aladhan `timingsByCity` (e.g. London, Tokyo, Singapore).
@@ -95,6 +117,15 @@ final class PrayerPrefs {
   /// never sent to myQuran.
   final String administrativeArea;
 
+  /// Minutes before azan for a pre-prayer reminder notification (0 = off).
+  final int prePrayerAlertMinutes;
+
+  /// Sound for the pre-prayer reminder notification.
+  final PrePrayerAlertSound prePrayerAlertSound;
+
+  /// When true, refresh city/times if the phone has moved ~25 km.
+  final bool travelScheduleUpdates;
+
   /// True once the user has saved settings at least once.
   final bool configured;
 
@@ -131,6 +162,9 @@ final class PrayerPrefs {
     String? administrativeArea,
     bool clearCoordinates = false,
     bool clearAdministrativeArea = false,
+    int? prePrayerAlertMinutes,
+    PrePrayerAlertSound? prePrayerAlertSound,
+    bool? travelScheduleUpdates,
   }) {
     return PrayerPrefs(
       city: city ?? this.city,
@@ -146,6 +180,11 @@ final class PrayerPrefs {
       administrativeArea: clearAdministrativeArea
           ? ''
           : (administrativeArea ?? this.administrativeArea),
+      prePrayerAlertMinutes:
+          prePrayerAlertMinutes ?? this.prePrayerAlertMinutes,
+      prePrayerAlertSound: prePrayerAlertSound ?? this.prePrayerAlertSound,
+      travelScheduleUpdates:
+          travelScheduleUpdates ?? this.travelScheduleUpdates,
     );
   }
 
@@ -216,6 +255,9 @@ final class MemoryPrayerPrefsStore implements PrayerPrefsStore {
 /// longitude (optional)
 /// fajr=cast,dhuhr=beep,... (optional; missing = all cast)
 /// administrativeArea (optional; kabupaten/kota match hint)
+/// prePrayerAlertMinutes (0|10|15; optional; default 0)
+/// travelScheduleUpdates (0|1; optional; default 0)
+/// prePrayerAlertSound (beep|takbir; optional; default beep)
 /// ```
 final class FilePrayerPrefsStore implements PrayerPrefsStore {
   FilePrayerPrefsStore(this._file);
@@ -250,6 +292,13 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
           : const <String, String>{};
       final administrativeArea =
           lines.length > 10 ? lines[10].trim() : '';
+      final preAlert = lines.length > 11
+          ? int.tryParse(lines[11].trim()) ?? 0
+          : 0;
+      final travel = lines.length > 12 && lines[12].trim() == '1';
+      final alertSound = lines.length > 13
+          ? PrePrayerAlertSoundX.parse(lines[13].trim())
+          : PrePrayerAlertSound.beep;
       return PrayerPrefs(
         city: city,
         country: country,
@@ -262,6 +311,9 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
         latitude: latitude,
         longitude: longitude,
         administrativeArea: administrativeArea,
+        prePrayerAlertMinutes: _normalizePreAlertMinutes(preAlert),
+        travelScheduleUpdates: travel,
+        prePrayerAlertSound: alertSound,
       );
     } catch (_) {
       return PrayerPrefs.defaults;
@@ -290,8 +342,16 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
       '$latLine\n'
       '$lngLine\n'
       '$delivery\n'
-      '${prefs.administrativeArea}\n',
+      '${prefs.administrativeArea}\n'
+      '${prefs.prePrayerAlertMinutes}\n'
+      '${prefs.travelScheduleUpdates ? 1 : 0}\n'
+      '${prefs.prePrayerAlertSound.wire}\n',
     );
+  }
+
+  static int _normalizePreAlertMinutes(int raw) {
+    if (raw == 10 || raw == 15) return raw;
+    return 0;
   }
 
   static String _migrateCity(String raw) {
@@ -387,6 +447,7 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
     final out = <String, String>{};
     for (final entry in parsed.entries) {
       if (entry.value == 'beep' ||
+          entry.value == 'takbir' ||
           entry.value == 'adhanPhone' ||
           entry.value == 'cast') {
         out[entry.key] = entry.value;

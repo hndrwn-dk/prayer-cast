@@ -23,7 +23,7 @@ final class FingerprintBackedDeliverySettings implements DeliverySettings {
   final double defaultVolume;
 
   @override
-  Future<String?> homeCastDeviceId() => _store.readHomeCastId();
+  Future<String?> homeCastDeviceId() => _store.readHomeCastIdResilient();
 
   @override
   Future<double> playbackVolume() async => defaultVolume;

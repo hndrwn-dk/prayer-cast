@@ -26,6 +26,8 @@ void main() {
         case 'stopForegroundService':
         case 'showPhonePlaybackControls':
         case 'playLocalBeep':
+        case 'playLocalTakbir':
+        case 'syncTravelLocation':
           return null;
         case 'canScheduleExactAlarms':
           return true;
@@ -186,10 +188,10 @@ void main() {
     expect(calls.last.arguments, {'prayer': 'isha'});
   });
 
-  test('playLocalBeep invokes MethodChannel', () async {
+  test('playLocalTakbir invokes MethodChannel', () async {
     final alarm = ExactAlarm();
-    await alarm.playLocalBeep();
-    expect(calls.last.method, 'playLocalBeep');
+    await alarm.playLocalTakbir();
+    expect(calls.last.method, 'playLocalTakbir');
   });
 
   test('native stopLocalPlayback emits onStopLocalPlayback', () async {

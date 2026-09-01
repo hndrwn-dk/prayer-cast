@@ -97,6 +97,23 @@ abstract final class PremiumIcons {
   /// Coffee cup (legacy Ko-fi mark; unused by support UI).
   static Widget coffee({double size = 24, Color? color}) =>
       _Icon(size: size, color: color, paint: _paintCoffee);
+
+  /// Stacked lines — delivery attempt history.
+  static Widget logLines({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintLogLines);
+
+  /// Three vertical bars — period stats.
+  static Widget bars({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintBars);
+
+  static Widget trendUp({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintTrendUp);
+
+  static Widget alertCircle({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintAlertCircle);
+
+  static Widget flame({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintFlame);
 }
 
 typedef _PaintFn = void Function(Canvas canvas, Size size, Color color);
@@ -545,4 +562,62 @@ void _paintCoffee(Canvas canvas, Size size, Color color) {
     false,
     steam,
   );
+}
+
+void _paintLogLines(Canvas canvas, Size size, Color color) {
+  final s = size.shortestSide;
+  final p = _stroke(color);
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(
+      Rect.fromLTWH(s * 0.20, s * 0.16, s * 0.60, s * 0.68),
+      const Radius.circular(3),
+    ),
+    p,
+  );
+  canvas.drawLine(Offset(s * 0.32, s * 0.36), Offset(s * 0.68, s * 0.36), p);
+  canvas.drawLine(Offset(s * 0.32, s * 0.50), Offset(s * 0.68, s * 0.50), p);
+  canvas.drawLine(Offset(s * 0.32, s * 0.64), Offset(s * 0.56, s * 0.64), p);
+}
+
+void _paintBars(Canvas canvas, Size size, Color color) {
+  final s = size.shortestSide;
+  final p = _stroke(color, width: 2.0);
+  canvas.drawLine(Offset(s * 0.30, s * 0.70), Offset(s * 0.30, s * 0.42), p);
+  canvas.drawLine(Offset(s * 0.50, s * 0.70), Offset(s * 0.50, s * 0.22), p);
+  canvas.drawLine(Offset(s * 0.70, s * 0.70), Offset(s * 0.70, s * 0.52), p);
+}
+
+void _paintTrendUp(Canvas canvas, Size size, Color color) {
+  final s = size.shortestSide;
+  final p = _stroke(color, width: 2.0);
+  canvas.drawLine(Offset(s * 0.18, s * 0.70), Offset(s * 0.42, s * 0.48), p);
+  canvas.drawLine(Offset(s * 0.42, s * 0.48), Offset(s * 0.52, s * 0.58), p);
+  canvas.drawLine(Offset(s * 0.52, s * 0.58), Offset(s * 0.78, s * 0.26), p);
+  canvas.drawLine(Offset(s * 0.78, s * 0.26), Offset(s * 0.58, s * 0.26), p);
+  canvas.drawLine(Offset(s * 0.78, s * 0.26), Offset(s * 0.78, s * 0.46), p);
+}
+
+void _paintAlertCircle(Canvas canvas, Size size, Color color) {
+  final s = size.shortestSide;
+  final p = _stroke(color);
+  canvas.drawCircle(Offset(s * 0.5, s * 0.5), s * 0.34, p);
+  canvas.drawLine(Offset(s * 0.5, s * 0.32), Offset(s * 0.5, s * 0.54), p);
+  canvas.drawCircle(Offset(s * 0.5, s * 0.66), s * 0.04, _fill(color));
+}
+
+void _paintFlame(Canvas canvas, Size size, Color color) {
+  final s = size.shortestSide;
+  final p = _stroke(color);
+  final outer = Path()
+    ..moveTo(s * 0.50, s * 0.16)
+    ..cubicTo(s * 0.34, s * 0.38, s * 0.26, s * 0.50, s * 0.28, s * 0.66)
+    ..cubicTo(s * 0.30, s * 0.84, s * 0.40, s * 0.88, s * 0.50, s * 0.88)
+    ..cubicTo(s * 0.60, s * 0.88, s * 0.70, s * 0.84, s * 0.72, s * 0.66)
+    ..cubicTo(s * 0.74, s * 0.50, s * 0.66, s * 0.38, s * 0.50, s * 0.16);
+  canvas.drawPath(outer, p);
+  final inner = Path()
+    ..moveTo(s * 0.50, s * 0.46)
+    ..cubicTo(s * 0.42, s * 0.58, s * 0.42, s * 0.66, s * 0.50, s * 0.76)
+    ..cubicTo(s * 0.58, s * 0.66, s * 0.58, s * 0.58, s * 0.50, s * 0.46);
+  canvas.drawPath(inner, p);
 }

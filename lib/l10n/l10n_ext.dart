@@ -35,6 +35,7 @@ String voiceDisplayName(AppLocalizations l10n, String voiceId) {
 String deliveryDisplayName(AppLocalizations l10n, PrayerDeliveryMode mode) {
   return switch (mode) {
     PrayerDeliveryMode.beep => l10n.deliveryBeep,
+    PrayerDeliveryMode.takbir => l10n.deliveryTakbir,
     PrayerDeliveryMode.adhanPhone => l10n.deliveryAdhanPhone,
     PrayerDeliveryMode.cast => l10n.deliveryCast,
   };

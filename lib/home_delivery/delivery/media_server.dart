@@ -118,7 +118,7 @@ final class MediaServer {
     final path = '/${request.url.path}';
     if (path != mediaPath) {
       _logger.warn(
-        'MediaServer ${method} miss path=$path',
+        'MediaServer $method miss path=$path',
         tag: 'MediaServer',
       );
       return Response.notFound('Not Found');

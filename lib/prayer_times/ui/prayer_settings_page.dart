@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:prayer_cast/home_delivery/coordinator/adzan_cast_tester.dart';
 import 'package:prayer_cast/home_delivery/coordinator/next_prayer_provider.dart';
 import 'package:prayer_cast/home_delivery/coordinator/prayer_delivery_coordinator.dart';
@@ -119,8 +120,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
   }
 
   Future<void> _detectLocation(PrayerPrefs draft) async {
-    final alreadyGranted =
-        await widget.locationResolver.hasGrantedPermission();
+    final alreadyGranted = await widget.locationResolver.hasGrantedPermission();
     if (!alreadyGranted) {
       if (!mounted) return;
       final proceed = await showLocationDisclosureDialog(context);
@@ -169,6 +169,27 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
     }
   }
 
+  Future<void> _setTravelUpdates(PrayerPrefs draft, bool enabled) async {
+    if (!enabled) {
+      setState(() {
+        _draft = draft.copyWith(travelScheduleUpdates: false);
+      });
+      return;
+    }
+    if (!draft.hasCoordinates) {
+      await _detectLocation(draft);
+      draft = _draft ?? draft;
+      if (!draft.hasCoordinates) return;
+    }
+    final always = await Permission.locationAlways.request();
+    if (!mounted) return;
+    setState(() {
+      _draft = draft.copyWith(
+        travelScheduleUpdates: always.isGranted || always.isLimited,
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final asyncPrefs = ref.watch(prayerPrefsProvider);
@@ -180,452 +201,494 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
         builder: (context) {
           final text = Theme.of(context).textTheme;
           return ForestScaffold(
-        header: EditorialPageHeader(
-          eyebrow: l10n.scheduleEyebrow,
-          title: l10n.prayerTimes,
-          backTooltip: l10n.back,
-          onBack: () => Navigator.of(context).maybePop(),
-        ),
-        body: asyncPrefs.when(
-            loading: () => const Center(
-              child: CircularProgressIndicator(),
+            header: EditorialPageHeader(
+              eyebrow: l10n.scheduleEyebrow,
+              title: l10n.prayerTimes,
+              backTooltip: l10n.back,
+              onBack: () => Navigator.of(context).maybePop(),
             ),
-            error: (e, _) => Center(child: Text(l10n.loadFailed('$e'))),
-            data: (prefs) {
-              final draft = _draft ?? prefs;
-              _ensureControllers(draft);
-              if (_draft == null &&
-                  _schedule.isEmpty &&
-                  !_loadingSchedule &&
-                  _scheduleError == null) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) unawaited(_refreshSchedule(draft));
-                });
-              }
+            body: asyncPrefs.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text(l10n.loadFailed('$e'))),
+              data: (prefs) {
+                final draft = _draft ?? prefs;
+                _ensureControllers(draft);
+                if (_draft == null &&
+                    _schedule.isEmpty &&
+                    !_loadingSchedule &&
+                    _scheduleError == null) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) unawaited(_refreshSchedule(draft));
+                  });
+                }
 
-              final visibleSlots = _scheduleExpanded || _schedule.length <= 2
-                  ? _schedule
-                  : _schedule.take(2).toList();
-              final hiddenCount = _schedule.length - visibleSlots.length;
+                final visibleSlots = _scheduleExpanded || _schedule.length <= 2
+                    ? _schedule
+                    : _schedule.take(2).toList();
+                final hiddenCount = _schedule.length - visibleSlots.length;
 
-              return Column(
-                children: [
-                  Expanded(
-                    child: ListView(
-                      key: const ValueKey('prayer_settings_list'),
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                      children: [
-                        InkSurface(
-                          borderColor: PrayerCastColors.inkSoft,
-                          borderWidth: PrayerCastTheme.cardHairline,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              SizedBox(
-                                height: PrayerCastTheme.minTap,
-                                child: FilledButton(
-                                  onPressed:
-                                      (_detectingLocation || _loadingSchedule)
-                                          ? null
-                                          : () => _detectLocation(draft),
-                                  child: Text(
-                                    _detectingLocation
-                                        ? l10n.detectingLocation
-                                        : l10n.useCurrentLocation,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  PremiumIcons.house(
-                                    size: 20,
-                                    color: PrayerCastColors.mist,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
+                return Column(
+                  children: [
+                    Expanded(
+                      child: ListView(
+                        key: const ValueKey('prayer_settings_list'),
+                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                        children: [
+                          InkSurface(
+                            borderColor: PrayerCastColors.inkSoft,
+                            borderWidth: PrayerCastTheme.cardHairline,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                SizedBox(
+                                  height: PrayerCastTheme.minTap,
+                                  child: FilledButton(
+                                    onPressed:
+                                        (_detectingLocation || _loadingSchedule)
+                                        ? null
+                                        : () => _detectLocation(draft),
                                     child: Text(
-                                      draft.displayLocation.isEmpty
-                                          ? l10n.noLocationYet
-                                          : draft.displayLocation,
-                                      style: text.titleMedium,
+                                      _detectingLocation
+                                          ? l10n.detectingLocation
+                                          : l10n.useCurrentLocation,
                                     ),
                                   ),
-                                  SoftPill(
-                                    label: draft.hasCoordinates
-                                        ? l10n.pillGps
-                                        : l10n.pillManual,
-                                    backgroundColor: PrayerCastColors.canopy,
-                                    foregroundColor: PrayerCastColors.mist,
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    PremiumIcons.house(
+                                      size: 20,
+                                      color: PrayerCastColors.mist,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        draft.displayLocation.isEmpty
+                                            ? l10n.noLocationYet
+                                            : draft.displayLocation,
+                                        style: text.titleMedium,
+                                      ),
+                                    ),
+                                    SoftPill(
+                                      label: draft.hasCoordinates
+                                          ? l10n.pillGps
+                                          : l10n.pillManual,
+                                      backgroundColor: PrayerCastColors.canopy,
+                                      foregroundColor: PrayerCastColors.mist,
+                                    ),
+                                  ],
+                                ),
+                                if (draft.hasCoordinates) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '${draft.latitude!.toStringAsFixed(4)}, '
+                                    '${draft.longitude!.toStringAsFixed(4)}',
+                                    style: text.bodySmall,
                                   ),
                                 ],
-                              ),
-                              if (draft.hasCoordinates) ...[
-                                const SizedBox(height: 6),
-                                Text(
-                                  '${draft.latitude!.toStringAsFixed(4)}, '
-                                  '${draft.longitude!.toStringAsFixed(4)}',
-                                  style: text.bodySmall,
+                                const SizedBox(height: 12),
+                                _TravelUpdatesTile(
+                                  enabled: draft.travelScheduleUpdates,
+                                  onChanged: (value) => unawaited(
+                                    _setTravelUpdates(draft, value),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextButton(
+                                    onPressed: () {
+                                      setState(
+                                        () => _editingPlace = !_editingPlace,
+                                      );
+                                    },
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: const Size(0, 40),
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: Text(
+                                      _editingPlace
+                                          ? l10n.hideCityForm
+                                          : l10n.changeCityCountry,
+                                    ),
+                                  ),
+                                ),
+                                AnimatedCrossFade(
+                                  firstChild: const SizedBox.shrink(),
+                                  secondChild: Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Column(
+                                      children: [
+                                        TextField(
+                                          controller: _cityController,
+                                          textCapitalization:
+                                              TextCapitalization.words,
+                                          decoration: _fieldDecoration(
+                                            l10n.city,
+                                          ),
+                                          onChanged: (v) {
+                                            setState(() {
+                                              _draft = draft.copyWith(
+                                                city: v.trim(),
+                                                clearCoordinates: true,
+                                                clearAdministrativeArea: true,
+                                              );
+                                            });
+                                          },
+                                        ),
+                                        const SizedBox(height: 12),
+                                        TextField(
+                                          controller: _countryController,
+                                          textCapitalization:
+                                              TextCapitalization.words,
+                                          decoration: _fieldDecoration(
+                                            l10n.country,
+                                          ),
+                                          onChanged: (v) {
+                                            _rememberAladhan(draft.methodId);
+                                            final country = v.trim();
+                                            setState(() {
+                                              _draft = draft.copyWith(
+                                                country: country,
+                                                methodId:
+                                                    methodIdForCountryChange(
+                                                      previousCountry:
+                                                          draft.country,
+                                                      nextCountry: country,
+                                                      currentMethodId:
+                                                          draft.methodId,
+                                                      previousAladhanMethodId:
+                                                          _lastAladhanMethodId,
+                                                    ),
+                                                clearCoordinates: true,
+                                                clearAdministrativeArea: true,
+                                              );
+                                            });
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  crossFadeState: _editingPlace
+                                      ? CrossFadeState.showSecond
+                                      : CrossFadeState.showFirst,
+                                  duration: const Duration(milliseconds: 220),
                                 ),
                               ],
-                              const SizedBox(height: 10),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: TextButton(
-                                  onPressed: () {
-                                    setState(
-                                      () => _editingPlace = !_editingPlace,
-                                    );
-                                  },
-                                  style: TextButton.styleFrom(
-                                    padding: EdgeInsets.zero,
-                                    minimumSize: const Size(0, 40),
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  child: Text(
-                                    _editingPlace
-                                        ? l10n.hideCityForm
-                                        : l10n.changeCityCountry,
-                                  ),
-                                ),
-                              ),
-                              AnimatedCrossFade(
-                                firstChild: const SizedBox.shrink(),
-                                secondChild: Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Column(
-                                    children: [
-                                      TextField(
-                                        controller: _cityController,
-                                        textCapitalization:
-                                            TextCapitalization.words,
-                                        decoration: _fieldDecoration(l10n.city),
-                                        onChanged: (v) {
-                                          setState(() {
-                                            _draft = draft.copyWith(
-                                              city: v.trim(),
-                                              clearCoordinates: true,
-                                              clearAdministrativeArea: true,
-                                            );
-                                          });
-                                        },
-                                      ),
-                                      const SizedBox(height: 12),
-                                      TextField(
-                                        controller: _countryController,
-                                        textCapitalization:
-                                            TextCapitalization.words,
-                                        decoration: _fieldDecoration(l10n.country),
-                                        onChanged: (v) {
-                                          _rememberAladhan(draft.methodId);
-                                          final country = v.trim();
-                                          setState(() {
-                                            _draft = draft.copyWith(
-                                              country: country,
-                                              methodId: methodIdForCountryChange(
-                                                previousCountry: draft.country,
-                                                nextCountry: country,
-                                                currentMethodId: draft.methodId,
-                                                previousAladhanMethodId:
-                                                    _lastAladhanMethodId,
-                                              ),
-                                              clearCoordinates: true,
-                                              clearAdministrativeArea: true,
-                                            );
-                                          });
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                crossFadeState: _editingPlace
-                                    ? CrossFadeState.showSecond
-                                    : CrossFadeState.showFirst,
-                                duration: const Duration(milliseconds: 220),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        InkSurface(
-                          borderColor: PrayerCastColors.inkSoft,
-                          borderWidth: PrayerCastTheme.cardHairline,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                l10n.calculationMethod,
-                                style: text.bodyMedium?.copyWith(
-                                  color: PrayerCastColors.dawn,
-                                  fontWeight: FontWeight.w700,
+                          const SizedBox(height: 14),
+                          InkSurface(
+                            borderColor: PrayerCastColors.inkSoft,
+                            borderWidth: PrayerCastTheme.cardHairline,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  l10n.calculationMethod,
+                                  style: text.bodyMedium?.copyWith(
+                                    color: PrayerCastColors.dawn,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 12),
-                              Stack(
-                                alignment: Alignment.centerRight,
-                                children: [
-                                  DropdownButtonFormField<int>(
-                                    key: ValueKey('method-${draft.methodId}'),
-                                    initialValue:
-                                        _methodOrFallback(draft.methodId),
-                                    isExpanded: true,
-                                    style: PrayerCastTheme.forestDropdown,
-                                    items: [
-                                      for (final m in AladhanMethods.common)
-                                        DropdownMenuItem(
-                                          value: m.id,
-                                          child: Text(
-                                            _methodLabel(l10n, m),
-                                            overflow: TextOverflow.ellipsis,
+                                const SizedBox(height: 12),
+                                Stack(
+                                  alignment: Alignment.centerRight,
+                                  children: [
+                                    DropdownButtonFormField<int>(
+                                      key: ValueKey('method-${draft.methodId}'),
+                                      initialValue: _methodOrFallback(
+                                        draft.methodId,
+                                      ),
+                                      isExpanded: true,
+                                      style: PrayerCastTheme.forestDropdown,
+                                      items: [
+                                        for (final m in AladhanMethods.common)
+                                          DropdownMenuItem(
+                                            value: m.id,
+                                            child: Text(
+                                              _methodLabel(l10n, m),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                      ],
+                                      onChanged: (id) {
+                                        if (id == null) return;
+                                        _rememberAladhan(id);
+                                        final next = draft.copyWith(
+                                          methodId: id,
+                                        );
+                                        setState(() => _draft = next);
+                                        unawaited(_refreshSchedule(next));
+                                      },
+                                      decoration: _fieldDecoration(null),
+                                    ),
+                                    if (_isAutoMethod(draft))
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 40,
+                                        ),
+                                        child: IgnorePointer(
+                                          child: SoftPill(
+                                            label: l10n.pillAuto,
+                                            backgroundColor:
+                                                PrayerCastColors.canopy,
+                                            foregroundColor:
+                                                PrayerCastColors.mist,
                                           ),
                                         ),
-                                    ],
-                                    onChanged: (id) {
-                                      if (id == null) return;
-                                      _rememberAladhan(id);
-                                      final next =
-                                          draft.copyWith(methodId: id);
-                                      setState(() => _draft = next);
-                                      unawaited(_refreshSchedule(next));
-                                    },
-                                    decoration: _fieldDecoration(null),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                DropdownButtonFormField<PrayerMadhabId>(
+                                  key: ValueKey('madhab-${draft.madhabId}'),
+                                  initialValue: draft.madhabId,
+                                  isExpanded: true,
+                                  style: PrayerCastTheme.forestDropdown,
+                                  items: [
+                                    DropdownMenuItem(
+                                      value: PrayerMadhabId.shafi,
+                                      child: Text(l10n.madhabShafi),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: PrayerMadhabId.hanafi,
+                                      child: Text(l10n.madhabHanafi),
+                                    ),
+                                  ],
+                                  onChanged: (id) {
+                                    if (id == null) return;
+                                    final next = draft.copyWith(madhabId: id);
+                                    setState(() {
+                                      _draft = next;
+                                      // Asr is below the collapsed Fajr/Dhuhr rows.
+                                      _scheduleExpanded = true;
+                                    });
+                                    unawaited(_refreshSchedule(next));
+                                  },
+                                  decoration: _fieldDecoration(null),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  isKemenagMethod(draft.methodId)
+                                      ? l10n.madhabKemenagHint
+                                      : l10n.madhabAsrOnlyHint,
+                                  style: text.bodyMedium,
+                                ),
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  height: PrayerCastTheme.minTap,
+                                  child: OutlinedButton(
+                                    onPressed:
+                                        _loadingSchedule || _detectingLocation
+                                        ? null
+                                        : () => _refreshSchedule(
+                                            draft.copyWith(
+                                              city: _cityController.text.trim(),
+                                              country: _countryController.text
+                                                  .trim(),
+                                            ),
+                                          ),
+                                    child: Text(
+                                      _loadingSchedule
+                                          ? l10n.fetchingSchedule
+                                          : l10n.fetchSchedule,
+                                    ),
                                   ),
-                                  if (_isAutoMethod(draft))
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 40),
-                                      child: IgnorePointer(
-                                        child: SoftPill(
-                                          label: l10n.pillAuto,
-                                          backgroundColor:
-                                              PrayerCastColors.canopy,
-                                          foregroundColor:
-                                              PrayerCastColors.mist,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          InkSurface(
+                            borderColor: PrayerCastColors.inkSoft,
+                            borderWidth: PrayerCastTheme.cardHairline,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  children: [
+                                    PremiumIcons.clock(
+                                      size: 20,
+                                      color: PrayerCastColors.dawn,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      l10n.todaysSchedule,
+                                      style: text.titleLarge,
+                                    ),
+                                  ],
+                                ),
+                                if (_scheduleMethodName != null &&
+                                    _scheduleMethodName!.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _scheduleMethodName!,
+                                    key: const ValueKey('schedule_method_name'),
+                                    style: text.bodyMedium?.copyWith(
+                                      color: PrayerCastColors.dawn,
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 6),
+                                Text(
+                                  l10n.scheduleVoiceHint,
+                                  style: text.bodyMedium,
+                                ),
+                                if (_scheduleError != null) ...[
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    _scheduleError!,
+                                    style: text.bodyMedium?.copyWith(
+                                      color: PrayerCastColors.danger,
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 8),
+                                if (_loadingSchedule)
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 28),
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  )
+                                else if (_schedule.isEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 20,
+                                    ),
+                                    child: Text(
+                                      l10n.scheduleEmptyHint,
+                                      style: text.bodyMedium,
+                                    ),
+                                  )
+                                else ...[
+                                  for (
+                                    var i = 0;
+                                    i < visibleSlots.length;
+                                    i++
+                                  ) ...[
+                                    if (i > 0)
+                                      const Divider(
+                                        height: 28,
+                                        color: PrayerCastColors.inkSoft,
+                                      ),
+                                    PrayerScheduleTile(
+                                      prayer: visibleSlots[i],
+                                      voiceId: draft.voiceFor(
+                                        visibleSlots[i].name,
+                                      ),
+                                      deliveryMode: draft.deliveryFor(
+                                        visibleSlots[i].name,
+                                      ),
+                                      testing:
+                                          _testingPrayer ==
+                                          visibleSlots[i].name,
+                                      enabled: _testingPrayer == null,
+                                      onVoiceChanged: (voiceId) {
+                                        setState(() {
+                                          _draft = draft.withVoiceFor(
+                                            visibleSlots[i].name,
+                                            voiceId,
+                                          );
+                                        });
+                                      },
+                                      onDeliveryChanged: (mode) {
+                                        setState(() {
+                                          _draft = draft.withDeliveryFor(
+                                            visibleSlots[i].name,
+                                            mode,
+                                          );
+                                        });
+                                      },
+                                      onTest: () => _testDelivery(
+                                        visibleSlots[i].name,
+                                        draft,
+                                      ),
+                                    ),
+                                  ],
+                                  if (hiddenCount > 0 || _scheduleExpanded) ...[
+                                    const SizedBox(height: 8),
+                                    Center(
+                                      child: TextButton(
+                                        onPressed: () {
+                                          setState(
+                                            () => _scheduleExpanded =
+                                                !_scheduleExpanded,
+                                          );
+                                        },
+                                        child: Text(
+                                          _scheduleExpanded
+                                              ? l10n.hide
+                                              : l10n.morePrayers(hiddenCount),
                                         ),
                                       ),
                                     ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              DropdownButtonFormField<PrayerMadhabId>(
-                                key: ValueKey('madhab-${draft.madhabId}'),
-                                initialValue: draft.madhabId,
-                                isExpanded: true,
-                                style: PrayerCastTheme.forestDropdown,
-                                items: [
-                                  DropdownMenuItem(
-                                    value: PrayerMadhabId.shafi,
-                                    child: Text(l10n.madhabShafi),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: PrayerMadhabId.hanafi,
-                                    child: Text(l10n.madhabHanafi),
-                                  ),
-                                ],
-                                onChanged: (id) {
-                                  if (id == null) return;
-                                  final next = draft.copyWith(madhabId: id);
-                                  setState(() {
-                                    _draft = next;
-                                    // Asr is below the collapsed Fajr/Dhuhr rows.
-                                    _scheduleExpanded = true;
-                                  });
-                                  unawaited(_refreshSchedule(next));
-                                },
-                                decoration: _fieldDecoration(null),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                isKemenagMethod(draft.methodId)
-                                    ? l10n.madhabKemenagHint
-                                    : l10n.madhabAsrOnlyHint,
-                                style: text.bodyMedium,
-                              ),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                height: PrayerCastTheme.minTap,
-                                child: OutlinedButton(
-                                  onPressed:
-                                      _loadingSchedule || _detectingLocation
-                                          ? null
-                                          : () => _refreshSchedule(
-                                                draft.copyWith(
-                                                  city: _cityController.text
-                                                      .trim(),
-                                                  country: _countryController
-                                                      .text
-                                                      .trim(),
-                                                ),
-                                              ),
-                                  child: Text(
-                                    _loadingSchedule
-                                        ? l10n.fetchingSchedule
-                                        : l10n.fetchSchedule,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        InkSurface(
-                          borderColor: PrayerCastColors.inkSoft,
-                          borderWidth: PrayerCastTheme.cardHairline,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Row(
-                                children: [
-                                  PremiumIcons.clock(
-                                    size: 20,
-                                    color: PrayerCastColors.dawn,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    l10n.todaysSchedule,
-                                    style: text.titleLarge,
-                                  ),
-                                ],
-                              ),
-                              if (_scheduleMethodName != null &&
-                                  _scheduleMethodName!.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  _scheduleMethodName!,
-                                  key: const ValueKey('schedule_method_name'),
-                                  style: text.bodyMedium?.copyWith(
-                                    color: PrayerCastColors.dawn,
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 6),
-                              Text(
-                                l10n.scheduleVoiceHint,
-                                style: text.bodyMedium,
-                              ),
-                              if (_scheduleError != null) ...[
-                                const SizedBox(height: 12),
-                                Text(
-                                  _scheduleError!,
-                                  style: text.bodyMedium?.copyWith(
-                                    color: PrayerCastColors.danger,
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 8),
-                              if (_loadingSchedule)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 28),
-                                  child: Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                )
-                              else if (_schedule.isEmpty)
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 20),
-                                  child: Text(
-                                    l10n.scheduleEmptyHint,
-                                    style: text.bodyMedium,
-                                  ),
-                                )
-                              else ...[
-                                for (var i = 0; i < visibleSlots.length; i++) ...[
-                                  if (i > 0)
-                                    const Divider(
-                                      height: 28,
-                                      color: PrayerCastColors.inkSoft,
-                                    ),
-                                  PrayerScheduleTile(
-                                    prayer: visibleSlots[i],
-                                    voiceId:
-                                        draft.voiceFor(visibleSlots[i].name),
-                                    deliveryMode: draft
-                                        .deliveryFor(visibleSlots[i].name),
-                                    testing:
-                                        _testingPrayer == visibleSlots[i].name,
-                                    enabled: _testingPrayer == null,
-                                    onVoiceChanged: (voiceId) {
-                                      setState(() {
-                                        _draft = draft.withVoiceFor(
-                                          visibleSlots[i].name,
-                                          voiceId,
-                                        );
-                                      });
-                                    },
-                                    onDeliveryChanged: (mode) {
-                                      setState(() {
-                                        _draft = draft.withDeliveryFor(
-                                          visibleSlots[i].name,
-                                          mode,
-                                        );
-                                      });
-                                    },
-                                    onTest: () => _testDelivery(
-                                      visibleSlots[i].name,
-                                      draft,
-                                    ),
-                                  ),
-                                ],
-                                if (hiddenCount > 0 || _scheduleExpanded) ...[
-                                  const SizedBox(height: 8),
-                                  Center(
-                                    child: TextButton(
-                                      onPressed: () {
-                                        setState(
-                                          () => _scheduleExpanded =
-                                              !_scheduleExpanded,
-                                        );
-                                      },
-                                      child: Text(
-                                        _scheduleExpanded
-                                            ? l10n.hide
-                                            : l10n.morePrayers(hiddenCount),
-                                      ),
-                                    ),
-                                  ),
+                                  ],
                                 ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        _DryRunCard(
-                          enabled: widget.coordinator != null &&
-                              !_schedulingDryRun &&
-                              _testingPrayer == null,
-                          statusText: _dryRunStatus,
-                          statusIsError: _dryRunIsError,
-                          onIn1Minute: () => _scheduleDryRun(
-                            PrayerDeliveryCoordinator.dryRunIn1Minute,
+                          const SizedBox(height: 14),
+                          _PrePrayerAlertCard(
+                            minutes: draft.prePrayerAlertMinutes,
+                            sound: draft.prePrayerAlertSound,
+                            onChanged: (minutes) {
+                              setState(() {
+                                _draft = draft.copyWith(
+                                  prePrayerAlertMinutes: minutes,
+                                );
+                              });
+                            },
+                            onSoundChanged: (sound) {
+                              setState(() {
+                                _draft = draft.copyWith(
+                                  prePrayerAlertSound: sound,
+                                );
+                              });
+                            },
                           ),
-                          onIn5Minutes: () => _scheduleDryRun(
-                            PrayerDeliveryCoordinator.dryRunIn5Minutes,
+                          const SizedBox(height: 14),
+                          _DryRunCard(
+                            enabled:
+                                widget.coordinator != null &&
+                                !_schedulingDryRun &&
+                                _testingPrayer == null,
+                            statusText: _dryRunStatus,
+                            statusIsError: _dryRunIsError,
+                            onIn1Minute: () => _scheduleDryRun(
+                              PrayerDeliveryCoordinator.dryRunIn1Minute,
+                            ),
+                            onIn5Minutes: () => _scheduleDryRun(
+                              PrayerDeliveryCoordinator.dryRunIn5Minutes,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_pageStatus != null)
-                    _PageStatusBanner(
-                      message: _pageStatus!,
-                      isError: _pageStatusIsError,
-                    ),
-                  _StickySaveBar(
-                    saving: _saving,
-                    onSave: () => _save(
-                      draft.copyWith(
-                        city: _cityController.text.trim(),
-                        country: _countryController.text.trim(),
-                        configured: true,
+                        ],
                       ),
                     ),
-                  ),
-                ],
-              );
-            },
-          ),
+                    if (_pageStatus != null)
+                      _PageStatusBanner(
+                        message: _pageStatus!,
+                        isError: _pageStatusIsError,
+                      ),
+                    _StickySaveBar(
+                      saving: _saving,
+                      onSave: () => _save(
+                        draft.copyWith(
+                          city: _cityController.text.trim(),
+                          country: _countryController.text.trim(),
+                          configured: true,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           );
         },
       ),
@@ -672,11 +735,14 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
           await ref.read(localPrayerPlayerProvider).playBeep();
           if (!mounted) return;
           _setPageStatus(l10n.beepPlayed, error: false);
+        case PrayerDeliveryMode.takbir:
+          await ref.read(localPrayerPlayerProvider).playTakbir();
+          if (!mounted) return;
+          _setPageStatus(l10n.takbirPlayed, error: false);
         case PrayerDeliveryMode.adhanPhone:
-          await ref.read(localPrayerPlayerProvider).playAdhan(
-                voiceId: voiceId,
-                waitUntilDone: false,
-              );
+          await ref
+              .read(localPrayerPlayerProvider)
+              .playAdhan(voiceId: voiceId, waitUntilDone: false);
           if (!mounted) return;
           _setPageStatus(
             l10n.adhanPhonePlayed(
@@ -686,10 +752,9 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
             error: false,
           );
         case PrayerDeliveryMode.cast:
-          await ref.read(adzanCastTesterProvider).playOnHomeSpeaker(
-                voiceId: voiceId,
-                prayerName: prayerName,
-              );
+          await ref
+              .read(adzanCastTesterProvider)
+              .playOnHomeSpeaker(voiceId: voiceId, prayerName: prayerName);
           if (!mounted) return;
           _setPageStatus(
             l10n.castSent(
@@ -734,6 +799,8 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
       ref.invalidate(prayerPrefsProvider);
       ref.invalidate(nextPrayerSnapshotProvider);
       await widget.coordinator?.retryScheduleAfterPermissionGranted();
+      await widget.coordinator?.refreshPrePrayerAlert();
+      await widget.coordinator?.syncTravelLocation();
       if (!mounted) return;
       Navigator.of(context).maybePop(prefs);
     } catch (e) {
@@ -779,6 +846,125 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
       return isKemenagMethod(draft.methodId);
     }
     return draft.methodId == defaultAladhanMethodId;
+  }
+}
+
+class _PrePrayerAlertCard extends StatelessWidget {
+  const _PrePrayerAlertCard({
+    required this.minutes,
+    required this.sound,
+    required this.onChanged,
+    required this.onSoundChanged,
+  });
+
+  final int minutes;
+  final PrePrayerAlertSound sound;
+  final ValueChanged<int> onChanged;
+  final ValueChanged<PrePrayerAlertSound> onSoundChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final isId = Localizations.localeOf(context).languageCode == 'id';
+    final text = Theme.of(context).textTheme;
+    return Material(
+      color: PrayerCastColors.canopyDeep,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isId ? 'Pengingat sebelum adzan' : 'Pre-prayer reminder',
+              style: text.titleMedium,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              isId
+                  ? 'Notifikasi beberapa menit sebelum waktu sholat agar Anda bisa bersiap.'
+                  : 'A notification a few minutes before prayer time so you can get ready.',
+              style: text.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<int>(
+              segments: [
+                ButtonSegment(
+                  value: 0,
+                  label: Text(isId ? 'Mati' : 'Off'),
+                ),
+                ButtonSegment(
+                  value: 10,
+                  label: Text(isId ? '10 mnt' : '10 min'),
+                ),
+                ButtonSegment(
+                  value: 15,
+                  label: Text(isId ? '15 mnt' : '15 min'),
+                ),
+              ],
+              selected: {minutes == 10 || minutes == 15 ? minutes : 0},
+              onSelectionChanged: (selected) {
+                onChanged(selected.first);
+              },
+            ),
+            if (minutes > 0) ...[
+              const SizedBox(height: 12),
+              Text(
+                isId ? 'Suara pengingat' : 'Reminder sound',
+                style: text.bodyMedium,
+              ),
+              const SizedBox(height: 8),
+              SegmentedButton<PrePrayerAlertSound>(
+                segments: [
+                  ButtonSegment(
+                    value: PrePrayerAlertSound.beep,
+                    label: Text(isId ? 'Ketuk' : 'Beep'),
+                  ),
+                  ButtonSegment(
+                    value: PrePrayerAlertSound.takbir,
+                    label: Text(isId ? 'Takbir' : 'Takbir'),
+                  ),
+                ],
+                selected: {sound},
+                onSelectionChanged: (selected) {
+                  onSoundChanged(selected.first);
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TravelUpdatesTile extends StatelessWidget {
+  const _TravelUpdatesTile({
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final isId = Localizations.localeOf(context).languageCode == 'id';
+    final text = Theme.of(context).textTheme;
+    return SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      value: enabled,
+      onChanged: onChanged,
+      title: Text(
+        isId ? 'Perbarui jadwal saat bepergian' : 'Update schedule when traveling',
+        style: text.titleSmall,
+      ),
+      subtitle: Text(
+        isId
+            ? 'Kalau HP pindah kota (~25 km), waktu sholat disesuaikan. Butuh izin lokasi latar belakang.'
+            : 'If the phone moves city (~25 km), prayer times refresh. Needs background location.',
+        style: text.bodySmall,
+      ),
+    );
   }
 }
 
@@ -832,10 +1018,7 @@ class _DryRunCardState extends State<_DryRunCard> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      l10n.dryRunTitle,
-                      style: text.titleLarge,
-                    ),
+                    child: Text(l10n.dryRunTitle, style: text.titleLarge),
                   ),
                   AnimatedRotation(
                     turns: _expanded ? 0.25 : 0,
@@ -851,10 +1034,7 @@ class _DryRunCardState extends State<_DryRunCard> {
           ),
           if (_expanded) ...[
             const SizedBox(height: 6),
-            Text(
-              l10n.dryRunHint,
-              style: text.bodyMedium,
-            ),
+            Text(l10n.dryRunHint, style: text.bodyMedium),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -863,8 +1043,7 @@ class _DryRunCardState extends State<_DryRunCard> {
                     height: PrayerCastTheme.minTap,
                     child: OutlinedButton(
                       key: const ValueKey('dry_run_1m'),
-                      onPressed:
-                          widget.enabled ? widget.onIn1Minute : null,
+                      onPressed: widget.enabled ? widget.onIn1Minute : null,
                       child: Text(l10n.dryRunIn1Minute),
                     ),
                   ),
@@ -875,8 +1054,7 @@ class _DryRunCardState extends State<_DryRunCard> {
                     height: PrayerCastTheme.minTap,
                     child: OutlinedButton(
                       key: const ValueKey('dry_run_5m'),
-                      onPressed:
-                          widget.enabled ? widget.onIn5Minutes : null,
+                      onPressed: widget.enabled ? widget.onIn5Minutes : null,
                       child: Text(l10n.dryRunIn5Minutes),
                     ),
                   ),
@@ -903,10 +1081,7 @@ class _DryRunCardState extends State<_DryRunCard> {
 }
 
 class _PageStatusBanner extends StatelessWidget {
-  const _PageStatusBanner({
-    required this.message,
-    required this.isError,
-  });
+  const _PageStatusBanner({required this.message, required this.isError});
 
   final String message;
   final bool isError;
@@ -929,10 +1104,7 @@ class _PageStatusBanner extends StatelessWidget {
 }
 
 class _StickySaveBar extends StatelessWidget {
-  const _StickySaveBar({
-    required this.saving,
-    required this.onSave,
-  });
+  const _StickySaveBar({required this.saving, required this.onSave});
 
   final bool saving;
   final VoidCallback onSave;
@@ -943,17 +1115,10 @@ class _StickySaveBar extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: PrayerCastColors.ink,
-        border: const Border(
-          top: BorderSide(color: PrayerCastColors.inkSoft),
-        ),
+        border: const Border(top: BorderSide(color: PrayerCastColors.inkSoft)),
       ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          12,
-          20,
-          16 + MediaQuery.viewPaddingOf(context).bottom,
-        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
         child: SizedBox(
           height: PrayerCastTheme.minTap,
           width: double.infinity,
@@ -1061,14 +1226,14 @@ class PrayerScheduleTile extends StatelessWidget {
                         onDeliveryChanged(mode);
                       }
                     : null,
-                decoration:
-                    _PrayerSettingsPageState._fieldDecoration(null).copyWith(
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                ),
+                decoration: _PrayerSettingsPageState._fieldDecoration(null)
+                    .copyWith(
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                    ),
               ),
             ),
             const SizedBox(width: 8),
@@ -1130,14 +1295,14 @@ class PrayerScheduleTile extends StatelessWidget {
                         onVoiceChanged(id);
                       }
                     : null,
-                decoration:
-                    _PrayerSettingsPageState._fieldDecoration(null).copyWith(
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                ),
+                decoration: _PrayerSettingsPageState._fieldDecoration(null)
+                    .copyWith(
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                    ),
               ),
               if (isFajr)
                 Padding(

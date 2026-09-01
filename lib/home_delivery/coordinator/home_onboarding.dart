@@ -65,6 +65,12 @@ final class SavedHomeSpeaker {
     if (name != null && name.isNotEmpty) return name;
     return deviceId;
   }
+
+  /// Cast id missing but friendly name survived — show name, prompt re-link.
+  bool get needsRelink =>
+      deviceId.isEmpty && (friendlyName?.trim().isNotEmpty ?? false);
+
+  bool get hasCastTarget => deviceId.isNotEmpty;
 }
 
 /// Onboarding: discover Cast targets and persist Signal A + B (§3.2 / §3.3).
@@ -84,10 +90,33 @@ final class HomeOnboarding {
   static const Duration scanBudget = Duration(seconds: 8);
 
   Future<SavedHomeSpeaker?> readSavedSpeaker() async {
-    final id = await _store.readHomeCastId();
-    if (id == null || id.isEmpty) return null;
+    var id = await _store.readHomeCastIdResilient();
     final name = await _store.readHomeCastFriendlyName();
+    if (id == null || id.isEmpty) {
+      id = await _recoverCastIdFromScanCache(name);
+    }
+    if (id == null || id.isEmpty) {
+      final trimmed = name?.trim();
+      if (trimmed != null && trimmed.isNotEmpty) {
+        return SavedHomeSpeaker(deviceId: '', friendlyName: trimmed);
+      }
+      return null;
+    }
     return SavedHomeSpeaker(deviceId: id, friendlyName: name);
+  }
+
+  Future<String?> _recoverCastIdFromScanCache(String? friendlyName) async {
+    final wanted = friendlyName?.trim();
+    if (wanted == null || wanted.isEmpty) return null;
+    final cached = await readCachedSpeakerScan();
+    if (cached == null || cached.devices.isEmpty) return null;
+    for (final device in cached.devices) {
+      if (device.friendlyName == wanted) {
+        await _store.writeHomeCastId(device.deviceId);
+        return device.deviceId;
+      }
+    }
+    return null;
   }
 
   Future<SpeakerScanResult> scanSpeakers({Duration budget = scanBudget}) async {

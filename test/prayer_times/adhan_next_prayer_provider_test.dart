@@ -241,4 +241,114 @@ void main() {
     expect(next.name, 'asr');
     expect(next.scheduledAt.hour, 15);
   });
+
+  test('preferCache: true with valid disk cache skips network', () async {
+    final cacheFile = File(
+      '${Directory.systemTemp.path}/prayer_schedule_cache_${DateTime.now().microsecondsSinceEpoch}.json',
+    );
+    addTearDown(() {
+      if (cacheFile.existsSync()) cacheFile.deleteSync();
+    });
+
+    // Warm cache first
+    final online = AdhanNextPrayerProvider(
+      store: store,
+      client: client,
+      scheduleCacheFile: cacheFile,
+    );
+    await online.next(after: DateTime(2026, 8, 13, 12, 1));
+    expect(cacheFile.existsSync(), isTrue);
+
+    // Track network calls
+    var networkCalls = 0;
+    final trackingClient = AladhanClient(
+      httpClient: MockClient((request) async {
+        networkCalls++;
+        return http.Response(_sampleBody, 200);
+      }),
+    );
+
+    final preferCacheProvider = AdhanNextPrayerProvider(
+      store: store,
+      client: trackingClient,
+      scheduleCacheFile: cacheFile,
+    );
+
+    // Should use disk cache, no network call
+    final next = await preferCacheProvider.next(
+      after: DateTime(2026, 8, 13, 12, 1),
+      preferCache: true,
+    );
+    expect(next.name, 'asr');
+    expect(networkCalls, 0, reason: 'preferCache: true should skip network when cache covers window');
+  });
+
+  test('preferCache: true with no covering disk cache falls through to network', () async {
+    final cacheFile = File(
+      '${Directory.systemTemp.path}/prayer_schedule_cache_${DateTime.now().microsecondsSinceEpoch}.json',
+    );
+    addTearDown(() {
+      if (cacheFile.existsSync()) cacheFile.deleteSync();
+    });
+
+    var networkCalls = 0;
+    final trackingClient = AladhanClient(
+      httpClient: MockClient((request) async {
+        networkCalls++;
+        return http.Response(_sampleBody, 200);
+      }),
+    );
+
+    final preferCacheProvider = AdhanNextPrayerProvider(
+      store: store,
+      client: trackingClient,
+      scheduleCacheFile: cacheFile,
+    );
+
+    // No cache exists, should fall through to network
+    final next = await preferCacheProvider.next(
+      after: DateTime(2026, 8, 13, 12, 1),
+      preferCache: true,
+    );
+    expect(next.name, 'asr');
+    expect(networkCalls, greaterThan(0), reason: 'preferCache: true should use network when cache is missing');
+  });
+
+  test('preferCache: false (default) keeps fetch-first behavior', () async {
+    final cacheFile = File(
+      '${Directory.systemTemp.path}/prayer_schedule_cache_${DateTime.now().microsecondsSinceEpoch}.json',
+    );
+    addTearDown(() {
+      if (cacheFile.existsSync()) cacheFile.deleteSync();
+    });
+
+    // Warm cache first
+    final online = AdhanNextPrayerProvider(
+      store: store,
+      client: client,
+      scheduleCacheFile: cacheFile,
+    );
+    await online.next(after: DateTime(2026, 8, 13, 12, 1));
+    expect(cacheFile.existsSync(), isTrue);
+
+    // Track network calls
+    var networkCalls = 0;
+    final trackingClient = AladhanClient(
+      httpClient: MockClient((request) async {
+        networkCalls++;
+        return http.Response(_sampleBody, 200);
+      }),
+    );
+
+    final defaultProvider = AdhanNextPrayerProvider(
+      store: store,
+      client: trackingClient,
+      scheduleCacheFile: cacheFile,
+    );
+
+    // Should still hit network first (default behavior)
+    final next = await defaultProvider.next(after: DateTime(2026, 8, 13, 12, 1));
+    expect(next.name, 'asr');
+    expect(networkCalls, greaterThan(0), reason: 'preferCache: false should hit network first (regression test)');
+  });
 }

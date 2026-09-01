@@ -188,4 +188,32 @@ void main() {
     expect(read.deliveryFor('fajr'), PrayerDeliveryMode.cast);
     expect(read.deliveryFor('dhuhr'), PrayerDeliveryMode.adhanPhone);
   });
+
+  test('FilePrayerPrefsStore round-trips travel updates and takbir', () async {
+    final dir = await Directory.systemTemp.createTemp('prayer_prefs_travel_');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/prefs.txt');
+    final store = FilePrayerPrefsStore(file);
+    await store.write(
+      const PrayerPrefs(
+        city: 'Jakarta',
+        country: 'Indonesia',
+        methodId: 11,
+        madhabId: PrayerMadhabId.shafi,
+        voiceId: 'standard_adhan',
+        configured: true,
+        latitude: -6.2,
+        longitude: 106.8,
+        prePrayerAlertMinutes: 10,
+        prePrayerAlertSound: PrePrayerAlertSound.takbir,
+        travelScheduleUpdates: true,
+        deliveryByPrayer: {'fajr': 'takbir'},
+      ),
+    );
+    final read = await store.read();
+    expect(read.travelScheduleUpdates, isTrue);
+    expect(read.prePrayerAlertSound, PrePrayerAlertSound.takbir);
+    expect(read.deliveryFor('fajr'), PrayerDeliveryMode.takbir);
+    expect(read.prePrayerAlertMinutes, 10);
+  });
 }

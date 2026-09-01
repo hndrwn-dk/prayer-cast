@@ -35,12 +35,15 @@ class BootReceiver : BroadcastReceiver() {
         // Ensure WorkManager heal worker is running (may be cleared by OEM)
         AlarmHealScheduler.enqueue(app)
         val healed = ExactAlarmPlugin.healPersistedWake(app)
+        val preHealed = PrePrayerAlert.rearmFromPrefsIfFuture(app)
+        NextPrayerWidget.refresh(app)
         Log.i(
             TAG,
-            if (healed) {
-                "Healed persisted wake after $action"
-            } else {
-                "No future alarm to re-arm after $action"
+            when {
+                healed && preHealed -> "Healed wake + pre-alert after $action"
+                healed -> "Healed persisted wake after $action"
+                preHealed -> "Healed pre-alert after $action"
+                else -> "No future alarm to re-arm after $action"
             },
         )
     }

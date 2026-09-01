@@ -19,7 +19,10 @@ import '../presence/fingerprint_store.dart';
 import '../presence/mdns_browser.dart';
 import '../presence/presence_service.dart';
 import '../presence/lan_fingerprint.dart';
+import '../../prayer_times/adhan_next_prayer_provider.dart';
+import '../../prayer_times/location_resolver.dart';
 import '../../prayer_times/prayer_prefs.dart';
+import '../../prayer_times/travel_schedule_refresher.dart';
 import 'adzan_audio_loader.dart';
 import 'adzan_cast_tester.dart';
 import 'audioplayers_local_prayer_player.dart';
@@ -28,6 +31,7 @@ import 'home_onboarding.dart';
 import 'local_prayer_player.dart';
 import 'next_prayer_provider.dart';
 import 'prayer_delivery_coordinator.dart';
+import 'pre_prayer_alert_scheduler.dart';
 import 'prayer_delivery_mode_source.dart';
 
 /// Production wiring for presence → election → cast + alarm schedule.
@@ -95,6 +99,7 @@ final class HomeDeliveryRuntime {
       audioLoader: audioLoader,
       logger: logger,
       nativeBeep: exactAlarm.playLocalBeep,
+      nativeTakbir: exactAlarm.playLocalTakbir,
     );
     final castTester = AdzanCastTester(
       castClient: castClient,
@@ -132,6 +137,40 @@ final class HomeDeliveryRuntime {
       deliveryModes: PrefsPrayerDeliveryModeSource(prayerPrefs),
       localPlayer: localPlayer,
       logDao: DeliveryLogDao(database),
+      prePrayerAlerts: PrePrayerAlertScheduler(
+        exactAlarm: exactAlarm,
+        prayerPrefs: prayerPrefs,
+        readLocaleCode: () async {
+          final docs = await getApplicationDocumentsDirectory();
+          final localeFile = File(p.join(docs.path, 'app_locale.txt'));
+          if (!await localeFile.exists()) return null;
+          try {
+            final raw = (await localeFile.readAsString()).trim();
+            if (raw == 'en' || raw == 'id') return raw;
+          } catch (_) {}
+          return null;
+        },
+      ),
+      travelRefresher: TravelScheduleRefresher(
+        store: prayerPrefs,
+        location: const LocationResolver(),
+        exactAlarm: exactAlarm,
+        onPrefsChanged: () {
+          if (nextPrayer is AdhanNextPrayerProvider) {
+            nextPrayer.invalidateCache();
+          }
+        },
+      ),
+      readLocaleCode: () async {
+        final docs = await getApplicationDocumentsDirectory();
+        final localeFile = File(p.join(docs.path, 'app_locale.txt'));
+        if (!await localeFile.exists()) return null;
+        try {
+          final raw = (await localeFile.readAsString()).trim();
+          if (raw == 'en' || raw == 'id') return raw;
+        } catch (_) {}
+        return null;
+      },
       onPermissionChanged: onPermissionChanged,
       logger: logger,
     );
@@ -158,8 +197,61 @@ final class FileFingerprintStore implements FingerprintStore {
   MemoryFingerprintStore _memory = MemoryFingerprintStore();
   bool _loaded = false;
 
+  File get _backupFile => File('${_file.parent.path}/home_cast_backup.txt');
+
   File get _speakerScanFile =>
       File('${_file.parent.path}/home_speaker_scan.json');
+
+  /// Drop in-memory cache so the next read reflects on-disk state.
+  ///
+  /// Call when the app resumes — another process must not clobber this file,
+  /// but a headless alarm pass may have updated election hashes while the UI
+  /// still holds a stale empty cast id in memory.
+  Future<void> reloadFromDisk() async {
+    _loaded = false;
+    _memory = MemoryFingerprintStore();
+    await _ensureLoaded();
+    await _healCastIdFromBackup();
+  }
+
+  Future<void> _healCastIdFromBackup() async {
+    final id = await _memory.readHomeCastId();
+    if (id != null && id.isNotEmpty) return;
+    final backup = await _readBackup();
+    if (backup == null) return;
+    await _memory.writeHomeCastId(backup.$1);
+    if (backup.$2.isNotEmpty) {
+      final name = await _memory.readHomeCastFriendlyName();
+      if (name == null || name.isEmpty) {
+        await _memory.writeHomeCastFriendlyName(backup.$2);
+      }
+    }
+    await _persist(allowEmptyCastId: false);
+  }
+
+  Future<(String, String)?> _readBackup() async {
+    if (!await _backupFile.exists()) return null;
+    try {
+      final lines = (await _backupFile.readAsString()).split('\n');
+      final id = lines.isNotEmpty ? lines[0].trim() : '';
+      final name = lines.length > 1 ? lines[1].trim() : '';
+      if (id.isEmpty) return null;
+      return (id, name);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _writeBackup(String castId, String friendlyName) async {
+    await _file.parent.create(recursive: true);
+    await _backupFile.writeAsString('$castId\n$friendlyName\n');
+  }
+
+  Future<void> _clearBackup() async {
+    if (await _backupFile.exists()) {
+      await _backupFile.delete();
+    }
+  }
 
   Future<void> _ensureLoaded() async {
     if (_loaded) return;
@@ -202,18 +294,48 @@ final class FileFingerprintStore implements FingerprintStore {
       electionSecret: electionSecret,
       lastSpeakerScanJson: scanJson,
     );
+    if (castId != null && castId.isNotEmpty && !await _backupFile.exists()) {
+      await _writeBackup(castId, friendlyName ?? '');
+    }
   }
 
-  Future<void> _persist() async {
+  Future<void> _persist({bool allowEmptyCastId = false}) async {
     await _file.parent.create(recursive: true);
+    var castId = await _memory.readHomeCastId() ?? '';
+    if (!allowEmptyCastId && castId.isEmpty) {
+      castId = await _readCastIdLineFromDisk() ?? '';
+      if (castId.isEmpty) {
+        final backup = await _readBackup();
+        if (backup != null) castId = backup.$1;
+      }
+      if (castId.isNotEmpty) {
+        await _memory.writeHomeCastId(castId);
+      }
+    }
     final salt = await _memory.readSalt() ?? '';
-    final castId = await _memory.readHomeCastId() ?? '';
     final hashes = (await _memory.readHashes()).join(',');
     final electionSecret = await _memory.readElectionSecret() ?? '';
     final friendlyName = await _memory.readHomeCastFriendlyName() ?? '';
-    await _file.writeAsString(
-      '$salt\n$castId\n$hashes\n$electionSecret\n$friendlyName\n',
-    );
+    final payload =
+        '$salt\n$castId\n$hashes\n$electionSecret\n$friendlyName\n';
+    final temp = File('${_file.path}.tmp');
+    await temp.writeAsString(payload);
+    if (await _file.exists()) {
+      await _file.delete();
+    }
+    await temp.rename(_file.path);
+  }
+
+  Future<String?> _readCastIdLineFromDisk() async {
+    if (!await _file.exists()) return null;
+    try {
+      final lines = (await _file.readAsString()).split('\n');
+      if (lines.length < 2) return null;
+      final id = lines[1].trim();
+      return id.isEmpty ? null : id;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _persistSpeakerScan() async {
@@ -238,7 +360,7 @@ final class FileFingerprintStore implements FingerprintStore {
   Future<void> writeSalt(String salt) async {
     await _ensureLoaded();
     await _memory.writeSalt(salt);
-    await _persist();
+    await _persist(allowEmptyCastId: false);
   }
 
   @override
@@ -251,7 +373,7 @@ final class FileFingerprintStore implements FingerprintStore {
   Future<void> writeHashes(Set<String> hashes) async {
     await _ensureLoaded();
     await _memory.writeHashes(hashes);
-    await _persist();
+    await _persist(allowEmptyCastId: false);
   }
 
   @override
@@ -261,10 +383,33 @@ final class FileFingerprintStore implements FingerprintStore {
   }
 
   @override
+  Future<String?> readHomeCastIdResilient() async {
+    await _ensureLoaded();
+    var id = await _memory.readHomeCastId();
+    if (id != null && id.isNotEmpty) return id;
+    await _healCastIdFromBackup();
+    id = await _memory.readHomeCastId();
+    if (id != null && id.isNotEmpty) return id;
+    final disk = await _readCastIdLineFromDisk();
+    if (disk != null && disk.isNotEmpty) {
+      await _memory.writeHomeCastId(disk);
+      return disk;
+    }
+    return null;
+  }
+
+  @override
   Future<void> writeHomeCastId(String castId) async {
     await _ensureLoaded();
     await _memory.writeHomeCastId(castId);
-    await _persist();
+    final allowEmpty = castId.isEmpty;
+    await _persist(allowEmptyCastId: allowEmpty);
+    if (castId.isNotEmpty) {
+      final name = await _memory.readHomeCastFriendlyName() ?? '';
+      await _writeBackup(castId, name);
+    } else {
+      await _clearBackup();
+    }
   }
 
   @override
@@ -277,7 +422,11 @@ final class FileFingerprintStore implements FingerprintStore {
   Future<void> writeHomeCastFriendlyName(String name) async {
     await _ensureLoaded();
     await _memory.writeHomeCastFriendlyName(name);
-    await _persist();
+    await _persist(allowEmptyCastId: false);
+    final id = await _memory.readHomeCastId();
+    if (id != null && id.isNotEmpty) {
+      await _writeBackup(id, name);
+    }
   }
 
   @override
@@ -290,7 +439,7 @@ final class FileFingerprintStore implements FingerprintStore {
   Future<void> writeElectionSecret(String secret) async {
     await _ensureLoaded();
     await _memory.writeElectionSecret(secret);
-    await _persist();
+    await _persist(allowEmptyCastId: false);
   }
 
   @override

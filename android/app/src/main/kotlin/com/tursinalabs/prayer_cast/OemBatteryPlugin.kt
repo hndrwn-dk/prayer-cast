@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
@@ -36,6 +37,7 @@ class OemBatteryPlugin(
             "open" -> result.success(openBatterySettings())
             "openAutostartSettings" -> result.success(openAutostartSettings())
             "isRestrictiveOem" -> result.success(isRestrictiveOem())
+            "isBatteryUnrestricted" -> result.success(isBatteryUnrestricted())
             else -> result.notImplemented()
         }
     }
@@ -109,18 +111,24 @@ class OemBatteryPlugin(
     }
 
     /**
-     * Auto-launch / Startup Manager. Best-effort community names:
+     * Auto-launch / Startup Manager. Best-effort community names.
      *
-     * ColorOS current (Oppo/Realme/OnePlus, NOT device-verified here):
-     *   com.oplus.safecenter StartupAppList activities; implicit
-     *   STARTUP_APP_LIST action; com.android.settings as last OEM try.
-     * ColorOS older (pre-12, already used in this plugin historically):
-     *   com.coloros.safecenter / com.oppo.safe StartupAppList activities.
-     * MIUI (community-documented; already shipped in this plugin):
-     *   com.miui.securitycenter AutoStartManagementActivity.
-     * Vivo (community-documented; already shipped in this plugin):
-     *   com.vivo.permissionmanager BgStartUpManagerActivity,
-     *   com.iqoo.secure BgStartUpManager.
+     * NONE of these OEM activities were opened on a physical Oppo / Realme /
+     * Xiaomi / Vivo in this change. [tryStart] must keep walking on
+     * ActivityNotFound / SecurityException (OPPO_COMPONENT_SAFE).
+     *
+     * ColorOS current (Oppo/Realme, ColorOS 6+): Auto-launch is a toggle on
+     * the app-info page in Settings (`com.android.settings`), not a public
+     * app-specific Auto-launch activity. Tried first. Then the Auto-launch
+     * list in oplus/coloros safecenter (often signature-protected).
+     * ColorOS older: com.coloros.safecenter / com.oppo.safe StartupAppList.
+     * OnePlus: ChainLaunch list (judemanutd/AutoStarter).
+     * MIUI: AutoStartManagementActivity (widely cited; not device-verified).
+     * Vivo: BgStartUpManager* (widely cited; not device-verified).
+     *
+     * Manual QA (required on Oppo/Realme before trusting production copy):
+     * tap "Open auto-launch settings" and confirm Auto-launch / Startup
+     * Manager actually opens — not a generic Settings home.
      */
     private fun autostartOemIntents(): List<Intent> {
         val manufacturer = Build.MANUFACTURER.lowercase()
@@ -133,10 +141,14 @@ class OemBatteryPlugin(
                     "com.miui.securitycenter",
                     "com.miui.permcenter.autostart.AutoStartManagementActivity",
                 )
+                intents += Intent("miui.intent.action.OP_AUTO_START")
+                    .addCategory(Intent.CATEGORY_DEFAULT)
             }
             manufacturer.contains("oppo") ||
                 manufacturer.contains("realme") ||
                 manufacturer.contains("oneplus") -> {
+                // Current ColorOS: Auto-launch lives on App info in Settings.
+                intents += colorOsSettingsAppInfoIntent()
                 intents += componentIntent(
                     "com.oplus.safecenter",
                     "com.oplus.safecenter.permission.startup.StartupAppListActivity",
@@ -169,6 +181,10 @@ class OemBatteryPlugin(
                     "com.oppo.safe",
                     "com.oppo.safe.permission.startup.StartupAppListActivity",
                 )
+                intents += componentIntent(
+                    "com.oneplus.security",
+                    "com.oneplus.security.chainlaunch.view.ChainLaunchAppListActivity",
+                )
             }
             manufacturer.contains("vivo") || manufacturer.contains("iqoo") -> {
                 intents += componentIntent(
@@ -182,6 +198,15 @@ class OemBatteryPlugin(
             }
         }
         return intents
+    }
+
+    /** ColorOS 6+: App info hosts "Allow Auto Start-up" (dontkillmyapp Oppo). */
+    private fun colorOsSettingsAppInfoIntent(): Intent {
+        return Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.parse("package:${context.packageName}")
+            setPackage("com.android.settings")
+            addCategory(Intent.CATEGORY_DEFAULT)
+        }
     }
 
     private fun tryStart(intents: List<Intent>): Boolean {
@@ -200,6 +225,13 @@ class OemBatteryPlugin(
     private fun isRestrictiveOem(): Boolean {
         val manufacturer = Build.MANUFACTURER.lowercase()
         return RESTRICTIVE_MARKERS.any { manufacturer.contains(it) }
+    }
+
+    /** True when the app is exempt from Doze / app-standby battery limits. */
+    private fun isBatteryUnrestricted(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+        val pm = context.getSystemService(PowerManager::class.java) ?: return true
+        return pm.isIgnoringBatteryOptimizations(context.packageName)
     }
 
     private fun componentIntent(pkg: String, cls: String): Intent {

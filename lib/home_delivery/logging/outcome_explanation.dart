@@ -43,6 +43,10 @@ abstract final class OutcomeExplanation {
         'Alarm terlambat >60 detik — penghemat baterai OEM mungkin memblokir.',
     Outcome.clockSkew:
         'Jam perangkat melenceng — tidak memimpin pemutaran.',
+    Outcome.failedReschedule:
+        'Gagal menjadwalkan adzan berikutnya — mungkin perlu ulang.',
+    Outcome.rescheduleRetryArmed:
+        'Waktu 15 detik dijadwalkan untuk mencoba lagi.',
   };
 
   static const Map<Outcome, String> _en = {
@@ -67,5 +71,9 @@ abstract final class OutcomeExplanation {
         'Alarm fired >60s late — OEM battery saver may be blocking.',
     Outcome.clockSkew:
         'Device clock skew detected — did not lead playback.',
+    Outcome.failedReschedule:
+        'Failed to schedule next adzan — may need retry.',
+    Outcome.rescheduleRetryArmed:
+        '15-second retry wake scheduled.',
   };
 }

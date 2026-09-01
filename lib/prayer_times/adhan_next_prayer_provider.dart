@@ -38,9 +38,16 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
   String? lastFallbackMessage;
 
   @override
-  Future<NextPrayer> next({required DateTime after}) async {
+  Future<NextPrayer> next({
+    required DateTime after,
+    bool preferCache = false,
+  }) async {
     final prefs = await _store.read();
-    final schedules = await schedulesAround(prefs: prefs, after: after);
+    final schedules = await schedulesAround(
+      prefs: prefs,
+      after: after,
+      preferCache: preferCache,
+    );
     final localAfter = after.toLocal();
     for (final day in schedules) {
       for (final slot in day.slots) {
@@ -81,12 +88,31 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
   Future<List<AladhanDaySchedule>> schedulesAround({
     required PrayerPrefs prefs,
     required DateTime after,
+    bool preferCache = false,
   }) async {
     final local = after.toLocal();
     final today = DateTime(local.year, local.month, local.day);
     final tomorrow = today.add(const Duration(days: 1));
     final key = cacheKeyFor(prefs, today);
     if (_cacheKey != key || _cachedToday == null || _cachedTomorrow == null) {
+      // When preferCache is true, check disk cache first before network
+      if (preferCache) {
+        final disk = await _readDiskCache();
+        if (disk != null &&
+            disk.days.isNotEmpty &&
+            _diskCovers(disk, prefs: prefs, after: after)) {
+          _cachedToday = disk.days[0];
+          _cachedTomorrow =
+              disk.days.length > 1 ? disk.days[1] : disk.days[0];
+          _cacheKey = key;
+          return [
+            _withVoices(_cachedToday!, prefs),
+            _withVoices(_cachedTomorrow!, prefs),
+          ];
+        }
+        // Disk cache miss or doesn't cover needed window - fall through to network
+      }
+
       final school = prefs.madhabId.aladhanSchool;
       try {
         lastFallbackMessage = null;

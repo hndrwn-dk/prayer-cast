@@ -65,8 +65,9 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('schedule row shows delivery control defaulting to Cast',
-      (tester) async {
+  testWidgets('schedule row shows delivery control defaulting to Cast', (
+    tester,
+  ) async {
     await pumpTile(tester, mode: PrayerDeliveryMode.cast);
     expect(find.byKey(const ValueKey('delivery-fajr-cast')), findsOneWidget);
     expect(find.text('Cast'), findsOneWidget);
@@ -142,8 +143,9 @@ void main() {
     expect(find.text('SCHEDULE'), findsWidgets);
   });
 
-  testWidgets('dry-run prompts for notifications when not granted',
-      (tester) async {
+  testWidgets('dry-run prompts for notifications when not granted', (
+    tester,
+  ) async {
     final alarm = _FakeExactAlarm();
     addTearDown(alarm.dispose);
     final t0 = DateTime(2026, 8, 13, 20, 35);
@@ -186,8 +188,9 @@ void main() {
     expect(find.text('Test adhan at 20:37'), findsOneWidget);
   });
 
-  testWidgets('dry-run still schedules if notification prompt is skipped',
-      (tester) async {
+  testWidgets('dry-run still schedules if notification prompt is skipped', (
+    tester,
+  ) async {
     final alarm = _FakeExactAlarm();
     addTearDown(alarm.dispose);
     final t0 = DateTime(2026, 8, 13, 20, 35);
@@ -227,8 +230,9 @@ void main() {
     expect(find.text('Test adhan at 20:40'), findsOneWidget);
   });
 
-  testWidgets('notification disclosure copy is localized in Indonesian',
-      (tester) async {
+  testWidgets('notification disclosure copy is localized in Indonesian', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('id'),
@@ -245,8 +249,9 @@ void main() {
     expect(find.text('Nanti saja'), findsOneWidget);
   });
 
-  testWidgets('dry-run failure stays on the card, not a SnackBar',
-      (tester) async {
+  testWidgets('dry-run failure stays on the card, not a SnackBar', (
+    tester,
+  ) async {
     final alarm = _FakeExactAlarm();
     addTearDown(alarm.dispose);
     final coordinator = _coordinator(
@@ -271,8 +276,9 @@ void main() {
     );
   });
 
-  testWidgets('save without location shows status above Save, not a SnackBar',
-      (tester) async {
+  testWidgets('save without location shows status above Save, not a SnackBar', (
+    tester,
+  ) async {
     await _pumpSettings(
       tester,
       prefs: const PrayerPrefs(
@@ -289,7 +295,10 @@ void main() {
     await tester.pump();
 
     expect(find.byType(SnackBar), findsNothing);
-    expect(find.byKey(const ValueKey('prayer_settings_status')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('prayer_settings_status')),
+      findsOneWidget,
+    );
     expect(
       find.text('Use current location, or enter city and country first'),
       findsOneWidget,
@@ -297,8 +306,9 @@ void main() {
     expect(find.text('Save'), findsOneWidget);
   });
 
-  testWidgets('Save button sits above the Android navigation inset',
-      (tester) async {
+  testWidgets('Save button sits above the Android navigation inset', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(800, 915);
     tester.view.devicePixelRatio = 1.0;
     tester.view.padding = FakeViewPadding.zero;
@@ -315,8 +325,9 @@ void main() {
     expect(tester.getRect(save).bottom, lessThanOrEqualTo(915 - 48));
   });
 
-  testWidgets('location disclosure appears before resolve when not granted',
-      (tester) async {
+  testWidgets('location disclosure appears before resolve when not granted', (
+    tester,
+  ) async {
     final resolver = _FakeLocationResolver();
     await _pumpSettings(tester, locationResolver: resolver);
 
@@ -326,10 +337,7 @@ void main() {
 
     expect(find.byKey(LocationDisclosureDialog.dialogKey), findsOneWidget);
     expect(find.text('Location is optional'), findsOneWidget);
-    expect(
-      find.textContaining('fill city and country'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('fill city and country'), findsOneWidget);
     expect(find.textContaining('not used to track you'), findsOneWidget);
     expect(find.text('Privacy policy'), findsOneWidget);
     expect(resolver.resolveCalls, 0);
@@ -342,10 +350,7 @@ void main() {
     expect(dialog.elevation, 12);
     final shape = dialog.shape as RoundedRectangleBorder;
     expect(shape.side.width, 1);
-    expect(
-      shape.side.color,
-      PrayerCastColors.mist.withValues(alpha: 0.28),
-    );
+    expect(shape.side.color, PrayerCastColors.mist.withValues(alpha: 0.28));
     expect(
       tester.widget<Text>(find.text('Location is optional')).style?.color,
       PrayerCastColors.surfaceRaised,
@@ -360,14 +365,18 @@ void main() {
     );
   });
 
-  testWidgets('location disclosure Continue then resolves city', (tester) async {
+  testWidgets('location disclosure Continue then resolves city', (
+    tester,
+  ) async {
     final resolver = _FakeLocationResolver();
     await _pumpSettings(tester, locationResolver: resolver);
 
     await tester.tap(find.text('Use current location'));
     await tester.pump();
     await tester.pump();
-    await tester.ensureVisible(find.byKey(LocationDisclosureDialog.continueKey));
+    await tester.ensureVisible(
+      find.byKey(LocationDisclosureDialog.continueKey),
+    );
     await tester.tap(find.byKey(LocationDisclosureDialog.continueKey));
     await tester.pump();
     await tester.pump();
@@ -377,15 +386,18 @@ void main() {
     expect(find.text('Location: Jakarta, Indonesia'), findsOneWidget);
   });
 
-  testWidgets('location disclosure Type city skips GPS and opens the form',
-      (tester) async {
+  testWidgets('location disclosure Type city skips GPS and opens the form', (
+    tester,
+  ) async {
     final resolver = _FakeLocationResolver();
     await _pumpSettings(tester, locationResolver: resolver);
 
     await tester.tap(find.text('Use current location'));
     await tester.pump();
     await tester.pump();
-    await tester.ensureVisible(find.byKey(LocationDisclosureDialog.typeCityKey));
+    await tester.ensureVisible(
+      find.byKey(LocationDisclosureDialog.typeCityKey),
+    );
     await tester.tap(find.byKey(LocationDisclosureDialog.typeCityKey));
     await tester.pump();
     await tester.pump();
@@ -409,8 +421,9 @@ void main() {
     expect(find.text('Location: Jakarta, Indonesia'), findsOneWidget);
   });
 
-  testWidgets('location disclosure privacy link opens the policy URL',
-      (tester) async {
+  testWidgets('location disclosure privacy link opens the policy URL', (
+    tester,
+  ) async {
     final launched = <Uri>[];
     debugLaunchExternalUrl = (uri) async {
       launched.add(uri);
@@ -433,8 +446,9 @@ void main() {
     expect(resolver.resolveCalls, 0);
   });
 
-  testWidgets('location timeout shows l10n message, not TimeoutException',
-      (tester) async {
+  testWidgets('location timeout shows l10n message, not TimeoutException', (
+    tester,
+  ) async {
     final resolver = _TimeoutLocationResolver();
     await _pumpSettings(tester, locationResolver: resolver);
 
@@ -451,8 +465,9 @@ void main() {
     );
   });
 
-  testWidgets('location disclosure copy is localized in Indonesian',
-      (tester) async {
+  testWidgets('location disclosure copy is localized in Indonesian', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('id'),
@@ -548,7 +563,8 @@ Future<void> _pumpSettings(
         home: PrayerSettingsPage(
           coordinator: coordinator,
           locationResolver: locationResolver,
-          postNotifications: postNotifications ??
+          postNotifications:
+              postNotifications ??
               const PostNotificationsPermission(isAndroid: false),
         ),
       ),
@@ -584,7 +600,10 @@ final class _FixedNextPrayer implements NextPrayerProvider {
   final NextPrayer prayer;
 
   @override
-  Future<NextPrayer> next({required DateTime after}) async => prayer;
+  Future<NextPrayer> next({
+    required DateTime after,
+    bool preferCache = false,
+  }) async => prayer;
 }
 
 final class _FakeExactAlarm implements ExactAlarmPlatform {
@@ -624,10 +643,37 @@ final class _FakeExactAlarm implements ExactAlarmPlatform {
   Future<void> playLocalBeep() async {}
 
   @override
+  Future<void> playLocalTakbir() async {}
+
+  @override
+  Future<void> syncTravelLocation({
+    required bool enabled,
+    double? latitude,
+    double? longitude,
+  }) async {}
+
+  @override
   Stream<void> get onStopLocalPlayback => const Stream.empty();
 
   @override
   Future<ScheduledAlarm?> readScheduled() async => null;
+
+  @override
+  Future<void> schedulePreAlert({
+    required int epochMs,
+    required String title,
+    required String body,
+    String sound = 'beep',
+  }) async {}
+
+  @override
+  Future<void> cancelPreAlert() async {}
+
+  @override
+  Future<void> showDeliveryFailureNotification({
+    required String title,
+    required String body,
+  }) async {}
 
   Future<void> dispose() => _fireController.close();
 }
@@ -643,22 +689,22 @@ final class _FakeSettings implements DeliverySettings {
 final class _FakeAudio implements AdzanAudioLoader {
   @override
   Future<AdzanAudioData> load(String voiceId) async => AdzanAudioData(
-        bytes: Uint8List.fromList(List<int>.filled(32, 1)),
-        contentType: 'audio/mpeg',
-        extension: 'mp3',
-      );
+    bytes: Uint8List.fromList(List<int>.filled(32, 1)),
+    contentType: 'audio/mpeg',
+    extension: 'mp3',
+  );
 }
 
 final class _FakeConditions implements DeviceConditionsProvider {
   @override
   Future<DeviceConditions> current() async => const DeviceConditions(
-        formFactor: DeviceFormFactor.phone,
-        isPluggedIn: true,
-        isScreenOn: true,
-        batteryPercent: 80,
-        batterySaverActive: false,
-        clockSkewDetected: false,
-      );
+    formFactor: DeviceFormFactor.phone,
+    isPluggedIn: true,
+    isScreenOn: true,
+    batteryPercent: 80,
+    batterySaverActive: false,
+    clockSkewDetected: false,
+  );
 }
 
 final class _TimeoutLocationResolver implements LocationResolving {

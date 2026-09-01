@@ -130,6 +130,24 @@ final class OutcomeStatus {
           foreground: PrayerCastColors.quiet,
           background: Color(0xFFE4EBE6),
         );
+      case Outcome.failedReschedule:
+        return const OutcomeStatus(
+          kind: OutcomeKind.problem,
+          shortLabelBi: 'Jadwal gagal',
+          shortLabelEn: 'Reschedule failed',
+          icon: PremiumIcons.clock,
+          foreground: PrayerCastColors.danger,
+          background: PrayerCastColors.dangerSoft,
+        );
+      case Outcome.rescheduleRetryArmed:
+        return const OutcomeStatus(
+          kind: OutcomeKind.quiet,
+          shortLabelBi: 'Coba ulang',
+          shortLabelEn: 'Retry armed',
+          icon: PremiumIcons.refresh,
+          foreground: PrayerCastColors.quiet,
+          background: Color(0xFFE4EBE6),
+        );
     }
   }
 }

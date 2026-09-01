@@ -20,6 +20,8 @@ void main() {
           return true;
         case 'isRestrictiveOem':
           return true;
+        case 'isBatteryUnrestricted':
+          return false;
         default:
           return null;
       }
@@ -36,6 +38,7 @@ void main() {
     expect(await settings.open(), isTrue);
     expect(await settings.openAutostartSettings(), isTrue);
     expect(await settings.isRestrictiveOem(), isTrue);
+    expect(await settings.isBatteryUnrestricted(), isFalse);
   });
 
   test('shouldShowOemBatteryNudge after 2 misses', () {

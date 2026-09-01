@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/next_prayer_widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@drawable/next_prayer_widget_bg">
+
+    <TextView
+        android:id="@+id/next_prayer_eyebrow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/next_prayer_widget_eyebrow"
+        android:textAllCaps="true"
+        android:letterSpacing="0.12"
+        android:textSize="11sp"
+        android:textColor="#C9852A" />
+
+    <TextView
+        android:id="@+id/next_prayer_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/next_prayer_widget_empty"
+        android:textSize="22sp"
+        android:textColor="#FAFCFA"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <TextView
+        android:id="@+id/next_prayer_time"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text=""
+        android:textSize="28sp"
+        android:textColor="#D7E4DC"
+        android:fontFamily="sans-serif-medium" />
+
+    <TextView
+        android:id="@+id/next_prayer_countdown"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text=""
+        android:textSize="13sp"
+        android:textColor="#B7CBBF" />
+</LinearLayout>

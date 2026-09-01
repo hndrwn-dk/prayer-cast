@@ -35,7 +35,13 @@ enum Outcome {
   failedAlarmMissed('FAILED_ALARM_MISSED'),
 
   /// Clock skew > 3s detected during election (§4.7).
-  clockSkew('CLOCK_SKEW');
+  clockSkew('CLOCK_SKEW'),
+
+  /// Post-delivery reschedule attempt threw (network fetch failed, permission revoked, etc.).
+  failedReschedule('FAILED_RESCHEDULE'),
+
+  /// Reschedule retry armed (15-second wake) after a failed reschedule.
+  rescheduleRetryArmed('RESCHEDULE_RETRY_ARMED');
 
   const Outcome(this.code);
 

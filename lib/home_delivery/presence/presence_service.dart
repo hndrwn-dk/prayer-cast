@@ -90,7 +90,7 @@ final class PresenceService {
   }
 
   Future<PresenceScanResult> _detect({required DateTime now}) async {
-    final homeCastId = await _store.readHomeCastId();
+    final homeCastId = await _store.readHomeCastIdResilient();
 
     // Signal A: saved Cast target discoverable. Browse Cast only first so we
     // can early-exit without waiting on the full fingerprint set (§3.6).

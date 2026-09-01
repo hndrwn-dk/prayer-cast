@@ -48,8 +48,35 @@ abstract interface class ExactAlarmPlatform {
   /// Play the bundled beep on [STREAM_ALARM] (audible with the screen off).
   Future<void> playLocalBeep();
 
+  /// Play the bundled takbir tone on [STREAM_ALARM].
+  Future<void> playLocalTakbir();
+
+  /// Persist travel-update flag + last city coords for the native worker.
+  Future<void> syncTravelLocation({
+    required bool enabled,
+    double? latitude,
+    double? longitude,
+  });
+
   /// Currently armed alarm, if any (from native prefs).
   Future<ScheduledAlarm?> readScheduled();
+
+  /// Schedule a pre-prayer reminder notification (no FGS / Cast).
+  Future<void> schedulePreAlert({
+    required int epochMs,
+    required String title,
+    required String body,
+    String sound = 'beep',
+  });
+
+  /// Cancel any armed pre-prayer reminder.
+  Future<void> cancelPreAlert();
+
+  /// Show a one-shot notification when Cast delivery fails.
+  Future<void> showDeliveryFailureNotification({
+    required String title,
+    required String body,
+  });
 
   Stream<AlarmFiredEvent> get onFired;
 
@@ -247,6 +274,57 @@ final class ExactAlarm implements ExactAlarmPlatform {
   }
 
   @override
+  Future<void> playLocalTakbir() async {
+    try {
+      await _methods.invokeMethod<void>('playLocalTakbir');
+    } on MissingPluginException catch (e, st) {
+      _logger.warn(
+        'playLocalTakbir: exact_alarm plugin missing (no-op)',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'playLocalTakbir failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+      throw ExactAlarmFailure('playLocalTakbir failed: ${e.message}', cause: e);
+    }
+  }
+
+  @override
+  Future<void> syncTravelLocation({
+    required bool enabled,
+    double? latitude,
+    double? longitude,
+  }) async {
+    try {
+      await _methods.invokeMethod<void>('syncTravelLocation', {
+        'enabled': enabled,
+        'latitude': latitude,
+        'longitude': longitude,
+      });
+    } on MissingPluginException catch (e, st) {
+      _logger.warn(
+        'syncTravelLocation: exact_alarm plugin missing (no-op)',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'syncTravelLocation failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  @override
   Stream<void> get onStopLocalPlayback {
     _ensureNativeCallbacks();
     return _stopLocalPlayback.stream;
@@ -300,6 +378,85 @@ final class ExactAlarm implements ExactAlarmPlatform {
         stackTrace: st,
       );
       return null;
+    }
+  }
+
+  @override
+  Future<void> schedulePreAlert({
+    required int epochMs,
+    required String title,
+    required String body,
+    String sound = 'beep',
+  }) async {
+    try {
+      await _methods.invokeMethod<void>('schedulePreAlert', {
+        'epochMs': epochMs,
+        'title': title,
+        'body': body,
+        'sound': sound,
+      });
+    } on MissingPluginException catch (e, st) {
+      _logger.warn(
+        'schedulePreAlert: exact_alarm plugin missing (no-op)',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'schedulePreAlert failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  @override
+  Future<void> cancelPreAlert() async {
+    try {
+      await _methods.invokeMethod<void>('cancelPreAlert');
+    } on MissingPluginException catch (e, st) {
+      _logger.warn(
+        'cancelPreAlert: exact_alarm plugin missing (no-op)',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'cancelPreAlert failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  @override
+  Future<void> showDeliveryFailureNotification({
+    required String title,
+    required String body,
+  }) async {
+    try {
+      await _methods.invokeMethod<void>('showDeliveryFailureNotification', {
+        'title': title,
+        'body': body,
+      });
+    } on MissingPluginException catch (e, st) {
+      _logger.warn(
+        'showDeliveryFailureNotification: plugin missing (no-op)',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'showDeliveryFailureNotification failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 

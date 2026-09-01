@@ -57,7 +57,7 @@ final class AdzanCastTester {
     _busy = true;
     var loaded = false;
     try {
-      final castId = await _store.readHomeCastId();
+      final castId = await _store.readHomeCastIdResilient();
       if (castId == null || castId.isEmpty) {
         throw const AdzanCastTestFailure(AdzanCastFailCode.noSpeaker);
       }

@@ -22,7 +22,10 @@ final class NextPrayer {
 
 /// Port for the upcoming prayer (injected — never computed here).
 abstract interface class NextPrayerProvider {
-  Future<NextPrayer> next({required DateTime after});
+  Future<NextPrayer> next({
+    required DateTime after,
+    bool preferCache = false,
+  });
 }
 
 /// PLACEHOLDER for wiring / local dev only.
@@ -46,7 +49,10 @@ final class StaticNextPrayerProvider implements NextPrayerProvider {
   final DateTime? _anchor;
 
   @override
-  Future<NextPrayer> next({required DateTime after}) async {
+  Future<NextPrayer> next({
+    required DateTime after,
+    bool preferCache = false,
+  }) async {
     final sequence = _sequence ?? _defaultSequence(after);
     for (final prayer in sequence) {
       if (prayer.scheduledAt.isAfter(after)) return prayer;

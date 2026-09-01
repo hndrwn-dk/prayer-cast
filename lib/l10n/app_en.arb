@@ -139,9 +139,11 @@
     }
   },
   "deliveryBeep": "Beep on phone",
+  "deliveryTakbir": "Takbir on phone",
   "deliveryAdhanPhone": "Adhan on phone",
   "deliveryCast": "Cast",
   "beepPlayed": "Beep played on this phone.",
+  "takbirPlayed": "Takbir played on this phone.",
   "adhanPhonePlayed": "{prayer} adhan played on this phone ({voice}).",
   "@adhanPhonePlayed": {
     "placeholders": {
