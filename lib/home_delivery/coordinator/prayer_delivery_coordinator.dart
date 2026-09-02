@@ -210,7 +210,16 @@ final class PrayerDeliveryCoordinator {
       return;
     }
 
-    await _travelRefresher?.refreshIfMoved();
+    // Schedule first. Travel GPS must not block the first Flutter frame
+    // (splash stays up until runApp). Fine location can wait on GNSS
+    // forever; a hung getCurrentPosition also starts Geolocator's FGS.
+    await _scheduleNextAfter(_clock.now());
+    unawaited(_refreshTravelThenReschedule());
+  }
+
+  Future<void> _refreshTravelThenReschedule() async {
+    final moved = await _travelRefresher?.refreshIfMoved() ?? false;
+    if (!moved || _handling) return;
     await _scheduleNextAfter(_clock.now());
   }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:geolocator/geolocator.dart';
 
 import '../home_delivery/platform/exact_alarm.dart';
@@ -12,6 +14,7 @@ final class TravelScheduleRefresher {
     required ExactAlarmPlatform exactAlarm,
     this.onPrefsChanged,
     this.moveThresholdMeters = 25000,
+    this.resolveTimeout = const Duration(seconds: 8),
   })  : _store = store,
         _location = location,
         _exactAlarm = exactAlarm;
@@ -21,6 +24,7 @@ final class TravelScheduleRefresher {
   final ExactAlarmPlatform _exactAlarm;
   final void Function()? onPrefsChanged;
   final double moveThresholdMeters;
+  final Duration resolveTimeout;
 
   Future<void> syncNativeFlag(PrayerPrefs prefs) {
     return _exactAlarm.syncTravelLocation(
@@ -43,7 +47,9 @@ final class TravelScheduleRefresher {
 
     late final ResolvedLocation resolved;
     try {
-      resolved = await _location.resolveCurrent();
+      resolved = await _location
+          .resolveCurrent()
+          .timeout(resolveTimeout);
     } catch (_) {
       return false;
     }

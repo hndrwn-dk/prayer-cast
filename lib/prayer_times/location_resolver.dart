@@ -117,7 +117,9 @@ final class LocationResolver implements LocationResolving {
     if (hasUsableCoordinates(lastKnown)) {
       return lastKnown!;
     }
-    return Geolocator.getCurrentPosition(locationSettings: coarseSettings);
+    return Geolocator.getCurrentPosition(
+      locationSettings: coarseSettings,
+    ).timeout(const Duration(seconds: 8));
   }
 
   Future<ResolvedLocation> _resolvedFromPosition(Position position) async {

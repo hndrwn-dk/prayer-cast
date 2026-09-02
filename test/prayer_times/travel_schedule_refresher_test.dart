@@ -71,6 +71,36 @@ void main() {
     expect(await refresher.refreshIfMoved(), isFalse);
     expect((await store.read()).city, 'Singapore');
   });
+
+  test('refreshIfMoved returns false when GPS never answers', () async {
+    final hang = Completer<ResolvedLocation>();
+    addTearDown(() {
+      if (!hang.isCompleted) {
+        hang.completeError(TimeoutException('test'));
+      }
+    });
+    final store = MemoryPrayerPrefsStore(
+      const PrayerPrefs(
+        city: 'Singapore',
+        country: 'Singapore',
+        methodId: 11,
+        madhabId: PrayerMadhabId.shafi,
+        voiceId: 'standard_adhan',
+        configured: true,
+        latitude: 1.35,
+        longitude: 103.82,
+        travelScheduleUpdates: true,
+      ),
+    );
+    final refresher = TravelScheduleRefresher(
+      store: store,
+      location: _HangLocation(hang.future),
+      exactAlarm: _FakeAlarm(),
+      resolveTimeout: const Duration(milliseconds: 20),
+    );
+    expect(await refresher.refreshIfMoved(), isFalse);
+    expect((await store.read()).city, 'Singapore');
+  });
 }
 
 final class _FakeLocation implements LocationResolving {
@@ -83,6 +113,18 @@ final class _FakeLocation implements LocationResolving {
 
   @override
   Future<ResolvedLocation> resolveCurrent() async => resolved;
+}
+
+final class _HangLocation implements LocationResolving {
+  _HangLocation(this._never);
+
+  final Future<ResolvedLocation> _never;
+
+  @override
+  Future<bool> hasGrantedPermission() async => true;
+
+  @override
+  Future<ResolvedLocation> resolveCurrent() => _never;
 }
 
 final class _FakeAlarm implements ExactAlarmPlatform {

@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 import 'qibla_bearing.dart';
 
 const kPrayerCastOverpassUserAgent =
-    'PrayerCast/1.0.12 (com.tursinalabs.prayer_cast; https://tursinalabs.com)';
+    'PrayerCast/1.0.13 (com.tursinalabs.prayer_cast; https://tursinalabs.com)';
 
 /// Public Overpass interpreters. `overpass-api.de` often returns 504 when busy.
 const kOverpassInterpreterUrls = [
