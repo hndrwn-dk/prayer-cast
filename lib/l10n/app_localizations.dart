@@ -590,6 +590,12 @@ abstract class AppLocalizations {
   /// **'Change city / country'**
   String get changeCityCountry;
 
+  /// No description provided for @travelCityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'When you travel, change the city here so prayer times stay accurate.'**
+  String get travelCityHint;
+
   /// No description provided for @hideCityForm.
   ///
   /// In en, this message translates to:

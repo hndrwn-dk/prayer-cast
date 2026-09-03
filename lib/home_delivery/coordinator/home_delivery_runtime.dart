@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -20,9 +21,7 @@ import '../presence/mdns_browser.dart';
 import '../presence/presence_service.dart';
 import '../presence/lan_fingerprint.dart';
 import '../../prayer_times/adhan_next_prayer_provider.dart';
-import '../../prayer_times/location_resolver.dart';
 import '../../prayer_times/prayer_prefs.dart';
-import '../../prayer_times/travel_schedule_refresher.dart';
 import 'adzan_audio_loader.dart';
 import 'adzan_cast_tester.dart';
 import 'audioplayers_local_prayer_player.dart';
@@ -76,6 +75,7 @@ final class HomeDeliveryRuntime {
     );
 
     final exactAlarm = ExactAlarm(logger: logger);
+    unawaited(exactAlarm.syncTravelLocation(enabled: false));
     final scheduler = const WallScheduler();
     final browser = NsdMdnsBrowser(logger: logger);
     final lanFingerprint = LanFingerprint(
@@ -149,16 +149,6 @@ final class HomeDeliveryRuntime {
             if (raw == 'en' || raw == 'id') return raw;
           } catch (_) {}
           return null;
-        },
-      ),
-      travelRefresher: TravelScheduleRefresher(
-        store: prayerPrefs,
-        location: const LocationResolver(),
-        exactAlarm: exactAlarm,
-        onPrefsChanged: () {
-          if (nextPrayer is AdhanNextPrayerProvider) {
-            nextPrayer.invalidateCache();
-          }
         },
       ),
       readLocaleCode: () async {

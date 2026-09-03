@@ -55,7 +55,7 @@ import 'package:prayer_cast/qibla/ui/qibla_page.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
-const String kAppVersion = '1.0.13+14';
+const String kAppVersion = '1.0.14+15';
 
 /// Android 13+ [POST_NOTIFICATIONS]. Default true so widget tests stay clean.
 final postNotificationsGrantedProvider = StateProvider<bool>((ref) => true);

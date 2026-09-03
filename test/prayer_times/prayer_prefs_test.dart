@@ -189,7 +189,7 @@ void main() {
     expect(read.deliveryFor('dhuhr'), PrayerDeliveryMode.adhanPhone);
   });
 
-  test('FilePrayerPrefsStore round-trips travel updates and takbir', () async {
+  test('FilePrayerPrefsStore ignores stored travel-updates flag', () async {
     final dir = await Directory.systemTemp.createTemp('prayer_prefs_travel_');
     addTearDown(() => dir.delete(recursive: true));
     final file = File('${dir.path}/prefs.txt');
@@ -211,7 +211,7 @@ void main() {
       ),
     );
     final read = await store.read();
-    expect(read.travelScheduleUpdates, isTrue);
+    expect(read.travelScheduleUpdates, isFalse);
     expect(read.prePrayerAlertSound, PrePrayerAlertSound.takbir);
     expect(read.deliveryFor('fajr'), PrayerDeliveryMode.takbir);
     expect(read.prePrayerAlertMinutes, 10);

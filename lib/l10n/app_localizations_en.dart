@@ -271,6 +271,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get changeCityCountry => 'Change city / country';
 
   @override
+  String get travelCityHint =>
+      'When you travel, change the city here so prayer times stay accurate.';
+
+  @override
   String get hideCityForm => 'Hide city form';
 
   @override

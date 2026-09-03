@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:prayer_cast/home_delivery/coordinator/adzan_cast_tester.dart';
 import 'package:prayer_cast/home_delivery/coordinator/next_prayer_provider.dart';
 import 'package:prayer_cast/home_delivery/coordinator/prayer_delivery_coordinator.dart';
@@ -169,27 +168,6 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
     }
   }
 
-  Future<void> _setTravelUpdates(PrayerPrefs draft, bool enabled) async {
-    if (!enabled) {
-      setState(() {
-        _draft = draft.copyWith(travelScheduleUpdates: false);
-      });
-      return;
-    }
-    if (!draft.hasCoordinates) {
-      await _detectLocation(draft);
-      draft = _draft ?? draft;
-      if (!draft.hasCoordinates) return;
-    }
-    final always = await Permission.locationAlways.request();
-    if (!mounted) return;
-    setState(() {
-      _draft = draft.copyWith(
-        travelScheduleUpdates: always.isGranted || always.isLimited,
-      );
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final asyncPrefs = ref.watch(prayerPrefsProvider);
@@ -289,11 +267,9 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                   ),
                                 ],
                                 const SizedBox(height: 12),
-                                _TravelUpdatesTile(
-                                  enabled: draft.travelScheduleUpdates,
-                                  onChanged: (value) => unawaited(
-                                    _setTravelUpdates(draft, value),
-                                  ),
+                                Text(
+                                  l10n.travelCityHint,
+                                  style: text.bodySmall,
                                 ),
                                 const SizedBox(height: 10),
                                 Align(
@@ -800,7 +776,6 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
       ref.invalidate(nextPrayerSnapshotProvider);
       await widget.coordinator?.retryScheduleAfterPermissionGranted();
       await widget.coordinator?.refreshPrePrayerAlert();
-      await widget.coordinator?.syncTravelLocation();
       if (!mounted) return;
       Navigator.of(context).maybePop(prefs);
     } catch (e) {
@@ -932,37 +907,6 @@ class _PrePrayerAlertCard extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _TravelUpdatesTile extends StatelessWidget {
-  const _TravelUpdatesTile({
-    required this.enabled,
-    required this.onChanged,
-  });
-
-  final bool enabled;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final isId = Localizations.localeOf(context).languageCode == 'id';
-    final text = Theme.of(context).textTheme;
-    return SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      value: enabled,
-      onChanged: onChanged,
-      title: Text(
-        isId ? 'Perbarui jadwal saat bepergian' : 'Update schedule when traveling',
-        style: text.titleSmall,
-      ),
-      subtitle: Text(
-        isId
-            ? 'Kalau HP pindah kota (~25 km), waktu sholat disesuaikan. Butuh izin lokasi latar belakang.'
-            : 'If the phone moves city (~25 km), prayer times refresh. Needs background location.',
-        style: text.bodySmall,
       ),
     );
   }

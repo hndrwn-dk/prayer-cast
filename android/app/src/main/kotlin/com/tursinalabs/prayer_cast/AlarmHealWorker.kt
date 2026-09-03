@@ -35,7 +35,6 @@ class AlarmHealWorker(
 
     override fun doWork(): Result {
         val healed = ExactAlarmPlugin.healPersistedWake(applicationContext)
-        TravelLocationStore.maybeRequestReschedule(applicationContext)
         NextPrayerWidget.refresh(applicationContext)
         Log.i(TAG, if (healed) "Healed persisted wake" else "Heal no-op")
         return Result.success()

@@ -82,6 +82,7 @@
   "detectingLocation": "Mendeteksi lokasi…",
   "noLocationYet": "Belum ada lokasi",
   "changeCityCountry": "Ubah kota / negara",
+  "travelCityHint": "Saat bepergian, ubah kota di sini agar waktu sholat tetap akurat.",
   "hideCityForm": "Sembunyikan form kota",
   "calculationMethod": "Metode perhitungan",
   "methodKemenag": "Kemenag (Indonesia)",

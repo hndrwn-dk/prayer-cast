@@ -115,6 +115,7 @@
   "detectingLocation": "Detecting location…",
   "noLocationYet": "No location yet",
   "changeCityCountry": "Change city / country",
+  "travelCityHint": "When you travel, change the city here so prayer times stay accurate.",
   "hideCityForm": "Hide city form",
   "calculationMethod": "Calculation method",
   "methodKemenag": "Kemenag (Indonesia)",

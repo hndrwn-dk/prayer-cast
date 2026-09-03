@@ -107,10 +107,7 @@ class ExactAlarmPlugin(
                 }.start()
             }
             "syncTravelLocation" -> {
-                val enabled = call.argument<Boolean>("enabled") ?: false
-                val lat = call.argument<Number>("latitude")?.toDouble()
-                val lng = call.argument<Number>("longitude")?.toDouble()
-                TravelLocationStore.sync(context, enabled, lat, lng)
+                TravelLocationStore.disable(context)
                 result.success(null)
             }
             "getScheduled" -> {

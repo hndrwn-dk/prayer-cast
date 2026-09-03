@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../prayer_times/prayer_prefs.dart';
-import '../../prayer_times/travel_schedule_refresher.dart';
 import '../common/clock.dart';
 import '../common/logger.dart';
 import '../common/scheduler.dart';
@@ -61,7 +60,6 @@ final class PrayerDeliveryCoordinator {
     LocalPrayerPlayer? localPlayer,
     DeliveryLogDao? logDao,
     PrePrayerAlertScheduler? prePrayerAlerts,
-    TravelScheduleRefresher? travelRefresher,
     Future<String?> Function()? readLocaleCode,
     void Function(bool granted)? onPermissionChanged,
     HomeDeliveryLogger logger = const SilentLogger(),
@@ -76,7 +74,6 @@ final class PrayerDeliveryCoordinator {
         _localPlayer = localPlayer ?? const SilentLocalPrayerPlayer(),
         _logDao = logDao,
         _prePrayerAlerts = prePrayerAlerts,
-        _travelRefresher = travelRefresher,
         _readLocaleCode = readLocaleCode ?? (() async => null),
         _onPermissionChanged = onPermissionChanged,
         _logger = logger;
@@ -130,7 +127,6 @@ final class PrayerDeliveryCoordinator {
   final LocalPrayerPlayer _localPlayer;
   final DeliveryLogDao? _logDao;
   final PrePrayerAlertScheduler? _prePrayerAlerts;
-  final TravelScheduleRefresher? _travelRefresher;
   final Future<String?> Function() _readLocaleCode;
   final void Function(bool granted)? _onPermissionChanged;
   final HomeDeliveryLogger _logger;
@@ -210,16 +206,6 @@ final class PrayerDeliveryCoordinator {
       return;
     }
 
-    // Schedule first. Travel GPS must not block the first Flutter frame
-    // (splash stays up until runApp). Fine location can wait on GNSS
-    // forever; a hung getCurrentPosition also starts Geolocator's FGS.
-    await _scheduleNextAfter(_clock.now());
-    unawaited(_refreshTravelThenReschedule());
-  }
-
-  Future<void> _refreshTravelThenReschedule() async {
-    final moved = await _travelRefresher?.refreshIfMoved() ?? false;
-    if (!moved || _handling) return;
     await _scheduleNextAfter(_clock.now());
   }
 
@@ -581,10 +567,6 @@ final class PrayerDeliveryCoordinator {
       voiceId: scheduled.voiceId,
     );
     await scheduler.syncForPrayer(prayer, _clock.now());
-  }
-
-  Future<void> syncTravelLocation() async {
-    await _travelRefresher?.syncFromStore();
   }
 
   Future<void> _scheduleNextAfter(DateTime after) async {

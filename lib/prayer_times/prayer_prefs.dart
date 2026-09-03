@@ -256,7 +256,7 @@ final class MemoryPrayerPrefsStore implements PrayerPrefsStore {
 /// fajr=cast,dhuhr=beep,... (optional; missing = all cast)
 /// administrativeArea (optional; kabupaten/kota match hint)
 /// prePrayerAlertMinutes (0|10|15; optional; default 0)
-/// travelScheduleUpdates (0|1; optional; default 0)
+/// travelScheduleUpdates (always written 0; auto-travel GPS was removed)
 /// prePrayerAlertSound (beep|takbir; optional; default beep)
 /// ```
 final class FilePrayerPrefsStore implements PrayerPrefsStore {
@@ -295,7 +295,6 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
       final preAlert = lines.length > 11
           ? int.tryParse(lines[11].trim()) ?? 0
           : 0;
-      final travel = lines.length > 12 && lines[12].trim() == '1';
       final alertSound = lines.length > 13
           ? PrePrayerAlertSoundX.parse(lines[13].trim())
           : PrePrayerAlertSound.beep;
@@ -312,7 +311,7 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
         longitude: longitude,
         administrativeArea: administrativeArea,
         prePrayerAlertMinutes: _normalizePreAlertMinutes(preAlert),
-        travelScheduleUpdates: travel,
+        travelScheduleUpdates: false,
         prePrayerAlertSound: alertSound,
       );
     } catch (_) {
@@ -344,7 +343,7 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
       '$delivery\n'
       '${prefs.administrativeArea}\n'
       '${prefs.prePrayerAlertMinutes}\n'
-      '${prefs.travelScheduleUpdates ? 1 : 0}\n'
+      '0\n'
       '${prefs.prePrayerAlertSound.wire}\n',
     );
   }

@@ -273,6 +273,10 @@ class AppLocalizationsId extends AppLocalizations {
   String get changeCityCountry => 'Ubah kota / negara';
 
   @override
+  String get travelCityHint =>
+      'Saat bepergian, ubah kota di sini agar waktu sholat tetap akurat.';
+
+  @override
   String get hideCityForm => 'Sembunyikan form kota';
 
   @override

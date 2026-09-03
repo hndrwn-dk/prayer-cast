@@ -12,14 +12,13 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
-    <!-- Optional location. Coarse fills city for prayer times.
-         Fine is for nearby mosques (current GPS). Not used to decide
-         if the user is home (LAN fingerprint). Not used for speaker scan.
-         Do not request on launch. ACCESS_BACKGROUND_LOCATION is requested
-         only if the user turns on travel schedule updates. -->
+    <!-- Optional location. Coarse fills city for prayer times when the
+         user taps Use current location. Fine is for nearby mosques
+         (current GPS). Not used to decide if the user is home (LAN
+         fingerprint). Not used for speaker scan. Do not request on
+         launch. City when traveling is changed manually on Prayer times. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <!-- Speaker scan on API 33+. neverForLocation: Wi-Fi is not a
          location source. Requested at scan time only.

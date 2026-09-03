@@ -27,6 +27,7 @@ void main() {
       expect(manifest, contains('com.miui.securitycenter'));
       expect(manifest, contains('ACCESS_COARSE_LOCATION'));
       expect(manifest, contains('ACCESS_FINE_LOCATION'));
+      expect(manifest, isNot(contains('ACCESS_BACKGROUND_LOCATION')));
       expect(manifest, contains('Not used for speaker scan'));
       expect(manifest, contains('NEARBY_WIFI_DEVICES'));
       expect(manifest, contains('neverForLocation'));

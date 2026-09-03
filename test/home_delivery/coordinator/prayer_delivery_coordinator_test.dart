@@ -19,9 +19,7 @@ import 'package:prayer_cast/home_delivery/logging/outcome.dart';
 import 'package:prayer_cast/home_delivery/platform/device_conditions.dart';
 import 'package:prayer_cast/home_delivery/platform/exact_alarm.dart';
 import 'package:prayer_cast/home_delivery/presence/presence_schedule.dart';
-import 'package:prayer_cast/prayer_times/location_resolver.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
-import 'package:prayer_cast/prayer_times/travel_schedule_refresher.dart';
 
 final class _FakeClock implements Clock {
   _FakeClock(this._now);
@@ -213,18 +211,6 @@ final class _FakeConditions implements DeviceConditionsProvider {
       );
 }
 
-final class _HangLocation implements LocationResolving {
-  _HangLocation(this._never);
-
-  final Future<ResolvedLocation> _never;
-
-  @override
-  Future<bool> hasGrantedPermission() async => true;
-
-  @override
-  Future<ResolvedLocation> resolveCurrent() => _never;
-}
-
 final class _RecordingLogger implements HomeDeliveryLogger {
   final warns = <String>[];
 
@@ -340,7 +326,6 @@ void main() {
     bool Function()? canScheduleOverride,
     void Function(bool)? onPermission,
     HomeDeliveryLogger logger = const SilentLogger(),
-    TravelScheduleRefresher? travelRefresher,
   }) {
     if (canScheduleOverride != null) {
       alarm.canSchedule = canScheduleOverride();
@@ -362,48 +347,8 @@ void main() {
       clock: clock,
       onPermissionChanged: onPermission,
       logger: logger,
-      travelRefresher: travelRefresher,
     );
   }
-
-  test('start schedules even when travel GPS never returns', () async {
-    final hang = Completer<ResolvedLocation>();
-    addTearDown(() {
-      if (!hang.isCompleted) {
-        hang.complete(
-          const ResolvedLocation(
-            latitude: 1.35,
-            longitude: 103.82,
-            city: 'Singapore',
-            country: 'Singapore',
-          ),
-        );
-      }
-    });
-    final coordinator = buildCoordinator(
-      travelRefresher: TravelScheduleRefresher(
-        store: MemoryPrayerPrefsStore(
-          const PrayerPrefs(
-            city: 'Singapore',
-            country: 'Singapore',
-            methodId: 11,
-            madhabId: PrayerMadhabId.shafi,
-            voiceId: 'standard_adhan',
-            configured: true,
-            latitude: 1.35,
-            longitude: 103.82,
-            travelScheduleUpdates: true,
-          ),
-        ),
-        location: _HangLocation(hang.future),
-        exactAlarm: alarm,
-      ),
-    );
-
-    await expectLater(coordinator.start(), completes);
-    expect(alarm.scheduled, hasLength(1));
-    expect(alarm.scheduled.single.prayer, 'maghrib');
-  });
 
   test('start schedules wake = azan + PresenceSchedule.scanOffset with voiceId',
       () async {
