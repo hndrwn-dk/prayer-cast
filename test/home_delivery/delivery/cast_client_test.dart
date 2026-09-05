@@ -12,6 +12,7 @@ final class FakeCastPlatform implements CastPlatform {
     this.alreadyPlayingTitle,
     this.emitPlayingOnLoad = true,
     this.emitPlayingOnCall,
+    this.connectFailuresBeforeSuccess = 0,
   }) : devices =
            devices ??
            [
@@ -34,6 +35,11 @@ final class FakeCastPlatform implements CastPlatform {
   bool connected = false;
   bool sessionEnded = false;
   Object? discoverError;
+  Object? connectError;
+  /// Fail connect this many times, then succeed (Fajr vanished → retry).
+  int connectFailuresBeforeSuccess = 0;
+  int connectCalls = 0;
+  int warmUpCalls = 0;
   bool emitPlayingOnLoad;
   /// If set, only the Nth loadMedia call (1-based) emits PLAYING.
   int? emitPlayingOnCall;
@@ -58,11 +64,21 @@ final class FakeCastPlatform implements CastPlatform {
 
   @override
   Future<void> connect(CastReceiver receiver) async {
+    connectCalls += 1;
+    final error = connectError;
+    if (error != null) throw error;
+    if (connectCalls <= connectFailuresBeforeSuccess) {
+      throw CastConnectFailure(
+        'Device ${receiver.deviceId} vanished before connect',
+      );
+    }
     connected = true;
   }
 
   @override
-  Future<void> warmUp() async {}
+  Future<void> warmUp() async {
+    warmUpCalls += 1;
+  }
 
   @override
   Future<double> getVolume() async => initialVolume;
@@ -155,7 +171,80 @@ void main() {
     });
   });
 
+  group('CastSdkDeviceMap', () {
+    test('snapshot sighting is enough without a later stream event', () {
+      final sdkDevices = <String, String>{};
+      CastSdkDeviceMap.put(
+        sdkDevices,
+        deviceId: 'cast-home-1',
+        friendlyName: 'Family room speaker',
+      );
+      expect(
+        CastDiscoveryPolicy.sdkConfirmedMatch(
+          matchId: 'cast-home-1',
+          sdkDeviceIds: sdkDevices.keys,
+        ),
+        isTrue,
+      );
+    });
+
+    test('empty id is ignored', () {
+      final sdkDevices = <String, String>{};
+      CastSdkDeviceMap.put(
+        sdkDevices,
+        deviceId: '',
+        friendlyName: 'ignored',
+      );
+      expect(sdkDevices, isEmpty);
+    });
+
+    test('scheduled discover may keep an NSD-only match for connect wait', () {
+      // Policy still requires SDK for early-exit; NSD-only is a last-resort
+      // list entry so connectById can wait on MediaRouter instead of
+      // FAILED_NO_TARGET while Home already saw the speaker.
+      expect(
+        CastDiscoveryPolicy.sdkConfirmedMatch(
+          matchId: 'cast-home-1',
+          sdkDeviceIds: const [],
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group('CastClient §5.3 / §4.8', () {
+    test('retries connectById once after vanished before connect', () async {
+      final platform = FakeCastPlatform(
+        connectFailuresBeforeSuccess: 1,
+      );
+      final client = CastClient(platform: platform);
+      final receiver = await client.connectById('cast-home-1');
+      expect(receiver.deviceId, 'cast-home-1');
+      expect(platform.connectCalls, 2);
+      expect(platform.warmUpCalls, 1);
+      expect(platform.discoverCalls, 2);
+      expect(platform.connected, isTrue);
+    });
+
+    test('rethrows after two vanished connect failures', () async {
+      final platform = FakeCastPlatform(
+        connectFailuresBeforeSuccess: 99,
+      );
+      final client = CastClient(platform: platform);
+      await expectLater(
+        () => client.connectById('cast-home-1'),
+        throwsA(
+          isA<CastConnectFailure>().having(
+            (e) => e.toString(),
+            'message',
+            contains('vanished before connect'),
+          ),
+        ),
+      );
+      expect(platform.connectCalls, 2);
+      expect(platform.warmUpCalls, 1);
+    });
+
     test('matches by device id not friendly name', () async {
       final platform = FakeCastPlatform(
         devices: [
@@ -322,6 +411,33 @@ void main() {
           ),
         ),
       );
+    });
+
+    test('refreshes discovery while waiting for MediaRouter', () async {
+      var t = DateTime.utc(2026, 9, 5, 5, 42);
+      var refreshes = 0;
+      var polls = 0;
+      final match = await CastSdkDeviceWait.untilPresent<String>(
+        deviceId: '7ef7209172e05e347c46a3895131452d',
+        devices: () {
+          polls += 1;
+          return refreshes >= 2
+              ? ['7ef7209172e05e347c46a3895131452d']
+              : const <String>[];
+        },
+        idOf: (id) => id,
+        timeout: const Duration(seconds: 10),
+        now: () => t,
+        delay: (_) async {
+          t = t.add(const Duration(seconds: 1));
+        },
+        refresh: () async {
+          refreshes += 1;
+        },
+      );
+      expect(match, '7ef7209172e05e347c46a3895131452d');
+      expect(refreshes, greaterThanOrEqualTo(2));
+      expect(polls, greaterThan(1));
     });
   });
 

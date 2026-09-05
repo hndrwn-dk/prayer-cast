@@ -32,7 +32,6 @@ class _PrayerTrackerPageState extends ConsumerState<PrayerTrackerPage> {
     final isId = Localizations.localeOf(context).languageCode == 'id';
     final dayLabel = _formatToday(isId);
     final title = isId ? 'Catatan sholat' : 'Prayer tracker';
-    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
 
     return Theme(
       data: PrayerCastTheme.forest(),
@@ -66,7 +65,7 @@ class _PrayerTrackerPageState extends ConsumerState<PrayerTrackerPage> {
             data: (saved) {
               final draft = _draft ?? saved;
               return SliverPadding(
-                padding: EdgeInsets.fromLTRB(16, 0, 16, 8 + bottomInset),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     _ReflectionCard(log: draft, isId: isId),

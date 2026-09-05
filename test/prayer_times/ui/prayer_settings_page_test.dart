@@ -675,6 +675,12 @@ final class _FakeExactAlarm implements ExactAlarmPlatform {
     required String body,
   }) async {}
 
+  @override
+  Future<void> markDeliveryReady() async {}
+
+  @override
+  Future<void> acknowledgeAlarmFire() async {}
+
   Future<void> dispose() => _fireController.close();
 }
 

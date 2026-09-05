@@ -104,6 +104,48 @@ void main() {
     },
   );
 
+  test('main paints before bootstrap and recovers hung FGS engine', () {
+    final main = File('lib/main.dart').readAsStringSync();
+    expect(main, isNot(contains('initGoogleCast')));
+    expect(main, contains('unawaited(runtime.coordinator.start())'));
+    expect(main, contains('markDeliveryReady()'));
+    expect(main, contains('_BootSplashApp'));
+    expect(
+      main.indexOf('runApp(const _BootSplashApp())'),
+      lessThan(main.indexOf('openDeliveryDatabase()')),
+    );
+    final runtime = File(
+      'lib/home_delivery/coordinator/home_delivery_runtime.dart',
+    ).readAsStringSync();
+    expect(runtime, isNot(contains('syncTravelLocation(')));
+    expect(runtime, contains('Do not call syncTravelLocation'));
+    final flutter = File(
+      'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/'
+      'PrayerCastFlutter.kt',
+    ).readAsStringSync();
+    expect(flutter, contains('warmCastOffThread'));
+    expect(flutter, contains('engineForActivity'));
+    expect(flutter, contains('discardHungEngine'));
+    expect(flutter, contains('markDeliveryReady'));
+    final activity = File(
+      'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/MainActivity.kt',
+    ).readAsStringSync();
+    expect(activity, contains('engineForActivity()'));
+    expect(activity, isNot(contains('return PrayerCastFlutter.cached()')));
+    // Play Console: enableEdgeToEdge before setContentView (super.onCreate).
+    expect(activity, contains('enableEdgeToEdge('));
+    expect(
+      activity.indexOf('enableEdgeToEdge('),
+      lessThan(activity.indexOf('super.onCreate(savedInstanceState)')),
+    );
+    final exact = File(
+      'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/'
+      'ExactAlarmPlugin.kt',
+    ).readAsStringSync();
+    expect(exact, contains('acknowledgeAlarmFire'));
+    expect(exact, contains('Keep the disk copy until'));
+  });
+
   test('BootReceiver and AlarmHealWorker share healPersistedWake', () {
     final boot = File(
       'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/BootReceiver.kt',

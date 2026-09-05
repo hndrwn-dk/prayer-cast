@@ -391,6 +391,7 @@ class ForestScrollScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final insets = MediaQuery.viewPaddingOf(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: PrayerCastTheme.forestSystemUi,
       child: Scaffold(
@@ -404,9 +405,9 @@ class ForestScrollScaffold extends StatelessWidget {
               slivers: [
                 SliverAppBar(
                   pinned: true,
-                  primary: true,
+                  primary: false,
                   automaticallyImplyLeading: false,
-                  toolbarHeight: toolbarHeight,
+                  toolbarHeight: toolbarHeight + insets.top,
                   backgroundColor: backgroundColor,
                   surfaceTintColor: Colors.transparent,
                   elevation: 0,
@@ -414,13 +415,18 @@ class ForestScrollScaffold extends StatelessWidget {
                   forceMaterialTransparency: false,
                   flexibleSpace: ColoredBox(
                     color: backgroundColor,
-                    child: SafeArea(
-                      bottom: false,
+                    child: Padding(
+                      padding: EdgeInsets.only(top: insets.top),
                       child: header,
                     ),
                   ),
                 ),
                 ...slivers,
+                // SDK 35+ draws under the gesture/nav bar; keep last
+                // content tappable above the inset.
+                SliverPadding(
+                  padding: EdgeInsets.only(bottom: insets.bottom),
+                ),
               ],
             ),
           ],

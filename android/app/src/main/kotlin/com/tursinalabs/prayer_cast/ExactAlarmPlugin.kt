@@ -110,6 +110,15 @@ class ExactAlarmPlugin(
                 TravelLocationStore.disable(context)
                 result.success(null)
             }
+            "markDeliveryReady" -> {
+                PrayerCastFlutter.markDeliveryReady()
+                result.success(null)
+            }
+            "acknowledgeAlarmFire" -> {
+                pendingFire = null
+                clearPersistedPendingFire(context)
+                result.success(null)
+            }
             "getScheduled" -> {
                 val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 if (!prefs.contains(KEY_EPOCH)) {
@@ -164,11 +173,12 @@ class ExactAlarmPlugin(
         eventSink = events
         // Deliver any pending fire that arrived before Dart listened
         // (in-memory, or persisted across a process restart within grace).
+        // Keep the disk copy until [acknowledgeAlarmFire] so a hung FGS
+        // engine can be discarded and a fresh MainActivity engine retries.
         val fire = pendingFire ?: readPersistedPendingFire(context)
         fire?.let {
             events?.success(it)
             pendingFire = null
-            clearPersistedPendingFire(context)
         }
     }
 
@@ -193,7 +203,7 @@ class ExactAlarmPlugin(
         if (sink != null) {
             sink.success(payload)
             pendingFire = null
-            clearPersistedPendingFire(context)
+            // Disk copy stays until acknowledgeAlarmFire.
         } else {
             pendingFire = payload
         }
@@ -239,6 +249,12 @@ class ExactAlarmPlugin(
                 EVENT_CHANNEL,
             ).setStreamHandler(plugin)
             return plugin
+        }
+
+        /** Drop the live plugin when its FlutterEngine is destroyed. */
+        fun detachInstance() {
+            instance = null
+            pendingFire = null
         }
 
         fun emitFromBackground(

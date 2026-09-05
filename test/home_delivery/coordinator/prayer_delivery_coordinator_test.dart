@@ -129,6 +129,14 @@ final class _FakeExactAlarm implements ExactAlarmPlatform {
     required String body,
   }) async {}
 
+  @override
+  Future<void> markDeliveryReady() async {}
+
+  @override
+  Future<void> acknowledgeAlarmFire() async {
+    callOrder.add('acknowledgeAlarmFire');
+  }
+
   void emit(AlarmFiredEvent event) => _fireController.add(event);
 
   Future<void> dispose() async {
@@ -498,7 +506,11 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 10));
     }
 
-    expect(alarm.callOrder, ['scheduleNext', 'stopForegroundService']);
+    expect(alarm.callOrder, [
+      'scheduleNext',
+      'acknowledgeAlarmFire',
+      'stopForegroundService',
+    ]);
   });
 
   test('stopForegroundService still runs when reschedule throws', () async {

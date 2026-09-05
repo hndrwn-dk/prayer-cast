@@ -78,6 +78,12 @@ abstract interface class ExactAlarmPlatform {
     required String body,
   });
 
+  /// Native may reuse this FlutterEngine for MainActivity only after ready.
+  Future<void> markDeliveryReady();
+
+  /// Clear persisted pending fire after Dart finished handling it.
+  Future<void> acknowledgeAlarmFire();
+
   Stream<AlarmFiredEvent> get onFired;
 
   /// User tapped Stop on the phone-adhan notification.
@@ -453,6 +459,48 @@ final class ExactAlarm implements ExactAlarmPlatform {
     } on PlatformException catch (e, st) {
       _logger.warn(
         'showDeliveryFailureNotification failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  @override
+  Future<void> markDeliveryReady() async {
+    try {
+      await _methods.invokeMethod<void>('markDeliveryReady');
+    } on MissingPluginException catch (e, st) {
+      _logger.warn(
+        'markDeliveryReady: exact_alarm plugin missing (no-op)',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'markDeliveryReady failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  @override
+  Future<void> acknowledgeAlarmFire() async {
+    try {
+      await _methods.invokeMethod<void>('acknowledgeAlarmFire');
+    } on MissingPluginException catch (e, st) {
+      _logger.warn(
+        'acknowledgeAlarmFire: exact_alarm plugin missing (no-op)',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'acknowledgeAlarmFire failed',
         tag: 'ExactAlarm',
         error: e,
         stackTrace: st,

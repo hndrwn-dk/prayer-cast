@@ -15,7 +15,6 @@ import 'package:prayer_cast/home_delivery/coordinator/local_prayer_player.dart';
 import 'package:prayer_cast/home_delivery/coordinator/next_prayer_provider.dart';
 import 'package:prayer_cast/home_delivery/coordinator/prayer_delivery_coordinator.dart';
 import 'package:prayer_cast/home_delivery/delivery/cast_client.dart';
-import 'package:prayer_cast/home_delivery/delivery/cast_init.dart';
 import 'package:prayer_cast/home_delivery/logging/delivery_database.dart';
 import 'package:prayer_cast/home_delivery/logging/delivery_database_open.dart';
 import 'package:prayer_cast/home_delivery/platform/exact_alarm.dart';
@@ -55,111 +54,168 @@ import 'package:prayer_cast/qibla/ui/qibla_page.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
-const String kAppVersion = '1.0.14+15';
+const String kAppVersion = '1.0.16+17';
 
 /// Android 13+ [POST_NOTIFICATIONS]. Default true so widget tests stay clean.
 final postNotificationsGrantedProvider = StateProvider<bool>((ref) => true);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  SystemChrome.setSystemUIOverlayStyle(PrayerCastTheme.forestSystemUi);
+
+  // Paint before any await. Headless FGS + notification tap reuse this
+  // engine; if DB/UDP/SystemChrome block before runApp, Android LaunchTheme
+  // never dismisses and pendingFire waits until force-stop (Fajr 2026-09-04).
+  runApp(const _BootSplashApp());
+
   try {
-    await initGoogleCast().timeout(const Duration(seconds: 4));
-  } catch (_) {
-    // GMS / Dynamite can block indefinitely. Home must still paint.
+    final db = await openDeliveryDatabase().timeout(
+      const Duration(seconds: 4),
+    );
+    final docs = await getApplicationDocumentsDirectory().timeout(
+      const Duration(seconds: 3),
+    );
+    final prayerPrefsStore = FilePrayerPrefsStore(
+      File(p.join(docs.path, 'prayer_prefs.txt')),
+    );
+    final localeStore = FileLocaleStore(
+      File(p.join(docs.path, 'app_locale.txt')),
+    );
+    final prayerTrackerStore = FilePrayerTrackerStore(
+      File(p.join(docs.path, 'prayer_tracker.json')),
+    );
+
+    const logger = ConsoleLogger();
+    final nextPrayer = AdhanNextPrayerProvider(
+      store: prayerPrefsStore,
+      scheduleCacheFile: File(p.join(docs.path, 'prayer_schedule_cache.json')),
+    );
+    final onboardingHolder = _OnboardingHolder();
+    final castTesterHolder = _CastTesterHolder();
+    final localPlayerHolder = _LocalPlayerHolder();
+    final presenceHolder = _PresenceHolder();
+    final fingerprintHolder = _FingerprintHolder();
+
+    final appContainer = ProviderContainer(
+      overrides: [
+        deliveryDatabaseProvider.overrideWithValue(db),
+        prayerPrefsStoreProvider.overrideWithValue(prayerPrefsStore),
+        localeStoreProvider.overrideWithValue(localeStore),
+        prayerTrackerStoreProvider.overrideWithValue(prayerTrackerStore),
+        adhanNextPrayerProvider.overrideWithValue(nextPrayer),
+        homeOnboardingProvider.overrideWith((ref) {
+          final onboarding = onboardingHolder.value;
+          if (onboarding == null) {
+            throw StateError('HomeOnboarding not ready');
+          }
+          return onboarding;
+        }),
+        adzanCastTesterProvider.overrideWith((ref) {
+          final tester = castTesterHolder.value;
+          if (tester == null) {
+            throw StateError('AdzanCastTester not ready');
+          }
+          return tester;
+        }),
+        localPrayerPlayerProvider.overrideWith((ref) {
+          final player = localPlayerHolder.value;
+          if (player == null) {
+            throw StateError('LocalPrayerPlayer not ready');
+          }
+          return player;
+        }),
+        presenceServiceProvider.overrideWith((ref) => presenceHolder.value),
+        fingerprintStoreProvider.overrideWith((ref) {
+          final store = fingerprintHolder.value;
+          if (store == null) {
+            throw StateError('FingerprintStore not ready');
+          }
+          return store;
+        }),
+      ],
+    );
+
+    final runtime = await HomeDeliveryRuntime.bootstrap(
+      database: db,
+      nextPrayer: nextPrayer,
+      prayerPrefs: prayerPrefsStore,
+      logger: logger,
+      onPermissionChanged: (granted) {
+        appContainer.read(exactAlarmPermissionGrantedProvider.notifier).state =
+            granted;
+      },
+    ).timeout(const Duration(seconds: 6));
+    onboardingHolder.value = runtime.onboarding;
+    castTesterHolder.value = runtime.castTester;
+    localPlayerHolder.value = runtime.localPlayer;
+    presenceHolder.value = runtime.presence;
+    fingerprintHolder.value = runtime.fingerprintStore;
+
+    // Listen before the real shell so buffered pendingFire is not missed.
+    // Mark delivery ready only after listen is armed — MainActivity may then
+    // reuse this engine; if we never get here, tapping the notif discards it.
+    unawaited(runtime.coordinator.start());
+    unawaited(runtime.exactAlarm.markDeliveryReady());
+    runApp(
+      UncontrolledProviderScope(
+        container: appContainer,
+        child: PrayerCastApp(
+          exactAlarm: runtime.exactAlarm,
+          coordinator: runtime.coordinator,
+        ),
+      ),
+    );
+  } catch (e, st) {
+    debugPrint('PrayerCast boot failed: $e\n$st');
+    runApp(_BootFailedApp(error: '$e'));
   }
 
-  final db = await openDeliveryDatabase();
-  final docs = await getApplicationDocumentsDirectory();
-  final prayerPrefsStore = FilePrayerPrefsStore(
-    File(p.join(docs.path, 'prayer_prefs.txt')),
-  );
-  final localeStore = FileLocaleStore(
-    File(p.join(docs.path, 'app_locale.txt')),
-  );
-  final prayerTrackerStore = FilePrayerTrackerStore(
-    File(p.join(docs.path, 'prayer_tracker.json')),
-  );
+  try {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge)
+        .timeout(const Duration(seconds: 2));
+  } catch (_) {}
+  SystemChrome.setSystemUIOverlayStyle(PrayerCastTheme.forestSystemUi);
+}
 
-  const logger = ConsoleLogger();
-  final nextPrayer = AdhanNextPrayerProvider(
-    store: prayerPrefsStore,
-    scheduleCacheFile: File(p.join(docs.path, 'prayer_schedule_cache.json')),
-  );
-  final onboardingHolder = _OnboardingHolder();
-  final castTesterHolder = _CastTesterHolder();
-  final localPlayerHolder = _LocalPlayerHolder();
-  final presenceHolder = _PresenceHolder();
-  final fingerprintHolder = _FingerprintHolder();
+/// Forest-colored first frame so notification-tap dismisses LaunchTheme
+/// while delivery bootstrap finishes.
+class _BootSplashApp extends StatelessWidget {
+  const _BootSplashApp();
 
-  final appContainer = ProviderContainer(
-    overrides: [
-      deliveryDatabaseProvider.overrideWithValue(db),
-      prayerPrefsStoreProvider.overrideWithValue(prayerPrefsStore),
-      localeStoreProvider.overrideWithValue(localeStore),
-      prayerTrackerStoreProvider.overrideWithValue(prayerTrackerStore),
-      adhanNextPrayerProvider.overrideWithValue(nextPrayer),
-      homeOnboardingProvider.overrideWith((ref) {
-        final onboarding = onboardingHolder.value;
-        if (onboarding == null) {
-          throw StateError('HomeOnboarding not ready');
-        }
-        return onboarding;
-      }),
-      adzanCastTesterProvider.overrideWith((ref) {
-        final tester = castTesterHolder.value;
-        if (tester == null) {
-          throw StateError('AdzanCastTester not ready');
-        }
-        return tester;
-      }),
-      localPrayerPlayerProvider.overrideWith((ref) {
-        final player = localPlayerHolder.value;
-        if (player == null) {
-          throw StateError('LocalPrayerPlayer not ready');
-        }
-        return player;
-      }),
-      presenceServiceProvider.overrideWith((ref) => presenceHolder.value),
-      fingerprintStoreProvider.overrideWith((ref) {
-        final store = fingerprintHolder.value;
-        if (store == null) {
-          throw StateError('FingerprintStore not ready');
-        }
-        return store;
-      }),
-    ],
-  );
-
-  final runtime = await HomeDeliveryRuntime.bootstrap(
-    database: db,
-    nextPrayer: nextPrayer,
-    prayerPrefs: prayerPrefsStore,
-    logger: logger,
-    onPermissionChanged: (granted) {
-      appContainer.read(exactAlarmPermissionGrantedProvider.notifier).state =
-          granted;
-    },
-  );
-  onboardingHolder.value = runtime.onboarding;
-  castTesterHolder.value = runtime.castTester;
-  localPlayerHolder.value = runtime.localPlayer;
-  presenceHolder.value = runtime.presence;
-  fingerprintHolder.value = runtime.fingerprintStore;
-
-  // Listen to onFired before first frame so buffered native pendingFire is kept.
-  await runtime.coordinator.start();
-
-  runApp(
-    UncontrolledProviderScope(
-      container: appContainer,
-      child: PrayerCastApp(
-        exactAlarm: runtime.exactAlarm,
-        coordinator: runtime.coordinator,
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: PrayerCastColors.ink,
+        body: SizedBox.expand(),
       ),
-    ),
-  );
+    );
+  }
+}
+
+class _BootFailedApp extends StatelessWidget {
+  const _BootFailedApp({required this.error});
+
+  final String error;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: PrayerCastColors.ink,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              error,
+              style: const TextStyle(color: PrayerCastColors.mist),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 final class _OnboardingHolder {

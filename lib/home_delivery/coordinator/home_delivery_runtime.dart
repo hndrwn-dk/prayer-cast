@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -75,7 +74,9 @@ final class HomeDeliveryRuntime {
     );
 
     final exactAlarm = ExactAlarm(logger: logger);
-    unawaited(exactAlarm.syncTravelLocation(enabled: false));
+    // Travel GPS is permanently off (native TravelLocationStore.disable).
+    // Do not call syncTravelLocation here — WorkManager on the platform
+    // thread during headless boot can stall the isolate before runApp.
     final scheduler = const WallScheduler();
     final browser = NsdMdnsBrowser(logger: logger);
     final lanFingerprint = LanFingerprint(
@@ -91,7 +92,9 @@ final class HomeDeliveryRuntime {
     );
     final identity = DeviceIdentity(store: deviceIdStore, logger: logger);
     final discovery = NsdAdzanDiscovery(logger: logger);
-    final transport = await UdpUnicastTransport.bind(logger: logger);
+    final transport = await UdpUnicastTransport.bind(logger: logger).timeout(
+      const Duration(seconds: 2),
+    );
     final castPlatform = FlutterCastPlatform(logger: logger);
     final castClient = CastClient(platform: castPlatform, logger: logger);
     final audioLoader = AssetAdzanAudioLoader(logger: logger);

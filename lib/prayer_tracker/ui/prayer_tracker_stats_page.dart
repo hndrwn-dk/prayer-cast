@@ -12,7 +12,6 @@ class PrayerTrackerStatsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isId = Localizations.localeOf(context).languageCode == 'id';
-    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
     return Theme(
       data: PrayerCastTheme.forest(),
       child: ForestScrollScaffold(
@@ -25,7 +24,7 @@ class PrayerTrackerStatsPage extends StatelessWidget {
         ),
         slivers: [
           SliverPadding(
-            padding: EdgeInsets.fromLTRB(20, 0, 20, 24 + bottomInset),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 PrayerTrackerInsights(isId: isId),

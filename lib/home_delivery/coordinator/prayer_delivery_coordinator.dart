@@ -357,6 +357,7 @@ final class PrayerDeliveryCoordinator {
     } finally {
       // 3) Always release FGS locks — even if delivery or reschedule threw.
       _handling = false;
+      await _exactAlarm.acknowledgeAlarmFire();
       await _exactAlarm.stopForegroundService();
     }
   }

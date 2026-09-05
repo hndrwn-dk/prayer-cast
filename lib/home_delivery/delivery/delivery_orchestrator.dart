@@ -241,7 +241,7 @@ final class DeliveryOrchestrator {
         onPrepare: () async {
           final receiver = await _cast.connectById(
             request.homeCastDeviceId,
-            budget: const Duration(seconds: 12),
+            budget: const Duration(seconds: 20),
           );
           targetId = receiver.deviceId;
           targetName = receiver.friendlyName;

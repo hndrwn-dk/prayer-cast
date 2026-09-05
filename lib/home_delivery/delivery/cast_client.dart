@@ -108,11 +108,32 @@ final class CastDiscoveryPolicy {
   }
 }
 
+/// Cast SDK id → friendly name.
+///
+/// [GoogleCastDiscoveryManager.devicesStream] does not replay the current
+/// list. After [warmUp] starts discovery at T−120, connect at T−20 must
+/// seed from the snapshot or it waits the full budget for an emission
+/// that never comes (Isha 2026-09-03 FAILED_NO_TARGET while Home / NSD
+/// still showed the saved speaker).
+abstract final class CastSdkDeviceMap {
+  static void put(
+    Map<String, String> into, {
+    required String deviceId,
+    required String friendlyName,
+  }) {
+    if (deviceId.isEmpty) return;
+    into[deviceId] = friendlyName;
+  }
+}
+
 /// MediaRouter can lag NSD at cold wake. Fajr 2026-08-14: mDNS had the
 /// Bedroom speaker (Signal A HOME) but `devices` was empty at connect.
+/// Fajr 2026-09-05: discover returned an NSD-only id, then connect threw
+/// "vanished before connect" — refresh discovery while waiting.
 final class CastSdkDeviceWait {
   static const Duration timeout = Duration(seconds: 12);
   static const Duration poll = Duration(milliseconds: 250);
+  static const Duration refreshEvery = Duration(seconds: 2);
 
   static Future<T> untilPresent<T>({
     required String deviceId,
@@ -122,10 +143,12 @@ final class CastSdkDeviceWait {
     Duration poll = CastSdkDeviceWait.poll,
     DateTime Function()? now,
     Future<void> Function(Duration delay)? delay,
+    Future<void> Function()? refresh,
   }) async {
     final clock = now ?? DateTime.now;
     final sleep = delay ?? Future<void>.delayed;
     final deadline = clock().add(timeout);
+    var lastRefresh = clock().subtract(refreshEvery);
     while (true) {
       for (final device in devices()) {
         if (idOf(device) == deviceId) return device;
@@ -134,6 +157,13 @@ final class CastSdkDeviceWait {
         throw CastConnectFailure(
           'Device $deviceId vanished before connect',
         );
+      }
+      if (refresh != null &&
+          !clock().isBefore(lastRefresh.add(refreshEvery))) {
+        lastRefresh = clock();
+        try {
+          await refresh();
+        } catch (_) {}
       }
       await sleep(poll);
     }
@@ -154,11 +184,12 @@ final class CastLoadReadiness {
 
 /// Native startSession returns true on MediaRouter.selectRoute. The Cast
 /// session often has not connected yet — CastSession.<init> plus GMS
-/// DynamiteModulesC load (group speakers) can take longer than one 20s wait.
-/// Retry startSession once without ending the in-flight session.
+/// DynamiteModulesC load (group speakers / cold Fajr) can take longer than
+/// one short wait. Retry startSession once without ending the in-flight
+/// session; second wait is longer for Dynamite.
 final class CastSessionConnect {
-  static const Duration firstWait = Duration(seconds: 10);
-  static const Duration retryWait = Duration(seconds: 25);
+  static const Duration firstWait = Duration(seconds: 20);
+  static const Duration retryWait = Duration(seconds: 40);
 
   static Future<void> run({
     required Future<bool> Function() startSession,
@@ -221,41 +252,63 @@ final class CastClient {
   Future<void> warmUp() => _platform.warmUp();
 
   /// Discover and connect to the saved Cast [deviceId].
+  ///
+  /// Retries once after [warmUp] when MediaRouter drops the device between
+  /// discover and startSession (Fajr 2026-09-05: "vanished before connect"
+  /// while Dhuhr later PLAYED).
   Future<CastReceiver> connectById(
     String deviceId, {
     Duration budget = const Duration(seconds: 12),
   }) async {
-    final found = await _platform.discover(
-      budget: budget,
-      matchId: deviceId,
-    );
-    CastReceiver? match;
-    for (final device in found) {
-      if (device.deviceId == deviceId) {
-        match = device;
-        break;
+    CastConnectFailure? lastConnect;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) {
+        _logger.warn(
+          'connectById retry after MediaRouter miss for $deviceId',
+          tag: 'CastClient',
+        );
+        await warmUp();
+      }
+      final found = await _platform.discover(
+        budget: attempt == 0 ? budget : budget + const Duration(seconds: 8),
+        matchId: deviceId,
+      );
+      CastReceiver? match;
+      for (final device in found) {
+        if (device.deviceId == deviceId) {
+          match = device;
+          break;
+        }
+      }
+      if (match == null) {
+        throw CastTargetMissingFailure(
+          'Saved Cast device id $deviceId not discoverable',
+        );
+      }
+
+      try {
+        await _platform.connect(match);
+        _connected = match;
+        return match;
+      } on CastConnectFailure catch (e, st) {
+        lastConnect = e;
+        _logger.warn(
+          'Cast connect attempt ${attempt + 1} failed: $e',
+          tag: 'CastClient',
+          error: e,
+          stackTrace: st,
+        );
+      } catch (e, st) {
+        _logger.error(
+          'Cast connect failed',
+          tag: 'CastClient',
+          error: e,
+          stackTrace: st,
+        );
+        throw CastConnectFailure('Connect failed: $e', cause: e);
       }
     }
-    if (match == null) {
-      throw CastTargetMissingFailure(
-        'Saved Cast device id $deviceId not discoverable',
-      );
-    }
-
-    try {
-      await _platform.connect(match);
-    } catch (e, st) {
-      if (e is CastConnectFailure) rethrow;
-      _logger.error(
-        'Cast connect failed',
-        tag: 'CastClient',
-        error: e,
-        stackTrace: st,
-      );
-      throw CastConnectFailure('Connect failed: $e', cause: e);
-    }
-    _connected = match;
-    return match;
+    throw lastConnect!;
   }
 
   /// Keep the speaker's current volume when it is already audible.
@@ -428,6 +481,7 @@ final class FlutterCastPlatform implements CastPlatform {
     required Duration budget,
     String? matchId,
   }) async {
+    await _ensureCastContext();
     final hostsById = <String, InternetAddress>{};
     final discovery = cast.GoogleCastDiscoveryManager.instance;
     try {
@@ -443,11 +497,18 @@ final class FlutterCastPlatform implements CastPlatform {
     }
 
     final sdkDevices = <String, String>{};
-    final sub = discovery.devicesStream.listen((devices) {
+    void ingestSdk(Iterable devices) {
       for (final d in devices) {
-        sdkDevices[d.deviceID] = d.friendlyName;
+        CastSdkDeviceMap.put(
+          sdkDevices,
+          deviceId: d.deviceID,
+          friendlyName: d.friendlyName,
+        );
       }
-    });
+    }
+
+    ingestSdk(discovery.devices);
+    final sub = discovery.devicesStream.listen(ingestSdk);
 
     nsd.Discovery? nsdDiscovery;
     try {
@@ -486,15 +547,36 @@ final class FlutterCastPlatform implements CastPlatform {
       );
     }
 
-    // NSD + SDK in parallel. Early-exit only when the Cast SDK has sighted
-    // [matchId] — an NSD TXT/A-record can be spoofed on the LAN.
+    // NSD + SDK in parallel. Re-read discovery.devices every tick — the
+    // stream does not always emit when MediaRouter updates in place
+    // (Dhuhr 2026-09-04). Early-exit when the Cast SDK has sighted
+    // [matchId] — an NSD TXT/A-record alone can be spoofed on the LAN.
     final deadline = DateTime.now().add(budget);
+    var restartedForNsdHit = false;
     while (DateTime.now().isBefore(deadline)) {
+      ingestSdk(discovery.devices);
       if (CastDiscoveryPolicy.sdkConfirmedMatch(
         matchId: matchId,
         sdkDeviceIds: sdkDevices.keys,
       )) {
         break;
+      }
+      // NSD already sees the saved id but SDK is empty — kick MediaRouter
+      // once and keep waiting until the original deadline.
+      if (!restartedForNsdHit &&
+          matchId != null &&
+          matchId.isNotEmpty &&
+          hostsById.containsKey(matchId) &&
+          !sdkDevices.containsKey(matchId)) {
+        restartedForNsdHit = true;
+        _logger.warn(
+          'NSD saw $matchId but Cast SDK empty — restarting discovery',
+          tag: 'FlutterCastPlatform',
+        );
+        try {
+          await discovery.startDiscovery();
+        } catch (_) {}
+        ingestSdk(discovery.devices);
       }
       await Future<void>.delayed(const Duration(milliseconds: 250));
     }
@@ -509,6 +591,7 @@ final class FlutterCastPlatform implements CastPlatform {
       } catch (_) {}
     }
 
+    ingestSdk(discovery.devices);
     final seen = <String, CastReceiver>{};
     for (final entry in sdkDevices.entries) {
       // NSD host is a hint only — InterfaceSelector must not fail closed
@@ -520,8 +603,7 @@ final class FlutterCastPlatform implements CastPlatform {
         host: host,
       );
     }
-    // Speaker-scan UI may still list NSD-only sightings. Scheduled
-    // connectById (matchId set) requires an SDK-confirmed device.
+    // Speaker-scan UI may still list NSD-only sightings.
     if (matchId == null) {
       for (final entry in hostsById.entries) {
         seen.putIfAbsent(
@@ -533,6 +615,19 @@ final class FlutterCastPlatform implements CastPlatform {
           ),
         );
       }
+    } else if (!seen.containsKey(matchId) && hostsById.containsKey(matchId)) {
+      // Scheduled connect: do not fail CLOSED before CastSdkDeviceWait —
+      // HOME/Signal A already trusted this id on NSD; give connect() more
+      // time for MediaRouter to catch up.
+      _logger.warn(
+        'Returning NSD-only sighting for $matchId so connect can wait on SDK',
+        tag: 'FlutterCastPlatform',
+      );
+      seen[matchId] = CastReceiver(
+        deviceId: matchId,
+        friendlyName: matchId,
+        host: hostsById[matchId]!,
+      );
     }
     return seen.values.toList(growable: false);
   }
@@ -560,10 +655,18 @@ final class FlutterCastPlatform implements CastPlatform {
     } catch (_) {}
 
     final discovery = cast.GoogleCastDiscoveryManager.instance;
+    // Cold Fajr: NSD may have returned the id while MediaRouter is still
+    // empty — keep restarting discovery until the SDK lists the device.
     final match = await CastSdkDeviceWait.untilPresent(
       deviceId: receiver.deviceId,
       devices: () => discovery.devices,
       idOf: (d) => d.deviceID,
+      timeout: const Duration(seconds: 40),
+      refresh: () async {
+        try {
+          await discovery.startDiscovery();
+        } catch (_) {}
+      },
     );
     final mgr = cast.GoogleCastSessionManager.instance;
     await CastSessionConnect.run(
@@ -639,12 +742,23 @@ final class FlutterCastPlatform implements CastPlatform {
   }
 
   Future<void> _ensureCastContext() async {
+    // Native getSharedInstance warms GMS Dynamite off the UI isolate.
+    // Do not skip Dart setSharedInstanceWithOptions when native succeeds:
+    // the plugin's devicesStream is empty until the Dart Cast context exists
+    // (Isha 2026-09-03 after Kotlin warm-up returned true first).
     try {
-      final ok =
-          await _mediaReadyChannel.invokeMethod<bool>('ensureCastContext');
-      if (ok == true) return;
+      await _mediaReadyChannel
+          .invokeMethod<bool>('ensureCastContext')
+          .timeout(const Duration(seconds: 8));
     } on MissingPluginException {
-      return;
+      // Tests / iOS.
+    } on TimeoutException catch (e, st) {
+      _logger.warn(
+        'ensureCastContext timed out',
+        tag: 'FlutterCastPlatform',
+        error: e,
+        stackTrace: st,
+      );
     } on PlatformException catch (e, st) {
       _logger.warn(
         'ensureCastContext failed',
@@ -654,7 +768,7 @@ final class FlutterCastPlatform implements CastPlatform {
       );
     }
     try {
-      await initGoogleCast();
+      await initGoogleCast().timeout(const Duration(seconds: 4));
     } catch (e, st) {
       _logger.warn(
         'initGoogleCast during connect failed',
