@@ -114,9 +114,48 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.getRect(find.text('Title')).top, greaterThanOrEqualTo(40));
+    // 48 nav inset + 16 breathing room from ForestScrollScaffold.
     expect(
       tester.getRect(find.text('Tail')).bottom,
       lessThanOrEqualTo(800 - 48),
+    );
+  });
+
+  testWidgets('ForestScrollScaffold clears last content above 3-button nav', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    // Simulate padding already consumed (viewPadding only) — Pixel edge-to-edge.
+    tester.view.padding = FakeViewPadding.zero;
+    tester.view.viewPadding = const FakeViewPadding(top: 40, bottom: 72);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPadding);
+    addTearDown(tester.view.resetViewPadding);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ForestScrollScaffold(
+          header: Text('Title'),
+          slivers: [
+            SliverToBoxAdapter(child: Text('Qadha')),
+            SliverToBoxAdapter(child: Text('No outstanding qadha.')),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('No outstanding qadha.'),
+      40,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getRect(find.text('No outstanding qadha.')).bottom,
+      lessThanOrEqualTo(800 - 72),
     );
   });
 }

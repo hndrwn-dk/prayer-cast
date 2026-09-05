@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -391,7 +393,14 @@ class ForestScrollScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final insets = MediaQuery.viewPaddingOf(context);
+    // Prefer the outer MediaQuery (before Scaffold body remaps padding).
+    // Edge-to-edge: viewPadding is authoritative; fall back to padding when
+    // a parent already consumed part of the inset (Pixel 3-button nav).
+    final mq = MediaQuery.of(context);
+    final topInset = math.max(mq.viewPadding.top, mq.padding.top);
+    final bottomInset = math.max(mq.viewPadding.bottom, mq.padding.bottom);
+    // Extra air so the last card clears the translucent nav scrim.
+    const bottomExtra = 16.0;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: PrayerCastTheme.forestSystemUi,
       child: Scaffold(
@@ -407,7 +416,7 @@ class ForestScrollScaffold extends StatelessWidget {
                   pinned: true,
                   primary: false,
                   automaticallyImplyLeading: false,
-                  toolbarHeight: toolbarHeight + insets.top,
+                  toolbarHeight: toolbarHeight + topInset,
                   backgroundColor: backgroundColor,
                   surfaceTintColor: Colors.transparent,
                   elevation: 0,
@@ -416,16 +425,14 @@ class ForestScrollScaffold extends StatelessWidget {
                   flexibleSpace: ColoredBox(
                     color: backgroundColor,
                     child: Padding(
-                      padding: EdgeInsets.only(top: insets.top),
+                      padding: EdgeInsets.only(top: topInset),
                       child: header,
                     ),
                   ),
                 ),
                 ...slivers,
-                // SDK 35+ draws under the gesture/nav bar; keep last
-                // content tappable above the inset.
-                SliverPadding(
-                  padding: EdgeInsets.only(bottom: insets.bottom),
+                SliverToBoxAdapter(
+                  child: SizedBox(height: bottomInset + bottomExtra),
                 ),
               ],
             ),
@@ -455,7 +462,13 @@ class ForestScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final insets = MediaQuery.viewPaddingOf(context);
+    final mq = MediaQuery.of(context);
+    final insets = EdgeInsets.only(
+      top: math.max(mq.viewPadding.top, mq.padding.top),
+      bottom: math.max(mq.viewPadding.bottom, mq.padding.bottom),
+      left: math.max(mq.viewPadding.left, mq.padding.left),
+      right: math.max(mq.viewPadding.right, mq.padding.right),
+    );
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: PrayerCastTheme.forestSystemUi,
       child: Scaffold(
@@ -465,12 +478,7 @@ class ForestScaffold extends StatelessWidget {
           children: [
             if (wash) const CrescentField(),
             Padding(
-              padding: EdgeInsets.only(
-                top: insets.top,
-                bottom: insets.bottom,
-                left: insets.left,
-                right: insets.right,
-              ),
+              padding: insets,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

@@ -104,6 +104,41 @@ void main() {
     },
   );
 
+  test('Android themes omit deprecated Android 15 edge-to-edge window attrs', () {
+    for (final relative in [
+      'android/app/src/main/res/values/styles.xml',
+      'android/app/src/main/res/values-night/styles.xml',
+      'android/app/src/main/res/values-v31/styles.xml',
+      'android/app/src/main/res/values-night-v31/styles.xml',
+    ]) {
+      final xml = File(relative).readAsStringSync();
+      expect(
+        xml,
+        isNot(contains('name="android:statusBarColor"')),
+      );
+      expect(
+        xml,
+        isNot(contains('name="android:navigationBarColor"')),
+      );
+      expect(
+        xml,
+        isNot(contains('windowLayoutInDisplayCutoutMode')),
+      );
+    }
+    final theme = File(
+      'lib/home_delivery/ui/theme/prayer_cast_theme.dart',
+    ).readAsStringSync();
+    expect(theme, contains('forestSystemUi'));
+    expect(theme, isNot(contains('statusBarColor:')));
+    expect(theme, isNot(contains('systemNavigationBarColor:')));
+    expect(theme, isNot(contains('systemNavigationBarDividerColor:')));
+    final activity = File(
+      'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/MainActivity.kt',
+    ).readAsStringSync();
+    expect(activity, contains('enableEdgeToEdge()'));
+    expect(activity, isNot(contains('Color.TRANSPARENT')));
+  });
+
   test('main paints before bootstrap and recovers hung FGS engine', () {
     final main = File('lib/main.dart').readAsStringSync();
     expect(main, isNot(contains('initGoogleCast')));

@@ -19,12 +19,15 @@ abstract final class PrayerCastTheme {
   static const double cardHairline = 1.35;
 
   /// Light icons on transparent bars so forest chrome can draw behind them.
+  ///
+  /// Do not set statusBarColor / systemNavigationBarColor /
+  /// systemNavigationBarDividerColor — Flutter's PlatformPlugin maps those
+  /// to Window.setStatusBarColor / setNavigationBarColor, which Play Console
+  /// flags as deprecated on Android 15+. Icon brightness + contrast flags
+  /// are enough with MainActivity.enableEdgeToEdge().
   static const SystemUiOverlayStyle forestSystemUi = SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
     statusBarBrightness: Brightness.dark,
-    systemNavigationBarColor: Colors.transparent,
-    systemNavigationBarDividerColor: Colors.transparent,
     systemNavigationBarIconBrightness: Brightness.light,
     systemNavigationBarContrastEnforced: false,
     systemStatusBarContrastEnforced: false,

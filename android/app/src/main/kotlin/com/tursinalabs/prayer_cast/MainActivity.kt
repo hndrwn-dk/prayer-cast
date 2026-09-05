@@ -2,22 +2,19 @@ package com.tursinalabs.prayer_cast
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 
 class MainActivity : FlutterFragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Before setContentView (super.onCreate). Required for pre-Android 15
-        // parity; Android 15+ (targetSdk 35+) enforces edge-to-edge anyway.
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-        )
+        // Before setContentView (super.onCreate). Uses androidx EdgeToEdge so
+        // pre-Android 15 matches Android 15+'s enforced edge-to-edge. Prefer
+        // the default call (no custom scrim colors) so we do not add extra
+        // Window status/nav color setters from SystemBarStyle.
+        enableEdgeToEdge()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
