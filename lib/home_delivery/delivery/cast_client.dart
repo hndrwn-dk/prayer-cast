@@ -311,30 +311,18 @@ final class CastClient {
     throw lastConnect!;
   }
 
-  /// Keep the speaker's current volume when it is already audible.
+  /// Apply [playbackVolume] on the receiver, saving the prior level to restore.
   ///
-  /// [playbackVolume] is only applied if the receiver is muted (0). The
-  /// 00:41 dry-run logged `0.18 → 0.7` because we always forced the
-  /// hardcoded default — the user's 18% became a loud adhan.
-  ///
-  /// Waits for the media client first — setVolume on a group before
-  /// RemoteMediaClient exists is a no-op.
+  /// Always sets the requested level (user opted into per-prayer volume).
+  /// Callers that want "leave speaker alone" must not invoke this method.
   Future<void> applyPlaybackVolume(double playbackVolume) async {
     await _platform.waitUntilReady();
     final current = await _platform.getVolume();
     _savedVolume = current;
-    if (current > 0.0) {
-      _playbackVolume = current.clamp(0.0, 1.0);
-      _logger.info(
-        'Volume keep $current (skip boost to $playbackVolume)',
-        tag: 'CastClient',
-      );
-      return;
-    }
     _playbackVolume = playbackVolume.clamp(0.0, 1.0);
     await _platform.setVolume(_playbackVolume!);
     _logger.info(
-      'Volume $current → $_playbackVolume (was muted)',
+      'Volume $current → $_playbackVolume',
       tag: 'CastClient',
     );
   }

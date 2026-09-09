@@ -19,6 +19,7 @@ import '../presence/presence_service.dart';
 import '../presence/presence_state.dart';
 import 'cast_client.dart';
 import 'delivery_timing.dart';
+import 'hero_hold_timing.dart';
 import 'interface_selector.dart';
 import 'media_server.dart';
 
@@ -30,8 +31,8 @@ final class DeliveryRequest {
     required this.voiceId,
     required this.audioBytes,
     required this.homeCastDeviceId,
-    required this.playbackVolume,
     required this.deviceConditions,
+    this.playbackVolume,
     this.contentType = 'audio/mpeg',
     this.mediaExtension = 'mp3',
     this.firedAt,
@@ -44,7 +45,9 @@ final class DeliveryRequest {
   final String contentType;
   final String mediaExtension;
   final String homeCastDeviceId;
-  final double playbackVolume;
+
+  /// When null, leave the speaker volume untouched (user did not opt in).
+  final double? playbackVolume;
   final DeviceConditions deviceConditions;
 
   /// When the alarm actually fired. Defaults to scheduler.now() if null.
@@ -67,6 +70,12 @@ final class DeliveryOrchestrator {
     required InterfaceSelector interfaces,
     required DeliveryLogDao logDao,
     required Scheduler scheduler,
+    void Function({
+      required String prayerName,
+      required DateTime scheduledAzan,
+      required String voiceId,
+    })? onHeroHoldBegin,
+    void Function()? onHeroHoldEnd,
     HomeDeliveryLogger logger = const SilentLogger(),
     Duration playbackConfirmTimeout = const Duration(seconds: 20),
   })  : _presence = presence,
@@ -78,6 +87,8 @@ final class DeliveryOrchestrator {
         _interfaces = interfaces,
         _logDao = logDao,
         _scheduler = scheduler,
+        _onHeroHoldBegin = onHeroHoldBegin,
+        _onHeroHoldEnd = onHeroHoldEnd,
         _logger = logger,
         _playbackConfirmTimeout = playbackConfirmTimeout;
 
@@ -100,6 +111,12 @@ final class DeliveryOrchestrator {
   final InterfaceSelector _interfaces;
   final DeliveryLogDao _logDao;
   final Scheduler _scheduler;
+  final void Function({
+    required String prayerName,
+    required DateTime scheduledAzan,
+    required String voiceId,
+  })? _onHeroHoldBegin;
+  final void Function()? _onHeroHoldEnd;
   final HomeDeliveryLogger _logger;
 
   /// How long onLead waits for PLAYING (or a media-server fetch) before
@@ -260,7 +277,10 @@ final class DeliveryOrchestrator {
           _mediaServer = server;
           _armMediaLifetime(scheduled);
 
-          await _cast.applyPlaybackVolume(request.playbackVolume);
+          final volume = request.playbackVolume;
+          if (volume != null) {
+            await _cast.applyPlaybackVolume(volume);
+          }
         },
         onLead: () async {
           final server = _mediaServer;
@@ -283,8 +303,10 @@ final class DeliveryOrchestrator {
           final failed = _cast.playbackEvents.firstWhere(
             (e) => e == CastPlaybackEvent.error,
           );
-          // Re-apply volume after media client is ready (same as test button).
-          await _cast.applyPlaybackVolume(request.playbackVolume);
+          final volume = request.playbackVolume;
+          if (volume != null) {
+            await _cast.applyPlaybackVolume(volume);
+          }
           final loadStarted = _scheduler.now();
           final deadline = loadStarted.add(_playbackConfirmTimeout);
           Object? outcome;
@@ -335,6 +357,14 @@ final class DeliveryOrchestrator {
       if (electionResult.outcome != Outcome.played) {
         await _teardownCastAndServer();
       } else {
+        // Hold hero for the prayer this device is casting. Begin here (not
+        // only on PLAYING) so open-app-during-adhan still sees the hold even
+        // when the receiver only reported a media fetch.
+        _onHeroHoldBegin?.call(
+          prayerName: request.prayerName,
+          scheduledAzan: request.scheduledAzan,
+          voiceId: request.voiceId,
+        );
         // Playback continues on the receiver. Keep HTTP up like the test
         // button (6 min). Do not endSession — that stops casting.
         unawaited(_watchPlaybackLifetime());
@@ -368,6 +398,7 @@ final class DeliveryOrchestrator {
             electionResult.role != ElectionRole.follower,
       );
     } on OutcomeException catch (e) {
+      _onHeroHoldEnd?.call();
       await _teardownCastAndServer();
       return _finish(
         request: request,
@@ -382,6 +413,7 @@ final class DeliveryOrchestrator {
         targetName: targetName,
       );
     } catch (e, st) {
+      _onHeroHoldEnd?.call();
       _logger.error(
         'Delivery failed',
         tag: 'DeliveryOrchestrator',
@@ -451,12 +483,26 @@ final class DeliveryOrchestrator {
   }
 
   Future<void> _watchPlaybackLifetime() async {
+    final holdStarted = _scheduler.now();
     try {
-      await _cast.playbackEvents
-          .firstWhere((e) => e == CastPlaybackEvent.finished)
-          .timeout(mediaServerMaxLifetime);
+      while (true) {
+        final remaining = mediaServerMaxLifetime -
+            _scheduler.now().difference(holdStarted);
+        if (remaining <= Duration.zero) break;
+        await _cast.playbackEvents
+            .firstWhere((e) => e == CastPlaybackEvent.finished)
+            .timeout(remaining);
+        if (shouldEndHeroHoldOnFinished(
+          elapsedSinceHoldBegan: _scheduler.now().difference(holdStarted),
+        )) {
+          break;
+        }
+        // Spurious early finished — keep holding while audio likely continues.
+      }
     } catch (_) {
       // Timeout, IDLE-only devices, or stream closed — leave session up.
+    } finally {
+      _onHeroHoldEnd?.call();
     }
     await _cast.restoreVolume();
     await _stopMediaServer();
@@ -533,6 +579,7 @@ final class DeliveryOrchestrator {
       outcome: outcome,
       role: role,
       detail: detail,
+      presenceState: presence?.state.name.toUpperCase(),
     );
   }
 
@@ -555,10 +602,14 @@ final class DeliveryAttemptResult {
     required this.outcome,
     required this.role,
     this.detail,
+    this.presenceState,
   });
 
   final String sessionId;
   final Outcome outcome;
   final String? role;
   final String? detail;
+
+  /// Wire presence at attempt time (`HOME` / `AWAY` / `UNKNOWN`), if known.
+  final String? presenceState;
 }

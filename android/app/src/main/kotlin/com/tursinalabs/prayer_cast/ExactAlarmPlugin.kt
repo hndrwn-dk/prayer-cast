@@ -155,6 +155,32 @@ class ExactAlarmPlugin(
                 PrePrayerAlert.cancel(context)
                 result.success(null)
             }
+            "scheduleIqamahReminder" -> {
+                val epochMs = call.argument<Number>("epochMs")?.toLong()
+                val title = call.argument<String>("title")
+                val body = call.argument<String>("body")
+                val prayer = call.argument<String>("prayer") ?: ""
+                val sound = call.argument<String>("sound") ?: "chime"
+                if (epochMs == null || title == null || body == null) {
+                    result.error("bad_args", "epochMs, title, and body required", null)
+                    return
+                }
+                try {
+                    IqamahAlert.schedule(context, epochMs, title, body, prayer, sound)
+                    result.success(null)
+                } catch (e: SecurityException) {
+                    result.error("no_permission", e.message, null)
+                } catch (e: Exception) {
+                    result.error("schedule_failed", e.message, null)
+                }
+            }
+            "cancelIqamahReminder" -> {
+                IqamahAlert.cancel(context)
+                result.success(null)
+            }
+            "drainPendingIqamahLogs" -> {
+                result.success(IqamahAlert.drainPendingChimeLogs(context))
+            }
             "showDeliveryFailureNotification" -> {
                 val title = call.argument<String>("title")
                 val body = call.argument<String>("body")

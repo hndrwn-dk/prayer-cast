@@ -120,9 +120,11 @@ void main() {
       'fajr=fajr_adhan\n1.3\n103.8\n',
     );
     final read = await FilePrayerPrefsStore(file).read();
-    expect(read.deliveryByPrayer, isEmpty);
+    expect(read.defaultsMigrated, isTrue);
+    expect(read.defaultDeliveryMode, PrayerDeliveryMode.cast);
     for (final prayer in const ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']) {
       expect(read.deliveryFor(prayer), PrayerDeliveryMode.cast);
+      expect(read.hasDeliveryOverride(prayer), isTrue);
     }
   });
 
@@ -215,5 +217,86 @@ void main() {
     expect(read.prePrayerAlertSound, PrePrayerAlertSound.takbir);
     expect(read.deliveryFor('fajr'), PrayerDeliveryMode.takbir);
     expect(read.prePrayerAlertMinutes, 10);
+  });
+
+  test('pre-volume-feature prefs migrate to null volume for all prayers',
+      () async {
+    final dir = await Directory.systemTemp.createTemp('prayer_prefs_novol_');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/prefs.txt');
+    // Snapshot without volumes line (15) — existing installs before Task 2.
+    await file.writeAsString(
+      'Singapore\nSingapore\n11\nshafi\nstandard_adhan\n1\n'
+      'fajr=fajr_adhan,dhuhr=standard_adhan\n'
+      '1.3\n103.8\n'
+      'fajr=cast\n'
+      '\n'
+      '0\n'
+      '0\n'
+      'beep\n'
+      '1\n',
+    );
+    final read = await FilePrayerPrefsStore(file).read();
+    for (final prayer in ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']) {
+      expect(read.volumeFor(prayer), isNull, reason: prayer);
+    }
+  });
+
+  test('FilePrayerPrefsStore round-trips opted-in volumes', () async {
+    final dir = await Directory.systemTemp.createTemp('prayer_prefs_vol_');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/prefs.txt');
+    final store = FilePrayerPrefsStore(file);
+    await store.write(
+      PrayerPrefs.defaults.copyWith(
+        configured: true,
+        volumesByPrayer: {'fajr': 0.4, 'maghrib': 0.8},
+      ),
+    );
+    final read = await store.read();
+    expect(read.volumeFor('fajr'), closeTo(0.4, 0.001));
+    expect(read.volumeFor('maghrib'), closeTo(0.8, 0.001));
+    expect(read.volumeFor('dhuhr'), isNull);
+  });
+
+  test('defaults migration keeps every prayer effective delivery and voice',
+      () async {
+    final dir = await Directory.systemTemp.createTemp('prayer_prefs_mig_');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/prefs.txt');
+    // Pre-migration snapshot: mixed deliveries, no defaultDelivery / migrated lines.
+    await file.writeAsString(
+      'Singapore\nSingapore\n11\nshafi\nstandard_adhan\n1\n'
+      'fajr=fajr_adhan,dhuhr=makkah,asr=standard_adhan,'
+      'maghrib=standard_adhan,isha=standard_adhan\n'
+      '1.3\n103.8\n'
+      'fajr=beep,dhuhr=cast,asr=cast,maghrib=takbir,isha=cast\n'
+      '\n'
+      '0\n'
+      '0\n'
+      'beep\n'
+      '1\n',
+    );
+
+    final before = await FilePrayerPrefsStore(file).read();
+    // Force re-read of raw then migrate via helper for baseline capture:
+    // File store already migrates — snapshot effective values.
+    final effectiveDelivery = {
+      for (final p in PrayerPrefs.prayerKeys) p: before.deliveryFor(p),
+    };
+    final effectiveVoice = {
+      for (final p in PrayerPrefs.prayerKeys) p: before.voiceFor(p),
+    };
+
+    expect(before.defaultsMigrated, isTrue);
+    expect(before.defaultDeliveryMode, PrayerDeliveryMode.cast);
+    for (final p in PrayerPrefs.prayerKeys) {
+      expect(before.deliveryFor(p), effectiveDelivery[p], reason: p);
+      expect(before.voiceFor(p), effectiveVoice[p], reason: p);
+      expect(before.hasDeliveryOverride(p), isTrue, reason: p);
+    }
+    expect(before.deliveryFor('fajr'), PrayerDeliveryMode.beep);
+    expect(before.deliveryFor('maghrib'), PrayerDeliveryMode.takbir);
+    expect(before.voiceFor('dhuhr'), 'makkah');
   });
 }

@@ -40,7 +40,7 @@ class QiblaCompassDial extends StatelessWidget {
               angle: roseTurn,
               child: CustomPaint(
                 size: Size.square(size),
-                painter: _RosePainter(isId: isId),
+                painter: _RosePainter(isId: isId, roseTurn: roseTurn),
               ),
             ),
             Transform.rotate(
@@ -62,9 +62,13 @@ class QiblaCompassDial extends StatelessWidget {
 }
 
 class _RosePainter extends CustomPainter {
-  const _RosePainter({required this.isId});
+  const _RosePainter({required this.isId, required this.roseTurn});
 
   final bool isId;
+
+  /// Rotation already applied to the whole rose, in radians. Glyphs are
+  /// counter-rotated by it so N/E/S/W stay upright and readable.
+  final double roseTurn;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -117,13 +121,17 @@ class _RosePainter extends CustomPainter {
         ),
       );
       tp.layout();
-      tp.paint(canvas, pos - Offset(tp.width / 2, tp.height / 2));
+      canvas.save();
+      canvas.translate(pos.dx, pos.dy);
+      canvas.rotate(-roseTurn);
+      tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
+      canvas.restore();
     }
   }
 
   @override
   bool shouldRepaint(covariant _RosePainter oldDelegate) =>
-      oldDelegate.isId != isId;
+      oldDelegate.isId != isId || oldDelegate.roseTurn != roseTurn;
 }
 
 class _NeedlePainter extends CustomPainter {
@@ -138,26 +146,27 @@ class _NeedlePainter extends CustomPainter {
     final p = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
-    final stroke = Paint()
-      ..color = color
+    // Thin and dim, with no arrowhead, so only the solid end reads as the
+    // pointer and there is nothing to mistake for a second needle.
+    final tail = Paint()
+      ..color = color.withValues(alpha: 0.26)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+      ..strokeWidth = 1.4
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(c.dx, c.dy + s * 0.06),
+      Offset(c.dx, c.dy + s * 0.26),
+      tail,
+    );
 
     final path = Path()
       ..moveTo(c.dx, c.dy - s * 0.40)
-      ..lineTo(c.dx + s * 0.055, c.dy - s * 0.08)
-      ..lineTo(c.dx, c.dy - s * 0.14)
-      ..lineTo(c.dx - s * 0.055, c.dy - s * 0.08)
+      ..lineTo(c.dx + s * 0.055, c.dy - s * 0.06)
+      ..lineTo(c.dx, c.dy - s * 0.12)
+      ..lineTo(c.dx - s * 0.055, c.dy - s * 0.06)
       ..close();
     canvas.drawPath(path, p);
-
-    canvas.drawLine(
-      Offset(c.dx, c.dy - s * 0.08),
-      Offset(c.dx, c.dy + s * 0.28),
-      stroke,
-    );
     canvas.drawCircle(c, s * 0.035, p);
   }
 

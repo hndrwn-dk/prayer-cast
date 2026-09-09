@@ -153,13 +153,14 @@ void main() {
     );
   }
 
-  DeliveryRequest request({DateTime? firedAt}) => DeliveryRequest(
+  DeliveryRequest request({DateTime? firedAt, double? playbackVolume = 0.7}) =>
+      DeliveryRequest(
         prayerName: 'maghrib',
         scheduledAzan: t,
         voiceId: 'makkah',
         audioBytes: Uint8List.fromList(List<int>.filled(64, 1)),
         homeCastDeviceId: castId,
-        playbackVolume: 0.7,
+        playbackVolume: playbackVolume,
         deviceConditions: const DeviceConditions(
           formFactor: DeviceFormFactor.phone,
           isPluggedIn: true,
@@ -187,7 +188,8 @@ void main() {
       expect(result.outcome, Outcome.played);
       expect(result.role, 'SOLO');
       expect(castPlatform.loadedContentId, isNotNull);
-      expect(castPlatform.initialVolume, 0.4);
+      // PLAYED returns before post-playback restore; opted-in volume is set.
+      expect(castPlatform.lastSetVolume, 0.7);
 
       final rows = await dao.latest();
       expect(rows, hasLength(1));
@@ -530,6 +532,29 @@ void main() {
         final result = await future;
         expect(result.outcome, Outcome.failedLoadMedia);
         expect(platform.lastSetVolume, 0.7);
+      },
+    );
+
+    test(
+      'null playbackVolume never calls setVolume',
+      () async {
+        final platform = FakeCastPlatform(
+          devices: [
+            CastReceiver(
+              deviceId: castId,
+              friendlyName: 'Kitchen Nest',
+              host: InternetAddress('192.168.1.50'),
+            ),
+          ],
+          initialVolume: 0.18,
+        );
+        final orch = buildOrchestrator(platform: platform);
+        final future = orch.run(request(playbackVolume: null));
+        await pumpThroughAzan();
+        final result = await future;
+        expect(result.outcome, Outcome.played);
+        expect(platform.lastSetVolume, isNull);
+        expect(platform.initialVolume, 0.18);
       },
     );
 

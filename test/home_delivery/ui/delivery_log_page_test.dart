@@ -74,17 +74,32 @@ void main() {
       prayer: 'maghrib',
       scheduledAtMs: DateTime.utc(2026, 8, 10, 19, 2).millisecondsSinceEpoch,
       outcome: Outcome.played,
+      targetName: 'Kitchen Nest',
+    );
+    await dao.insertAttempt(
+      sessionId: 'session-failed01',
+      prayer: 'fajr',
+      scheduledAtMs: DateTime.utc(2026, 8, 10, 5, 2).millisecondsSinceEpoch,
+      firedAtMs: DateTime.utc(2026, 8, 10, 5, 3).millisecondsSinceEpoch,
+      outcome: Outcome.failedNoTarget,
     );
 
     await pumpPage(tester);
 
-    expect(find.text('Maghrib'), findsOneWidget);
-    expect(find.text('Berhasil'), findsOneWidget);
-    expect(find.text('PLAYED'), findsOneWidget);
+    // Success rows are a single compact line (prayer · date · device · status).
+    expect(find.textContaining('Maghrib'), findsOneWidget);
+    expect(find.textContaining('Berhasil'), findsOneWidget);
+    expect(find.textContaining('Kitchen Nest'), findsOneWidget);
+    // Wire codes are not shown; failures use plain-language copy.
+    expect(find.text('PLAYED'), findsNothing);
+    expect(find.text('FAILED_NO_TARGET'), findsNothing);
+    expect(find.text('Fajr'), findsOneWidget);
     expect(
-      find.textContaining('Adzan berhasil diputar'),
+      find.textContaining('Speaker tersimpan tidak ditemukan'),
       findsOneWidget,
     );
+    expect(find.text('Semua'), findsOneWidget);
+    expect(find.text('Gagal saja'), findsOneWidget);
     expect(
       tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor,
       PrayerCastColors.ink,

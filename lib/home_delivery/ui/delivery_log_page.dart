@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
 
+import '../coordinator/prayer_delivery_coordinator.dart';
 import '../logging/delivery_database.dart';
+import '../logging/delivery_retry_window.dart';
 import '../logging/outcome.dart';
 import '../logging/outcome_explanation.dart';
 import '../platform/oem_battery_settings.dart';
@@ -15,15 +17,26 @@ import 'theme/prayer_cast_theme.dart';
 import 'widgets/editorial_chrome.dart';
 
 /// Local-only delivery attempt history (spec §6.3).
-///
-/// Large type, clear status icons, and plain-language labels for both younger
-/// and older users. Surfaces an OEM battery deep link after two
-/// `FAILED_ALARM_MISSED` rows in seven days.
-class DeliveryLogPage extends ConsumerWidget {
-  const DeliveryLogPage({super.key});
+class DeliveryLogPage extends ConsumerStatefulWidget {
+  const DeliveryLogPage({
+    super.key,
+    this.coordinator,
+  });
+
+  final PrayerDeliveryCoordinator? coordinator;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DeliveryLogPage> createState() => _DeliveryLogPageState();
+}
+
+enum _LogFilter { all, failedOnly }
+
+class _DeliveryLogPageState extends ConsumerState<DeliveryLogPage> {
+  _LogFilter _filter = _LogFilter.all;
+  int? _retryingId;
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = context.l10n;
     final rows = ref.watch(deliveryLogLatestProvider);
     final missed = ref.watch(failedAlarmMissedWeekProvider);
@@ -48,6 +61,25 @@ class DeliveryLogPage extends ConsumerWidget {
                   child: Text(
                     l10n.deliveryLogPageIntro,
                     style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: SegmentedButton<_LogFilter>(
+                    segments: [
+                      ButtonSegment(
+                        value: _LogFilter.all,
+                        label: Text(isId ? 'Semua' : 'All'),
+                      ),
+                      ButtonSegment(
+                        value: _LogFilter.failedOnly,
+                        label: Text(isId ? 'Gagal saja' : 'Failed only'),
+                      ),
+                    ],
+                    selected: {_filter},
+                    onSelectionChanged: (selected) {
+                      setState(() => _filter = selected.first);
+                    },
                   ),
                 ),
                 missed.when(
@@ -110,7 +142,17 @@ class DeliveryLogPage extends ConsumerWidget {
                       ),
                     ),
                     data: (list) {
-                      if (list.isEmpty) {
+                      final visible = _filter == _LogFilter.all
+                          ? list
+                          : list
+                              .where((row) {
+                                final kind =
+                                    OutcomeStatus.of(Outcome.fromCode(row.outcome))
+                                        .kind;
+                                return kind == OutcomeKind.problem;
+                              })
+                              .toList();
+                      if (visible.isEmpty) {
                         return FadeSlideIn(
                           child: Center(
                             child: Padding(
@@ -135,8 +177,8 @@ class DeliveryLogPage extends ConsumerWidget {
                                   const SizedBox(height: 8),
                                   Text(
                                     isId
-                                        ? 'Riwayat muncul setelah alarm adzan pertama berjalan.'
-                                        : 'The log appears after the first adhan alarm runs.',
+                                        ? 'Riwayat muncul setelah alarm Adhan pertama berjalan.'
+                                        : 'The log appears after the first Adhan alarm runs.',
                                     textAlign: TextAlign.center,
                                     style: Theme.of(
                                       context,
@@ -150,16 +192,28 @@ class DeliveryLogPage extends ConsumerWidget {
                       }
                       return ListView.builder(
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-                        itemCount: list.length,
+                        itemCount: visible.length,
                         itemBuilder: (context, index) {
+                          final row = visible[index];
+                          final outcome = Outcome.fromCode(row.outcome);
+                          final status = OutcomeStatus.of(outcome);
                           return FadeSlideIn(
                             delay: Duration(
                               milliseconds: 40 * index.clamp(0, 8),
                             ),
-                            child: _AttemptRow(
-                              row: list[index],
-                              locale: locale,
-                            ),
+                            child: status.kind == OutcomeKind.problem
+                                ? _FailureAttemptCard(
+                                    row: row,
+                                    locale: locale,
+                                    retrying: _retryingId == row.id,
+                                    onRetry: widget.coordinator == null
+                                        ? null
+                                        : () => _retry(row),
+                                  )
+                                : _SuccessAttemptLine(
+                                    row: row,
+                                    locale: locale,
+                                  ),
                           );
                         },
                       );
@@ -170,6 +224,32 @@ class DeliveryLogPage extends ConsumerWidget {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Future<void> _retry(DeliveryLog row) async {
+    final coordinator = widget.coordinator;
+    if (coordinator == null) return;
+    setState(() => _retryingId = row.id);
+    final ok = await coordinator.retryFailedAttempt(
+      prayer: row.prayer,
+      scheduledAtMs: row.scheduledAt,
+      firedAtMs: row.firedAt,
+    );
+    if (!mounted) return;
+    setState(() => _retryingId = null);
+    ref.invalidate(deliveryLogLatestProvider);
+    final isId = Localizations.localeOf(context).languageCode == 'id';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? (isId ? 'Mencoba ulang…' : 'Retrying…')
+              : (isId
+                    ? 'Jendela waktu sholat sudah lewat'
+                    : 'Prayer window has ended'),
+        ),
       ),
     );
   }
@@ -242,8 +322,62 @@ class _OemBatteryBanner extends StatelessWidget {
   }
 }
 
-class _AttemptRow extends StatelessWidget {
-  const _AttemptRow({
+String _historyDateLabel(DateTime when, Locale locale) {
+  final isId = locale.languageCode == 'id';
+  const daysEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const daysId = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+  const monthsEn = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  const monthsId = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mei',
+    'Jun',
+    'Jul',
+    'Agu',
+    'Sep',
+    'Okt',
+    'Nov',
+    'Des',
+  ];
+  final day = (isId ? daysId : daysEn)[(when.weekday - 1).clamp(0, 6)];
+  final month = (isId ? monthsId : monthsEn)[(when.month - 1).clamp(0, 11)];
+  final hh = when.hour.toString().padLeft(2, '0');
+  final mm = when.minute.toString().padLeft(2, '0');
+  return '$day, ${when.day} $month · $hh:$mm';
+}
+
+String _prayerLabel(String prayer) {
+  if (prayer.isEmpty) return prayer;
+  return prayer[0].toUpperCase() + prayer.substring(1);
+}
+
+String _deviceLabel(DeliveryLog row, {required bool isId}) {
+  final name = row.targetName?.trim();
+  if (name != null && name.isNotEmpty) {
+    if (name == 'phone') return isId ? 'Ponsel' : 'Phone';
+    return name;
+  }
+  if (row.role == 'LOCAL') return isId ? 'Ponsel' : 'Phone';
+  return isId ? 'Speaker' : 'Speaker';
+}
+
+class _SuccessAttemptLine extends StatelessWidget {
+  const _SuccessAttemptLine({
     required this.row,
     required this.locale,
   });
@@ -255,11 +389,60 @@ class _AttemptRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final outcome = Outcome.fromCode(row.outcome);
     final status = OutcomeStatus.of(outcome);
+    final when = DateTime.fromMillisecondsSinceEpoch(row.scheduledAt).toLocal();
+    final isId = locale.languageCode == 'id';
+    final line =
+        '${_prayerLabel(row.prayer)} · ${_historyDateLabel(when, locale)} · '
+        '${_deviceLabel(row, isId: isId)} · ${status.shortLabel(locale)}';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Semantics(
+        label: line,
+        child: Text(
+          line,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ),
+    );
+  }
+}
+
+class _FailureAttemptCard extends StatelessWidget {
+  const _FailureAttemptCard({
+    required this.row,
+    required this.locale,
+    required this.retrying,
+    required this.onRetry,
+  });
+
+  final DeliveryLog row;
+  final Locale locale;
+  final bool retrying;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final outcome = Outcome.fromCode(row.outcome);
+    final status = OutcomeStatus.of(outcome);
     final explanation = OutcomeExplanation.forOutcome(outcome, locale);
     final when = DateTime.fromMillisecondsSinceEpoch(row.scheduledAt).toLocal();
-    final timeLabel =
-        '${_weekday(when.weekday, locale)}, ${_two(when.day)}/${_two(when.month)}/${when.year}'
-        '  ·  ${_two(when.hour)}:${_two(when.minute)}';
+    final isId = locale.languageCode == 'id';
+    final firedAt = row.firedAt == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(row.firedAt!);
+    final now = DateTime.now();
+    final canRetry = DeliveryRetryWindow.canRetry(
+      scheduledAzan: when,
+      now: now,
+      firedAt: firedAt?.toLocal(),
+    );
+    final disabledReason = DeliveryRetryWindow.disabledReason(
+      scheduledAzan: when,
+      now: now,
+      firedAt: firedAt?.toLocal(),
+      isId: isId,
+    );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -270,90 +453,81 @@ class _AttemptRow extends StatelessWidget {
           color: PrayerCastColors.canopyDeep,
           borderColor: PrayerCastColors.inkSoft,
           borderWidth: PrayerCastTheme.cardHairline,
-          child: Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 52,
-                height: 52,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: status.background,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: status.icon(size: 26, color: status.foreground),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: status.background,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: status.icon(size: 26, color: status.foreground),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            _prayerLabel(row.prayer),
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _prayerLabel(row.prayer),
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                            _StatusChip(status: status, locale: locale),
+                          ],
                         ),
-                        _StatusChip(status: status, locale: locale),
+                        const SizedBox(height: 4),
+                        Text(
+                          _historyDateLabel(when, locale),
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          explanation,
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      timeLabel,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      explanation,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      outcome.code,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            letterSpacing: 0.3,
-                          ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+              if (onRetry != null) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: PrayerCastTheme.minTap,
+                  child: FilledButton(
+                    onPressed: canRetry && !retrying ? onRetry : null,
+                    child: retrying
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
+                          )
+                        : Text(
+                            canRetry
+                                ? (isId ? 'Coba lagi' : 'Retry')
+                                : (isId
+                                    ? 'Coba lagi · $disabledReason'
+                                    : 'Retry · $disabledReason'),
+                          ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       ),
     );
-  }
-
-  static String _two(int n) => n.toString().padLeft(2, '0');
-
-  static String _prayerLabel(String prayer) {
-    if (prayer.isEmpty) return prayer;
-    return prayer[0].toUpperCase() + prayer.substring(1);
-  }
-
-  static String _weekday(int weekday, Locale locale) {
-    final id = locale.languageCode == 'id';
-    const namesId = [
-      'Senin',
-      'Selasa',
-      'Rabu',
-      'Kamis',
-      'Jumat',
-      'Sabtu',
-      'Minggu',
-    ];
-    const namesEn = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
-    return (id ? namesId : namesEn)[(weekday - 1).clamp(0, 6)];
   }
 }
 

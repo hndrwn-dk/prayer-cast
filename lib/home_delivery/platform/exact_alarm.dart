@@ -26,6 +26,19 @@ final class AlarmFiredEvent {
   bool get isMissed => firedAtMs - scheduledEpochMs > 60 * 1000;
 }
 
+/// Native iqamah chime that fired while Dart was not running.
+final class PendingIqamahLog {
+  const PendingIqamahLog({
+    required this.prayer,
+    required this.scheduledAtMs,
+    required this.firedAtMs,
+  });
+
+  final String prayer;
+  final int scheduledAtMs;
+  final int firedAtMs;
+}
+
 /// Port for exact-alarm scheduling (injectable for unit tests).
 abstract interface class ExactAlarmPlatform {
   Future<void> scheduleNext({
@@ -71,6 +84,21 @@ abstract interface class ExactAlarmPlatform {
 
   /// Cancel any armed pre-prayer reminder.
   Future<void> cancelPreAlert();
+
+  /// Schedule a post-adhan iqamah nudge notification (no FGS / Cast).
+  Future<void> scheduleIqamahReminder({
+    required int epochMs,
+    required String title,
+    required String body,
+    required String prayer,
+    String sound = 'chime',
+  });
+
+  /// Cancel any armed iqamah reminder.
+  Future<void> cancelIqamahReminder();
+
+  /// Consume native pending iqamah chime log rows (empty when none / silent).
+  Future<List<PendingIqamahLog>> drainPendingIqamahLogs();
 
   /// Show a one-shot notification when Cast delivery fails.
   Future<void> showDeliveryFailureNotification({
@@ -436,6 +464,89 @@ final class ExactAlarm implements ExactAlarmPlatform {
         error: e,
         stackTrace: st,
       );
+    }
+  }
+
+  @override
+  Future<void> scheduleIqamahReminder({
+    required int epochMs,
+    required String title,
+    required String body,
+    required String prayer,
+    String sound = 'chime',
+  }) async {
+    try {
+      await _methods.invokeMethod<void>('scheduleIqamahReminder', {
+        'epochMs': epochMs,
+        'title': title,
+        'body': body,
+        'prayer': prayer,
+        'sound': sound,
+      });
+    } on MissingPluginException catch (e, st) {
+      _logger.warn(
+        'scheduleIqamahReminder: exact_alarm plugin missing (no-op)',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'scheduleIqamahReminder failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  @override
+  Future<void> cancelIqamahReminder() async {
+    try {
+      await _methods.invokeMethod<void>('cancelIqamahReminder');
+    } on MissingPluginException catch (e, st) {
+      _logger.warn(
+        'cancelIqamahReminder: exact_alarm plugin missing (no-op)',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'cancelIqamahReminder failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  @override
+  Future<List<PendingIqamahLog>> drainPendingIqamahLogs() async {
+    try {
+      final raw = await _methods.invokeMethod<List<dynamic>>(
+        'drainPendingIqamahLogs',
+      );
+      if (raw == null || raw.isEmpty) return const [];
+      return [
+        for (final item in raw)
+          if (item is Map)
+            PendingIqamahLog(
+              prayer: '${item['prayer'] ?? ''}',
+              scheduledAtMs: (item['scheduledAtMs'] as num?)?.toInt() ?? 0,
+              firedAtMs: (item['firedAtMs'] as num?)?.toInt() ?? 0,
+            ),
+      ].where((e) => e.prayer.isNotEmpty).toList();
+    } on MissingPluginException {
+      return const [];
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'drainPendingIqamahLogs failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+      return const [];
     }
   }
 

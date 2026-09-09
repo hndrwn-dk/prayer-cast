@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:prayer_cast/home_delivery/common/clock.dart';
 import 'package:prayer_cast/home_delivery/common/logger.dart';
 import 'package:prayer_cast/home_delivery/coordination/device_identity.dart';
+import 'package:prayer_cast/home_delivery/coordinator/active_delivery_hero.dart';
 import 'package:prayer_cast/home_delivery/coordinator/adzan_audio_loader.dart';
 import 'package:prayer_cast/home_delivery/coordinator/delivery_settings.dart';
 import 'package:prayer_cast/home_delivery/coordinator/local_prayer_player.dart';
@@ -124,10 +125,35 @@ final class _FakeExactAlarm implements ExactAlarmPlatform {
   Future<void> cancelPreAlert() async {}
 
   @override
+  Future<void> scheduleIqamahReminder({
+    required int epochMs,
+    required String title,
+    required String body,
+    required String prayer,
+    String sound = 'chime',
+  }) async {}
+
+  @override
+  Future<void> cancelIqamahReminder() async {}
+
+  List<PendingIqamahLog> pendingIqamahLogs = [];
+
+  final failureNotifications = <({String title, String body})>[];
+
+  @override
+  Future<List<PendingIqamahLog>> drainPendingIqamahLogs() async {
+    final out = List<PendingIqamahLog>.from(pendingIqamahLogs);
+    pendingIqamahLogs = [];
+    return out;
+  }
+
+  @override
   Future<void> showDeliveryFailureNotification({
     required String title,
     required String body,
-  }) async {}
+  }) async {
+    failureNotifications.add((title: title, body: body));
+  }
 
   @override
   Future<void> markDeliveryReady() async {}
@@ -193,9 +219,6 @@ final class _FakeNextPrayer implements NextPrayerProvider {
 final class _FakeSettings implements DeliverySettings {
   @override
   Future<String?> homeCastDeviceId() async => 'cast-home-1';
-
-  @override
-  Future<double> playbackVolume() async => 0.7;
 }
 
 final class _FakeAudio implements AdzanAudioLoader {
@@ -925,6 +948,253 @@ void main() {
     expect(alarm.stopForegroundCalls, 1);
   });
 
+  test('adhanPhone begins and clears active delivery hero around play', () async {
+    final hero = ActiveDeliveryHero();
+    addTearDown(hero.dispose);
+    final started = Completer<void>();
+    final finished = Completer<void>();
+    final local = _HangingLocalPlayer(started: started, finished: finished);
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      deliveryModes: _FakeModes(PrayerDeliveryMode.adhanPhone),
+      localPlayer: local,
+      activeHero: hero,
+      runDelivery: (_) async => const DeliveryAttemptResult(
+        sessionId: 'sess',
+        outcome: Outcome.played,
+        role: 'SOLO',
+      ),
+      clock: clock,
+    );
+    await coordinator.start();
+    final wakeMs = alarm.scheduled.single.epochMs;
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
+        .subtract(PresenceSchedule.scanOffset);
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
+    );
+    clock.advanceTo(azanAt);
+    await started.future.timeout(const Duration(seconds: 2));
+    expect(hero.current?.name, 'maghrib');
+    expect(hero.current?.scheduledAt, azanAt.toLocal());
+
+    await local.stop();
+    await finished.future.timeout(const Duration(seconds: 2));
+    for (var i = 0; i < 50 && hero.current != null; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(hero.current, isNull);
+  });
+
+  test('beep mode never begins active delivery hero', () async {
+    final hero = ActiveDeliveryHero();
+    addTearDown(hero.dispose);
+    final local = _FakeLocalPlayer();
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      deliveryModes: _FakeModes(PrayerDeliveryMode.beep),
+      localPlayer: local,
+      activeHero: hero,
+      runDelivery: (_) async => const DeliveryAttemptResult(
+        sessionId: 'sess',
+        outcome: Outcome.played,
+        role: 'SOLO',
+      ),
+      clock: clock,
+    );
+    await coordinator.start();
+    final wakeMs = alarm.scheduled.single.epochMs;
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
+        .subtract(PresenceSchedule.scanOffset);
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
+    );
+    clock.advanceTo(azanAt);
+    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(local.calls, ['beep']);
+    expect(hero.current, isNull);
+  });
+
+  test('cast fail HOME falls back to phone Adhan; one fallback log row', () async {
+    final db = DeliveryDatabase.memory();
+    addTearDown(db.close);
+    final dao = DeliveryLogDao(db);
+    final local = _FakeLocalPlayer();
+    final prefs = MemoryPrayerPrefsStore(
+      PrayerPrefs.defaults.copyWith(configured: true, castFallbackToPhone: true),
+    );
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      deliveryModes: _FakeModes(PrayerDeliveryMode.cast),
+      localPlayer: local,
+      logDao: dao,
+      prayerPrefs: prefs,
+      readLocaleCode: () async => 'en',
+      clock: clock,
+      runDelivery: (request) async {
+        deliveries.add(request);
+        await dao.insertAttempt(
+          sessionId: 'cast-sess',
+          prayer: request.prayerName,
+          scheduledAtMs: request.scheduledAzan.millisecondsSinceEpoch,
+          outcome: Outcome.failedCastConnect,
+          presenceState: 'HOME',
+        );
+        return const DeliveryAttemptResult(
+          sessionId: 'cast-sess',
+          outcome: Outcome.failedCastConnect,
+          role: 'SOLO',
+          presenceState: 'HOME',
+        );
+      },
+    );
+    await coordinator.start();
+    final wakeMs = alarm.scheduled.single.epochMs;
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
+        .subtract(PresenceSchedule.scanOffset);
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
+    );
+    clock.advanceTo(azanAt);
+    for (var i = 0; i < 80 && local.calls.isEmpty; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(local.calls, ['adhan:makkah']);
+    final rows = await dao.latest();
+    expect(rows, hasLength(1));
+    expect(rows.single.outcome, Outcome.playedPhoneFallback.code);
+    expect(rows.single.detail, contains('full_adhan'));
+    expect(alarm.failureNotifications, isNotEmpty);
+    expect(
+      alarm.failureNotifications.single.title,
+      contains('played on phone'),
+    );
+  });
+
+  test('cast fail UNKNOWN uses chime fallback', () async {
+    final db = DeliveryDatabase.memory();
+    addTearDown(db.close);
+    final dao = DeliveryLogDao(db);
+    final local = _FakeLocalPlayer();
+    final prefs = MemoryPrayerPrefsStore(
+      PrayerPrefs.defaults.copyWith(configured: true),
+    );
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      deliveryModes: _FakeModes(PrayerDeliveryMode.cast),
+      localPlayer: local,
+      logDao: dao,
+      prayerPrefs: prefs,
+      readLocaleCode: () async => 'en',
+      clock: clock,
+      runDelivery: (request) async {
+        await dao.insertAttempt(
+          sessionId: 'cast-sess-2',
+          prayer: request.prayerName,
+          scheduledAtMs: request.scheduledAzan.millisecondsSinceEpoch,
+          outcome: Outcome.failedNoTarget,
+          presenceState: 'UNKNOWN',
+        );
+        return const DeliveryAttemptResult(
+          sessionId: 'cast-sess-2',
+          outcome: Outcome.failedNoTarget,
+          role: 'SOLO',
+          presenceState: 'UNKNOWN',
+        );
+      },
+    );
+    await coordinator.start();
+    final wakeMs = alarm.scheduled.single.epochMs;
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
+        .subtract(PresenceSchedule.scanOffset);
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
+    );
+    clock.advanceTo(azanAt);
+    for (var i = 0; i < 80 && local.calls.isEmpty; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(local.calls, ['beep']);
+    final rows = await dao.latest();
+    expect(rows.single.outcome, Outcome.playedPhoneFallback.code);
+    expect(rows.single.detail, contains('chime'));
+    expect(alarm.failureNotifications, isNotEmpty);
+    expect(
+      alarm.failureNotifications.single.title,
+      contains('short chime'),
+    );
+  });
+
+  test('start drains pending iqamah chime logs into delivery_log', () async {
+    final db = DeliveryDatabase.memory();
+    addTearDown(db.close);
+    final dao = DeliveryLogDao(db);
+    alarm.pendingIqamahLogs = [
+      const PendingIqamahLog(
+        prayer: 'maghrib',
+        scheduledAtMs: 1_700_000_000_000,
+        firedAtMs: 1_700_000_300_000,
+      ),
+    ];
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      logDao: dao,
+      clock: clock,
+      runDelivery: (_) async => throw StateError('unused'),
+    );
+    await coordinator.start();
+    final rows = await dao.latest();
+    expect(rows, hasLength(1));
+    expect(rows.single.outcome, Outcome.iqamahChime.code);
+    expect(rows.single.prayer, 'maghrib');
+  });
+
   test('adhanPhone Stop on the shade stops local playback', () async {
     final started = Completer<void>();
     final finished = Completer<void>();
@@ -1098,6 +1368,26 @@ void main() {
     expect(alarm.scheduled.single.prayer, 'maghrib-dryrun');
     expect(alarm.scheduled.single.epochMs, dryWake);
     expect(restarted.scheduledWakeEpochMs, dryWake);
+  });
+
+  test('start clears dry-run past stale grace and arms real next', () async {
+    final staleWake = clock.now()
+        .subtract(const Duration(minutes: 10))
+        .millisecondsSinceEpoch;
+    alarm.scheduled
+      ..clear()
+      ..add((
+        epochMs: staleWake,
+        prayer: 'maghrib-dryrun',
+        voiceId: 'makkah',
+      ));
+    final coordinator = buildCoordinator();
+    await coordinator.start();
+    expect(alarm.scheduled, isNotEmpty);
+    expect(
+      PrayerDeliveryCoordinator.isDryRunPrayer(alarm.scheduled.single.prayer),
+      isFalse,
+    );
   });
 
   test('reschedule failure arms reschedule-retry and skips delivery on that fire',

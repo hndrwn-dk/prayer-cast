@@ -7,6 +7,21 @@ enum Outcome {
   /// Cast succeeded; receiver reported PLAYING.
   played('PLAYED'),
 
+  /// Intentional phone Adhan (delivery mode adhanPhone).
+  playedOnPhone('PLAYED_ON_PHONE'),
+
+  /// Intentional local beep.
+  playedBeep('PLAYED_BEEP'),
+
+  /// Intentional local takbir.
+  playedTakbir('PLAYED_TAKBIR'),
+
+  /// Cast failed; audible fallback on phone (full Adhan or chime).
+  playedPhoneFallback('PLAYED_PHONE_FALLBACK'),
+
+  /// Post-adhan iqamah nudge played a chime on this phone.
+  iqamahChime('IQAMAH_CHIME'),
+
   /// Presence said AWAY.
   suppressedAway('SUPPRESSED_AWAY'),
 

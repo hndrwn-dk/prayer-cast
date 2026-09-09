@@ -40,6 +40,51 @@ final class OutcomeStatus {
           foreground: PrayerCastColors.canopyDeep,
           background: PrayerCastColors.mist,
         );
+      case Outcome.playedOnPhone:
+        return const OutcomeStatus(
+          kind: OutcomeKind.success,
+          shortLabelBi: 'Di ponsel',
+          shortLabelEn: 'On phone',
+          icon: PremiumIcons.speaker,
+          foreground: PrayerCastColors.canopyDeep,
+          background: PrayerCastColors.mist,
+        );
+      case Outcome.playedBeep:
+        return const OutcomeStatus(
+          kind: OutcomeKind.success,
+          shortLabelBi: 'Bip',
+          shortLabelEn: 'Beep',
+          icon: PremiumIcons.speaker,
+          foreground: PrayerCastColors.canopyDeep,
+          background: PrayerCastColors.mist,
+        );
+      case Outcome.playedTakbir:
+        return const OutcomeStatus(
+          kind: OutcomeKind.success,
+          shortLabelBi: 'Takbir',
+          shortLabelEn: 'Takbir',
+          icon: PremiumIcons.speaker,
+          foreground: PrayerCastColors.canopyDeep,
+          background: PrayerCastColors.mist,
+        );
+      case Outcome.playedPhoneFallback:
+        return const OutcomeStatus(
+          kind: OutcomeKind.success,
+          shortLabelBi: 'Cadangan ponsel',
+          shortLabelEn: 'Phone fallback',
+          icon: PremiumIcons.speaker,
+          foreground: PrayerCastColors.canopyDeep,
+          background: PrayerCastColors.mist,
+        );
+      case Outcome.iqamahChime:
+        return const OutcomeStatus(
+          kind: OutcomeKind.success,
+          shortLabelBi: 'Iqamah',
+          shortLabelEn: 'Iqamah',
+          icon: PremiumIcons.speaker,
+          foreground: PrayerCastColors.canopyDeep,
+          background: PrayerCastColors.mist,
+        );
       case Outcome.suppressedAway:
         return const OutcomeStatus(
           kind: OutcomeKind.quiet,

@@ -24,8 +24,10 @@ import '../../prayer_times/prayer_prefs.dart';
 import 'adzan_audio_loader.dart';
 import 'adzan_cast_tester.dart';
 import 'audioplayers_local_prayer_player.dart';
+import 'active_delivery_hero.dart';
 import 'delivery_settings.dart';
 import 'home_onboarding.dart';
+import 'iqamah_reminder_scheduler.dart';
 import 'local_prayer_player.dart';
 import 'next_prayer_provider.dart';
 import 'prayer_delivery_coordinator.dart';
@@ -46,6 +48,7 @@ final class HomeDeliveryRuntime {
     required this.onboarding,
     required this.castTester,
     required this.localPlayer,
+    required this.activeHero,
   });
 
   final PrayerDeliveryCoordinator coordinator;
@@ -57,6 +60,7 @@ final class HomeDeliveryRuntime {
   final HomeOnboarding onboarding;
   final AdzanCastTester castTester;
   final LocalPrayerPlayer localPlayer;
+  final ActiveDeliveryHero activeHero;
 
   static Future<HomeDeliveryRuntime> bootstrap({
     required DeliveryDatabase database,
@@ -116,6 +120,7 @@ final class HomeDeliveryRuntime {
       store: fingerprintStore,
       lanFingerprint: lanFingerprint,
     );
+    final activeHero = ActiveDeliveryHero();
     final orchestrator = DeliveryOrchestrator(
       presence: presence,
       fingerprintStore: fingerprintStore,
@@ -127,6 +132,20 @@ final class HomeDeliveryRuntime {
       logDao: DeliveryLogDao(database),
       scheduler: scheduler,
       logger: logger,
+      onHeroHoldBegin: ({
+        required String prayerName,
+        required DateTime scheduledAzan,
+        required String voiceId,
+      }) {
+        activeHero.begin(
+          NextPrayer(
+            name: prayerName,
+            scheduledAt: scheduledAzan.toLocal(),
+            voiceId: voiceId,
+          ),
+        );
+      },
+      onHeroHoldEnd: activeHero.clear,
     );
 
     final coordinator = PrayerDeliveryCoordinator(
@@ -139,8 +158,24 @@ final class HomeDeliveryRuntime {
       clock: scheduler,
       deliveryModes: PrefsPrayerDeliveryModeSource(prayerPrefs),
       localPlayer: localPlayer,
+      activeHero: activeHero,
       logDao: DeliveryLogDao(database),
+      prayerPrefs: prayerPrefs,
       prePrayerAlerts: PrePrayerAlertScheduler(
+        exactAlarm: exactAlarm,
+        prayerPrefs: prayerPrefs,
+        readLocaleCode: () async {
+          final docs = await getApplicationDocumentsDirectory();
+          final localeFile = File(p.join(docs.path, 'app_locale.txt'));
+          if (!await localeFile.exists()) return null;
+          try {
+            final raw = (await localeFile.readAsString()).trim();
+            if (raw == 'en' || raw == 'id') return raw;
+          } catch (_) {}
+          return null;
+        },
+      ),
+      iqamahReminders: IqamahReminderScheduler(
         exactAlarm: exactAlarm,
         prayerPrefs: prayerPrefs,
         readLocaleCode: () async {
@@ -178,6 +213,7 @@ final class HomeDeliveryRuntime {
       onboarding: onboarding,
       castTester: castTester,
       localPlayer: localPlayer,
+      activeHero: activeHero,
     );
   }
 }

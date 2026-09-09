@@ -49,6 +49,23 @@ extension PrePrayerAlertSoundX on PrePrayerAlertSound {
   }
 }
 
+/// Sound for the post-adhan iqamah nudge (global; offsets are per-prayer).
+enum IqamahSound {
+  silent,
+  chime,
+}
+
+extension IqamahSoundX on IqamahSound {
+  String get wire => name;
+
+  static IqamahSound parse(String? raw) {
+    return switch (raw) {
+      'silent' => IqamahSound.silent,
+      _ => IqamahSound.chime,
+    };
+  }
+}
+
 /// Asr school for Aladhan (`school` query param).
 enum PrayerMadhabId {
   shafi, // 0
@@ -74,12 +91,18 @@ final class PrayerPrefs {
     required this.configured,
     this.voicesByPrayer = const {},
     this.deliveryByPrayer = const {},
+    this.volumesByPrayer = const {},
+    this.defaultDeliveryMode = PrayerDeliveryMode.cast,
+    this.defaultsMigrated = false,
     this.latitude,
     this.longitude,
     this.administrativeArea = '',
     this.prePrayerAlertMinutes = 0,
     this.prePrayerAlertSound = PrePrayerAlertSound.beep,
+    this.iqamahMinutesByPrayer = const {},
+    this.iqamahSound = IqamahSound.chime,
     this.travelScheduleUpdates = false,
+    this.castFallbackToPhone = true,
   });
 
   /// City name for Aladhan `timingsByCity` (e.g. London, Tokyo, Singapore).
@@ -101,8 +124,17 @@ final class PrayerPrefs {
   final Map<String, String> voicesByPrayer;
 
   /// Optional per-prayer delivery overrides (`fajr` → `beep`, …).
-  /// Missing keys mean [PrayerDeliveryMode.cast].
+  /// Missing keys inherit [defaultDeliveryMode].
   final Map<String, String> deliveryByPrayer;
+
+  /// Global default when a prayer has no delivery override.
+  final PrayerDeliveryMode defaultDeliveryMode;
+
+  /// True after the one-shot default/override migration has run.
+  final bool defaultsMigrated;
+
+  /// Opt-in Cast volume per prayer (0–1). Missing key / null = leave speaker.
+  final Map<String, double> volumesByPrayer;
 
   /// GPS latitude when the user used “Gunakan lokasi saya”.
   final double? latitude;
@@ -123,6 +155,16 @@ final class PrayerPrefs {
   /// Sound for the pre-prayer reminder notification.
   final PrePrayerAlertSound prePrayerAlertSound;
 
+  /// Minutes after adhan for the iqamah nudge (`0` = off).
+  /// Missing keys fall back to [defaultIqamahMinutesFor].
+  final Map<String, int> iqamahMinutesByPrayer;
+
+  /// Global iqamah sound (one control for all prayers).
+  final IqamahSound iqamahSound;
+
+  /// When Cast fails, play on phone (full Adhan if presence was HOME, else chime).
+  final bool castFallbackToPhone;
+
   /// When true, refresh city/times if the phone has moved ~25 km.
   final bool travelScheduleUpdates;
 
@@ -138,14 +180,109 @@ final class PrayerPrefs {
     return '$city, $country';
   }
 
+  static const List<String> prayerKeys = [
+    'fajr',
+    'dhuhr',
+    'asr',
+    'maghrib',
+    'isha',
+  ];
+
   String voiceFor(String prayerName) {
     final override = voicesByPrayer[prayerName];
     if (override != null && override.isNotEmpty) return override;
+    if (voiceId.isNotEmpty) return voiceId;
     return AdzanVoices.defaultForPrayer(prayerName);
   }
 
   PrayerDeliveryMode deliveryFor(String prayerName) {
-    return PrayerDeliveryModeX.parse(deliveryByPrayer[prayerName]);
+    final raw = deliveryByPrayer[prayerName];
+    if (raw == null || raw.isEmpty) return defaultDeliveryMode;
+    return PrayerDeliveryModeX.parse(raw);
+  }
+
+  bool hasDeliveryOverride(String prayerName) =>
+      deliveryByPrayer.containsKey(prayerName);
+
+  bool hasVoiceOverride(String prayerName) {
+    final raw = voicesByPrayer[prayerName];
+    return raw != null && raw.isNotEmpty;
+  }
+
+  /// Materialize every prayer's current effective delivery/voice as overrides,
+  /// set defaults from majority, then keep effective values unchanged.
+  PrayerPrefs migrateDefaultsIfNeeded() {
+    if (defaultsMigrated) return this;
+
+    final deliveryExplicit = <String, String>{};
+    final voiceExplicit = <String, String>{};
+    for (final prayer in prayerKeys) {
+      deliveryExplicit[prayer] = deliveryFor(prayer).wire;
+      voiceExplicit[prayer] = voiceFor(prayer);
+    }
+
+    final defaultDelivery = _majorityDelivery(deliveryExplicit.values);
+    final defaultVoice = _majorityString(voiceExplicit.values) ?? voiceId;
+
+    return copyWith(
+      deliveryByPrayer: deliveryExplicit,
+      voicesByPrayer: voiceExplicit,
+      defaultDeliveryMode: defaultDelivery,
+      voiceId: defaultVoice,
+      defaultsMigrated: true,
+    );
+  }
+
+  static PrayerDeliveryMode _majorityDelivery(Iterable<String> wires) {
+    final counts = <String, int>{};
+    for (final wire in wires) {
+      counts[wire] = (counts[wire] ?? 0) + 1;
+    }
+    String? best;
+    var bestCount = -1;
+    for (final entry in counts.entries) {
+      if (entry.value > bestCount) {
+        best = entry.key;
+        bestCount = entry.value;
+      }
+    }
+    return PrayerDeliveryModeX.parse(best);
+  }
+
+  static String? _majorityString(Iterable<String> values) {
+    final counts = <String, int>{};
+    for (final value in values) {
+      if (value.isEmpty) continue;
+      counts[value] = (counts[value] ?? 0) + 1;
+    }
+    String? best;
+    var bestCount = -1;
+    for (final entry in counts.entries) {
+      if (entry.value > bestCount) {
+        best = entry.key;
+        bestCount = entry.value;
+      }
+    }
+    return best;
+  }
+
+  /// Null means do not change Cast volume for this prayer.
+  double? volumeFor(String prayerName) => volumesByPrayer[prayerName];
+
+  /// Allowed iqamah offsets: 0 (off), 5, 10, 15, 20 minutes after adhan.
+  static int defaultIqamahMinutesFor(String prayerName) {
+    return prayerName == 'maghrib' ? 5 : 10;
+  }
+
+  static int normalizeIqamahMinutes(int raw) {
+    if (raw == 5 || raw == 10 || raw == 15 || raw == 20) return raw;
+    return 0;
+  }
+
+  int iqamahMinutesFor(String prayerName) {
+    final raw = iqamahMinutesByPrayer[prayerName];
+    if (raw == null) return defaultIqamahMinutesFor(prayerName);
+    return normalizeIqamahMinutes(raw);
   }
 
   PrayerPrefs copyWith({
@@ -157,6 +294,11 @@ final class PrayerPrefs {
     bool? configured,
     Map<String, String>? voicesByPrayer,
     Map<String, String>? deliveryByPrayer,
+    Map<String, double>? volumesByPrayer,
+    Map<String, int>? iqamahMinutesByPrayer,
+    IqamahSound? iqamahSound,
+    PrayerDeliveryMode? defaultDeliveryMode,
+    bool? defaultsMigrated,
     double? latitude,
     double? longitude,
     String? administrativeArea,
@@ -165,6 +307,7 @@ final class PrayerPrefs {
     int? prePrayerAlertMinutes,
     PrePrayerAlertSound? prePrayerAlertSound,
     bool? travelScheduleUpdates,
+    bool? castFallbackToPhone,
   }) {
     return PrayerPrefs(
       city: city ?? this.city,
@@ -175,6 +318,12 @@ final class PrayerPrefs {
       configured: configured ?? this.configured,
       voicesByPrayer: voicesByPrayer ?? this.voicesByPrayer,
       deliveryByPrayer: deliveryByPrayer ?? this.deliveryByPrayer,
+      volumesByPrayer: volumesByPrayer ?? this.volumesByPrayer,
+      iqamahMinutesByPrayer:
+          iqamahMinutesByPrayer ?? this.iqamahMinutesByPrayer,
+      iqamahSound: iqamahSound ?? this.iqamahSound,
+      defaultDeliveryMode: defaultDeliveryMode ?? this.defaultDeliveryMode,
+      defaultsMigrated: defaultsMigrated ?? this.defaultsMigrated,
       latitude: clearCoordinates ? null : (latitude ?? this.latitude),
       longitude: clearCoordinates ? null : (longitude ?? this.longitude),
       administrativeArea: clearAdministrativeArea
@@ -185,6 +334,7 @@ final class PrayerPrefs {
       prePrayerAlertSound: prePrayerAlertSound ?? this.prePrayerAlertSound,
       travelScheduleUpdates:
           travelScheduleUpdates ?? this.travelScheduleUpdates,
+      castFallbackToPhone: castFallbackToPhone ?? this.castFallbackToPhone,
     );
   }
 
@@ -203,6 +353,33 @@ final class PrayerPrefs {
     return copyWith(deliveryByPrayer: next);
   }
 
+  PrayerPrefs clearDeliveryOverride(String prayerName) {
+    final next = Map<String, String>.from(deliveryByPrayer)..remove(prayerName);
+    return copyWith(deliveryByPrayer: next);
+  }
+
+  PrayerPrefs clearVoiceOverride(String prayerName) {
+    final next = Map<String, String>.from(voicesByPrayer)..remove(prayerName);
+    return copyWith(voicesByPrayer: next);
+  }
+
+  /// [volume] null clears the opt-in and restores "leave speaker alone".
+  PrayerPrefs withVolumeFor(String prayerName, double? volume) {
+    final next = Map<String, double>.from(volumesByPrayer);
+    if (volume == null) {
+      next.remove(prayerName);
+    } else {
+      next[prayerName] = volume.clamp(0.0, 1.0);
+    }
+    return copyWith(volumesByPrayer: next);
+  }
+
+  PrayerPrefs withIqamahMinutesFor(String prayerName, int minutes) {
+    final next = Map<String, int>.from(iqamahMinutesByPrayer);
+    next[prayerName] = normalizeIqamahMinutes(minutes);
+    return copyWith(iqamahMinutesByPrayer: next);
+  }
+
   static const PrayerPrefs defaults = PrayerPrefs(
     city: 'Singapore',
     country: 'Singapore',
@@ -217,6 +394,15 @@ final class PrayerPrefs {
       'maghrib': 'standard_adhan',
       'isha': 'standard_adhan',
     },
+    iqamahMinutesByPrayer: {
+      'fajr': 10,
+      'dhuhr': 10,
+      'asr': 10,
+      'maghrib': 5,
+      'isha': 10,
+    },
+    defaultDeliveryMode: PrayerDeliveryMode.cast,
+    defaultsMigrated: true,
   );
 }
 
@@ -235,10 +421,11 @@ final class MemoryPrayerPrefsStore implements PrayerPrefsStore {
   PrayerPrefs _prefs;
 
   @override
-  Future<PrayerPrefs> read() async => _prefs;
+  Future<PrayerPrefs> read() async => _prefs.migrateDefaultsIfNeeded();
 
   @override
-  Future<void> write(PrayerPrefs prefs) async => _prefs = prefs;
+  Future<void> write(PrayerPrefs prefs) async =>
+      _prefs = prefs.migrateDefaultsIfNeeded();
 }
 
 /// File-backed prefs (line-oriented, backward-tolerant).
@@ -258,6 +445,12 @@ final class MemoryPrayerPrefsStore implements PrayerPrefsStore {
 /// prePrayerAlertMinutes (0|10|15; optional; default 0)
 /// travelScheduleUpdates (always written 0; auto-travel GPS was removed)
 /// prePrayerAlertSound (beep|takbir; optional; default beep)
+/// castFallbackToPhone (0|1; optional; default 1)
+/// volumesByPrayer fajr=0.5,... (optional; missing keys = leave speaker alone)
+/// iqamahMinutesByPrayer fajr=10,... (optional; missing → Maghrib 5 / else 10)
+/// iqamahSound (silent|chime; optional; default chime)
+/// defaultDeliveryMode (beep|takbir|adhanPhone|cast; optional; default cast)
+/// defaultsMigrated (0|1; optional; default 0 → run one-shot migrate)
 /// ```
 final class FilePrayerPrefsStore implements PrayerPrefsStore {
   FilePrayerPrefsStore(this._file);
@@ -298,7 +491,25 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
       final alertSound = lines.length > 13
           ? PrePrayerAlertSoundX.parse(lines[13].trim())
           : PrePrayerAlertSound.beep;
-      return PrayerPrefs(
+      final castFallback = lines.length > 14
+          ? lines[14].trim() != '0'
+          : true;
+      final volumesByPrayer = lines.length > 15
+          ? _parseVolumes(lines[15])
+          : const <String, double>{};
+      final iqamahMinutesByPrayer = lines.length > 16
+          ? _parseIqamahMinutes(lines[16])
+          : PrayerPrefs.defaults.iqamahMinutesByPrayer;
+      final iqamahSound = lines.length > 17
+          ? IqamahSoundX.parse(lines[17].trim())
+          : IqamahSound.chime;
+      final defaultDelivery = lines.length > 18
+          ? PrayerDeliveryModeX.parse(lines[18].trim())
+          : PrayerDeliveryMode.cast;
+      final defaultsMigrated = lines.length > 19
+          ? lines[19].trim() == '1'
+          : false;
+      final prefs = PrayerPrefs(
         city: city,
         country: country,
         methodId: methodId,
@@ -307,13 +518,20 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
         configured: configured,
         voicesByPrayer: voicesByPrayer,
         deliveryByPrayer: deliveryByPrayer,
+        volumesByPrayer: volumesByPrayer,
+        iqamahMinutesByPrayer: iqamahMinutesByPrayer,
+        iqamahSound: iqamahSound,
+        defaultDeliveryMode: defaultDelivery,
+        defaultsMigrated: defaultsMigrated,
         latitude: latitude,
         longitude: longitude,
         administrativeArea: administrativeArea,
         prePrayerAlertMinutes: _normalizePreAlertMinutes(preAlert),
         travelScheduleUpdates: false,
         prePrayerAlertSound: alertSound,
+        castFallbackToPhone: castFallback,
       );
+      return prefs.migrateDefaultsIfNeeded();
     } catch (_) {
       return PrayerPrefs.defaults;
     }
@@ -328,6 +546,19 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
     final delivery = prefs.deliveryByPrayer.entries
         .map((e) => '${e.key}=${e.value}')
         .join(',');
+    final volumes = prefs.volumesByPrayer.entries
+        .map((e) => '${e.key}=${e.value.toStringAsFixed(2)}')
+        .join(',');
+    final iqamah = [
+      for (final prayer in const [
+        'fajr',
+        'dhuhr',
+        'asr',
+        'maghrib',
+        'isha',
+      ])
+        '$prayer=${prefs.iqamahMinutesFor(prayer)}',
+    ].join(',');
     final latLine = prefs.latitude?.toString() ?? '';
     final lngLine = prefs.longitude?.toString() ?? '';
     await _file.writeAsString(
@@ -344,7 +575,13 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
       '${prefs.administrativeArea}\n'
       '${prefs.prePrayerAlertMinutes}\n'
       '0\n'
-      '${prefs.prePrayerAlertSound.wire}\n',
+      '${prefs.prePrayerAlertSound.wire}\n'
+      '${prefs.castFallbackToPhone ? 1 : 0}\n'
+      '$volumes\n'
+      '$iqamah\n'
+      '${prefs.iqamahSound.wire}\n'
+      '${prefs.defaultDeliveryMode.wire}\n'
+      '${prefs.defaultsMigrated ? 1 : 0}\n',
     );
   }
 
@@ -453,5 +690,37 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
       }
     }
     return out;
+  }
+
+  static Map<String, double> _parseVolumes(String raw) {
+    if (raw.trim().isEmpty) return const {};
+    final out = <String, double>{};
+    for (final part in raw.split(',')) {
+      final idx = part.indexOf('=');
+      if (idx <= 0) continue;
+      final key = part.substring(0, idx).trim();
+      final value = double.tryParse(part.substring(idx + 1).trim());
+      if (key.isEmpty || value == null) continue;
+      out[key] = value.clamp(0.0, 1.0);
+    }
+    return out;
+  }
+
+  static Map<String, int> _parseIqamahMinutes(String raw) {
+    if (raw.trim().isEmpty) {
+      return Map<String, int>.from(PrayerPrefs.defaults.iqamahMinutesByPrayer);
+    }
+    final out = <String, int>{};
+    for (final part in raw.split(',')) {
+      final idx = part.indexOf('=');
+      if (idx <= 0) continue;
+      final key = part.substring(0, idx).trim();
+      final value = int.tryParse(part.substring(idx + 1).trim());
+      if (key.isEmpty || value == null) continue;
+      out[key] = PrayerPrefs.normalizeIqamahMinutes(value);
+    }
+    return out.isEmpty
+        ? Map<String, int>.from(PrayerPrefs.defaults.iqamahMinutesByPrayer)
+        : out;
   }
 }

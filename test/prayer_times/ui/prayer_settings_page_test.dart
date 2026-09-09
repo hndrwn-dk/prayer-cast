@@ -53,10 +53,12 @@ void main() {
             ),
             voiceId: 'fajr_adhan',
             deliveryMode: mode,
+            castVolume: null,
             testing: false,
             enabled: true,
             onVoiceChanged: (_) {},
             onDeliveryChanged: (_) {},
+            onVolumeChanged: (_) {},
             onTest: () {},
           ),
         ),
@@ -276,7 +278,7 @@ void main() {
     );
   });
 
-  testWidgets('save without location shows status above Save, not a SnackBar', (
+  testWidgets('save without location shows status above Done, not a SnackBar', (
     tester,
   ) async {
     await _pumpSettings(
@@ -291,7 +293,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Save'));
+    await tester.tap(find.text('Done'));
     await tester.pump();
 
     expect(find.byType(SnackBar), findsNothing);
@@ -303,10 +305,10 @@ void main() {
       find.text('Use current location, or enter city and country first'),
       findsOneWidget,
     );
-    expect(find.text('Save'), findsOneWidget);
+    expect(find.text('Done'), findsOneWidget);
   });
 
-  testWidgets('Save button sits above the Android navigation inset', (
+  testWidgets('Done button sits above the Android navigation inset', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(800, 915);
@@ -320,7 +322,7 @@ void main() {
 
     await _pumpSettings(tester);
 
-    final save = find.widgetWithText(FilledButton, 'Save');
+    final save = find.widgetWithText(FilledButton, 'Done');
     expect(save, findsOneWidget);
     expect(tester.getRect(save).bottom, lessThanOrEqualTo(915 - 48));
   });
@@ -670,6 +672,21 @@ final class _FakeExactAlarm implements ExactAlarmPlatform {
   Future<void> cancelPreAlert() async {}
 
   @override
+  Future<void> scheduleIqamahReminder({
+    required int epochMs,
+    required String title,
+    required String body,
+    required String prayer,
+    String sound = 'chime',
+  }) async {}
+
+  @override
+  Future<void> cancelIqamahReminder() async {}
+
+  @override
+  Future<List<PendingIqamahLog>> drainPendingIqamahLogs() async => const [];
+
+  @override
   Future<void> showDeliveryFailureNotification({
     required String title,
     required String body,
@@ -687,9 +704,6 @@ final class _FakeExactAlarm implements ExactAlarmPlatform {
 final class _FakeSettings implements DeliverySettings {
   @override
   Future<String?> homeCastDeviceId() async => 'cast-home-1';
-
-  @override
-  Future<double> playbackVolume() async => 0.7;
 }
 
 final class _FakeAudio implements AdzanAudioLoader {

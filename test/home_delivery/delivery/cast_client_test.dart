@@ -269,13 +269,12 @@ void main() {
       );
     });
 
-    test('keeps audible speaker volume instead of boosting', () async {
+    test('applies opted-in volume and restores prior level', () async {
       final platform = FakeCastPlatform(initialVolume: 0.18);
       final client = CastClient(platform: platform);
       await client.connectById('cast-home-1');
       await client.applyPlaybackVolume(0.7);
-      expect(platform.lastSetVolume, isNull);
-      expect(platform.initialVolume, 0.18);
+      expect(platform.lastSetVolume, 0.7);
 
       await client.restoreVolume();
       expect(platform.initialVolume, 0.18);
@@ -290,6 +289,7 @@ void main() {
       expect(platform.lastSetVolume, 0.8);
 
       await client.restoreVolume();
+      // Saved 0 is not restored (would mute the speaker).
       expect(platform.lastSetVolume, 0.8);
     });
 

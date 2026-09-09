@@ -8,13 +8,16 @@ import '../common/logger.dart';
 import '../common/scheduler.dart';
 import '../delivery/delivery_orchestrator.dart';
 import '../delivery/delivery_timing.dart';
+import '../logging/delivery_retry_window.dart';
 import '../logging/delivery_log_dao.dart';
 import '../logging/outcome.dart';
 import '../platform/device_conditions.dart';
 import '../platform/exact_alarm.dart';
 import '../presence/presence_schedule.dart';
 import 'adzan_audio_loader.dart';
+import 'active_delivery_hero.dart';
 import 'delivery_settings.dart';
+import 'iqamah_reminder_scheduler.dart';
 import 'local_prayer_player.dart';
 import 'next_prayer_provider.dart';
 import 'pre_prayer_alert_scheduler.dart';
@@ -60,8 +63,11 @@ final class PrayerDeliveryCoordinator {
     LocalPrayerPlayer? localPlayer,
     DeliveryLogDao? logDao,
     PrePrayerAlertScheduler? prePrayerAlerts,
+    IqamahReminderScheduler? iqamahReminders,
+    PrayerPrefsStore? prayerPrefs,
     Future<String?> Function()? readLocaleCode,
     void Function(bool granted)? onPermissionChanged,
+    ActiveDeliveryHero? activeHero,
     HomeDeliveryLogger logger = const SilentLogger(),
   })  : _exactAlarm = exactAlarm,
         _nextPrayer = nextPrayer,
@@ -74,8 +80,11 @@ final class PrayerDeliveryCoordinator {
         _localPlayer = localPlayer ?? const SilentLocalPrayerPlayer(),
         _logDao = logDao,
         _prePrayerAlerts = prePrayerAlerts,
+        _iqamahReminders = iqamahReminders,
+        _prayerPrefs = prayerPrefs,
         _readLocaleCode = readLocaleCode ?? (() async => null),
         _onPermissionChanged = onPermissionChanged,
+        _activeHero = activeHero,
         _logger = logger;
 
   /// Fallback when a fired event has no voiceId (legacy prefs / corruption).
@@ -127,8 +136,11 @@ final class PrayerDeliveryCoordinator {
   final LocalPrayerPlayer _localPlayer;
   final DeliveryLogDao? _logDao;
   final PrePrayerAlertScheduler? _prePrayerAlerts;
+  final IqamahReminderScheduler? _iqamahReminders;
+  final PrayerPrefsStore? _prayerPrefs;
   final Future<String?> Function() _readLocaleCode;
   final void Function(bool granted)? _onPermissionChanged;
+  final ActiveDeliveryHero? _activeHero;
   final HomeDeliveryLogger _logger;
 
   StreamSubscription<AlarmFiredEvent>? _fireSub;
@@ -167,6 +179,40 @@ final class PrayerDeliveryCoordinator {
     );
 
     await _tryScheduleIfPermitted();
+    await _drainPendingIqamahLogs();
+  }
+
+  Future<void> _drainPendingIqamahLogs() async {
+    final dao = _logDao;
+    if (dao == null) return;
+    try {
+      final pending = await _exactAlarm.drainPendingIqamahLogs();
+      for (final entry in pending) {
+        await dao.insertAttempt(
+          sessionId: 'iqamah-${entry.scheduledAtMs}-${entry.firedAtMs}',
+          prayer: entry.prayer,
+          scheduledAtMs: entry.scheduledAtMs,
+          firedAtMs: entry.firedAtMs,
+          outcome: Outcome.iqamahChime,
+          detail: 'chime',
+          role: 'LOCAL',
+          targetName: 'phone',
+        );
+      }
+      if (pending.isNotEmpty) {
+        _logger.info(
+          'Drained ${pending.length} pending iqamah chime log(s)',
+          tag: 'PrayerDeliveryCoordinator',
+        );
+      }
+    } catch (e, st) {
+      _logger.warn(
+        'Failed to drain pending iqamah logs',
+        tag: 'PrayerDeliveryCoordinator',
+        error: e,
+        stackTrace: st,
+      );
+    }
   }
 
   /// Re-check `SCHEDULE_EXACT_ALARM` and arm a wake if none is scheduled yet.
@@ -194,19 +240,57 @@ final class PrayerDeliveryCoordinator {
     }
 
     final existing = await _exactAlarm.readScheduled();
-    if (existing != null &&
-        isDryRunPrayer(existing.prayer) &&
-        existing.epochMs > _clock.now().millisecondsSinceEpoch) {
-      _scheduledWakeEpochMs = existing.epochMs;
-      _logger.info(
-        'Keeping armed dry-run wake at ${existing.epochMs} '
-        'for ${existing.prayer}',
-        tag: 'PrayerDeliveryCoordinator',
-      );
-      return;
+    if (existing != null && isDryRunPrayer(existing.prayer)) {
+      final nowMs = _clock.now().millisecondsSinceEpoch;
+      if (existing.epochMs > nowMs) {
+        _scheduledWakeEpochMs = existing.epochMs;
+        _logger.info(
+          'Keeping armed dry-run wake at ${existing.epochMs} '
+          'for ${existing.prayer}',
+          tag: 'PrayerDeliveryCoordinator',
+        );
+        return;
+      }
+      final lateMs = nowMs - existing.epochMs;
+      if (lateMs > dryRunStaleGrace.inMilliseconds) {
+        _logger.info(
+          'Cleared stale dry-run wake at ${existing.epochMs} '
+          'for ${existing.prayer} (late ${lateMs ~/ 1000}s)',
+          tag: 'PrayerDeliveryCoordinator',
+        );
+      }
+      await _exactAlarm.cancel();
+      _scheduledWakeEpochMs = null;
     }
 
     await _scheduleNextAfter(_clock.now());
+  }
+
+  /// How long after a missed dry-run fire we still treat it as "just late"
+  /// rather than a hanging armed test that must be cleared on startup.
+  static const Duration dryRunStaleGrace = Duration(minutes: 3);
+
+  /// Cancel an armed dry-run and re-arm the real next prayer wake.
+  Future<void> cancelDryRun() async {
+    final existing = await _exactAlarm.readScheduled();
+    if (existing == null || !isDryRunPrayer(existing.prayer)) return;
+    await _exactAlarm.cancel();
+    _scheduledWakeEpochMs = null;
+    _logger.info(
+      'Cancelled dry-run wake for ${existing.prayer}',
+      tag: 'PrayerDeliveryCoordinator',
+    );
+    if (_started) {
+      await _tryScheduleIfPermitted();
+    }
+  }
+
+  /// Future dry-run wake, if any (null when none armed or already past).
+  Future<ScheduledAlarm?> readArmedDryRun() async {
+    final existing = await _exactAlarm.readScheduled();
+    if (existing == null || !isDryRunPrayer(existing.prayer)) return null;
+    if (existing.epochMs <= _clock.now().millisecondsSinceEpoch) return null;
+    return existing;
   }
 
   Future<void> dispose() async {
@@ -282,6 +366,47 @@ final class PrayerDeliveryCoordinator {
       tag: 'PrayerDeliveryCoordinator',
     );
     return azanEpoch;
+  }
+
+  /// Re-run delivery for a failed history row while still inside the retry window.
+  ///
+  /// Does not touch the exact-alarm schedule or FGS. Returns false when the
+  /// window has closed or another delivery is already running.
+  Future<bool> retryFailedAttempt({
+    required String prayer,
+    required int scheduledAtMs,
+    int? firedAtMs,
+    String? voiceId,
+  }) async {
+    final azanEpoch = DateTime.fromMillisecondsSinceEpoch(scheduledAtMs);
+    final now = _clock.now();
+    final firedAt = firedAtMs == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(firedAtMs);
+    if (!DeliveryRetryWindow.canRetry(
+      scheduledAzan: azanEpoch,
+      now: now,
+      firedAt: firedAt,
+    )) {
+      return false;
+    }
+    if (_handling) return false;
+
+    final wakeEpochMs =
+        azanEpoch.add(PresenceSchedule.scanOffset).millisecondsSinceEpoch;
+    final event = AlarmFiredEvent(
+      prayer: canonicalPrayerName(prayer),
+      scheduledEpochMs: wakeEpochMs,
+      firedAtMs: now.millisecondsSinceEpoch,
+      voiceId: voiceId,
+    );
+    _handling = true;
+    try {
+      await _deliver(event, azanEpoch: azanEpoch, firedAt: now);
+      return true;
+    } finally {
+      _handling = false;
+    }
   }
 
   Future<void> _onFired(AlarmFiredEvent event) async {
@@ -400,6 +525,11 @@ final class PrayerDeliveryCoordinator {
         return;
       }
       await _localPlayer.playBeep();
+      await _logLocalAttempt(
+        event: event,
+        azanEpoch: azanEpoch,
+        outcome: Outcome.playedBeep,
+      );
       return;
     }
     if (mode == PrayerDeliveryMode.takbir) {
@@ -412,6 +542,11 @@ final class PrayerDeliveryCoordinator {
         return;
       }
       await _localPlayer.playTakbir();
+      await _logLocalAttempt(
+        event: event,
+        azanEpoch: azanEpoch,
+        outcome: Outcome.playedTakbir,
+      );
       return;
     }
     if (mode == PrayerDeliveryMode.adhanPhone) {
@@ -428,16 +563,31 @@ final class PrayerDeliveryCoordinator {
       final stopSub = _exactAlarm.onStopLocalPlayback.listen((_) {
         unawaited(_localPlayer.stop());
       });
+      final hold = NextPrayer(
+        name: prayerName,
+        // Alarm epochs are UTC instants; hero UI formats local wall time.
+        scheduledAt: azanEpoch.toLocal(),
+        voiceId: voiceId,
+      );
+      _activeHero?.begin(hold);
       try {
         await _localPlayer.playAdhan(voiceId: voiceId);
       } finally {
         await stopSub.cancel();
+        _activeHero?.clear();
       }
+      await _logLocalAttempt(
+        event: event,
+        azanEpoch: azanEpoch,
+        outcome: Outcome.playedOnPhone,
+        detail: 'voice=$voiceId',
+      );
       return;
     }
 
     final castId = await _settings.homeCastDeviceId();
-    final volume = await _settings.playbackVolume();
+    final prefs = await _prayerPrefs?.read();
+    final volume = prefs?.volumeFor(event.prayer);
     final voiceId = _resolveVoiceId(event.voiceId);
     final audio = await _audioLoader.load(voiceId);
     final conditions = await _deviceConditions.current();
@@ -455,10 +605,167 @@ final class PrayerDeliveryCoordinator {
       firedAt: firedAt,
     );
     final result = await _runDelivery(request);
-    await _maybeNotifyCastFailure(
+    final handled = await _maybePhoneFallback(
+      event: event,
+      azanEpoch: azanEpoch,
       result: result,
-      prayerName: event.prayer,
+      voiceId: voiceId,
     );
+    if (!handled) {
+      await _maybeNotifyCastFailure(
+        result: result,
+        prayerName: event.prayer,
+      );
+    }
+  }
+
+  /// Returns true when fallback already logged / notified enough.
+  Future<bool> _maybePhoneFallback({
+    required AlarmFiredEvent event,
+    required DateTime azanEpoch,
+    required DeliveryAttemptResult result,
+    required String voiceId,
+  }) async {
+    if (!_castFailureOutcomes.contains(result.outcome)) return false;
+    final prefs = await _prayerPrefs?.read();
+    if (!(prefs?.castFallbackToPhone ?? true)) return false;
+
+    final confidentHome = result.presenceState == 'HOME';
+    final castDetail =
+        '${result.outcome.code}${result.detail == null ? '' : ': ${result.detail}'}';
+    if (DeliveryTiming.isTooLate(
+      scheduledAzan: azanEpoch,
+      now: _clock.now(),
+    )) {
+      return false;
+    }
+
+    if (confidentHome) {
+      _logger.info(
+        'Cast failed (${result.outcome.code}); falling back to phone Adhan',
+        tag: 'PrayerDeliveryCoordinator',
+      );
+      await _exactAlarm.showPhonePlaybackControls(prayer: event.prayer);
+      final stopSub = _exactAlarm.onStopLocalPlayback.listen((_) {
+        unawaited(_localPlayer.stop());
+      });
+      final prayerName = canonicalPrayerName(event.prayer);
+      final hold = NextPrayer(
+        name: prayerName,
+        scheduledAt: azanEpoch.toLocal(),
+        voiceId: voiceId,
+      );
+      _activeHero?.begin(hold);
+      try {
+        await _localPlayer.playAdhan(voiceId: voiceId);
+      } finally {
+        await stopSub.cancel();
+        _activeHero?.clear();
+      }
+      await _replaceCastLogWithFallback(
+        sessionId: result.sessionId,
+        event: event,
+        azanEpoch: azanEpoch,
+        detail: 'full_adhan; cast=$castDetail',
+        presenceState: result.presenceState,
+      );
+      await _notifyPhoneFallback(
+        prayerName: event.prayer,
+        castOutcome: result.outcome,
+        fullAdhan: true,
+      );
+    } else {
+      _logger.info(
+        'Cast failed (${result.outcome.code}); presence='
+        '${result.presenceState ?? 'unknown'} — chime fallback only',
+        tag: 'PrayerDeliveryCoordinator',
+      );
+      await _localPlayer.playBeep();
+      await _replaceCastLogWithFallback(
+        sessionId: result.sessionId,
+        event: event,
+        azanEpoch: azanEpoch,
+        detail: 'chime; cast=$castDetail; presence=${result.presenceState}',
+        presenceState: result.presenceState,
+      );
+      await _notifyPhoneFallback(
+        prayerName: event.prayer,
+        castOutcome: result.outcome,
+        fullAdhan: false,
+      );
+    }
+    return true;
+  }
+
+  Future<void> _notifyPhoneFallback({
+    required String prayerName,
+    required Outcome castOutcome,
+    required bool fullAdhan,
+  }) async {
+    final localeCode = await _readLocaleCode();
+    final isId = localeCode != 'en';
+    final copy = CastFailureNotificationCopy.forPhoneFallback(
+      outcomeCode: castOutcome.code,
+      prayerName: prayerName,
+      fullAdhan: fullAdhan,
+      isId: isId,
+    );
+    await _exactAlarm.showDeliveryFailureNotification(
+      title: copy.title,
+      body: copy.body,
+    );
+  }
+
+  Future<void> _replaceCastLogWithFallback({
+    required String sessionId,
+    required AlarmFiredEvent event,
+    required DateTime azanEpoch,
+    required String detail,
+    String? presenceState,
+  }) async {
+    final dao = _logDao;
+    if (dao == null) return;
+    try {
+      await dao.deleteBySessionId(sessionId);
+    } catch (_) {}
+    await _logLocalAttempt(
+      event: event,
+      azanEpoch: azanEpoch,
+      outcome: Outcome.playedPhoneFallback,
+      detail: detail,
+      presenceState: presenceState,
+    );
+  }
+
+  Future<void> _logLocalAttempt({
+    required AlarmFiredEvent event,
+    required DateTime azanEpoch,
+    required Outcome outcome,
+    String? detail,
+    String? presenceState,
+  }) async {
+    final dao = _logDao;
+    if (dao == null) return;
+    try {
+      await dao.insertAttempt(
+        sessionId: 'local-${event.scheduledEpochMs}-${outcome.code}',
+        prayer: event.prayer,
+        scheduledAtMs: azanEpoch.millisecondsSinceEpoch,
+        firedAtMs: _clock.now().millisecondsSinceEpoch,
+        outcome: outcome,
+        detail: detail,
+        presenceState: presenceState,
+        role: 'LOCAL',
+        targetName: 'phone',
+      );
+    } catch (e, st) {
+      _logger.warn(
+        'Failed to log local attempt for ${event.prayer}',
+        tag: 'PrayerDeliveryCoordinator',
+        error: e,
+        stackTrace: st,
+      );
+    }
   }
 
   static const _castFailureOutcomes = {
@@ -545,16 +852,16 @@ final class PrayerDeliveryCoordinator {
   /// Re-sync the pre-prayer reminder after prefs change (e.g. minutes toggle).
   Future<void> refreshPrePrayerAlert() async {
     if (!_started) return;
-    final scheduler = _prePrayerAlerts;
-    if (scheduler == null) return;
     final scheduled = await _exactAlarm.readScheduled();
     if (scheduled == null) {
-      await scheduler.cancel();
+      await _prePrayerAlerts?.cancel();
+      await _iqamahReminders?.cancel();
       return;
     }
     if (PrayerDeliveryCoordinator.isDryRunPrayer(scheduled.prayer) ||
         PrayerDeliveryCoordinator.isRescheduleRetry(scheduled.prayer)) {
-      await scheduler.cancel();
+      await _prePrayerAlerts?.cancel();
+      await _iqamahReminders?.cancel();
       return;
     }
     final wakeAt = DateTime.fromMillisecondsSinceEpoch(
@@ -567,8 +874,13 @@ final class PrayerDeliveryCoordinator {
       scheduledAt: azanAt,
       voiceId: scheduled.voiceId,
     );
-    await scheduler.syncForPrayer(prayer, _clock.now());
+    final now = _clock.now();
+    await _prePrayerAlerts?.syncForPrayer(prayer, now);
+    await _iqamahReminders?.syncForPrayer(prayer, now);
   }
+
+  /// Alias for settings save — both pre-prayer and iqamah follow the next wake.
+  Future<void> refreshIqamahReminder() => refreshPrePrayerAlert();
 
   Future<void> _scheduleNextAfter(DateTime after) async {
     var cursor = after;
@@ -604,6 +916,7 @@ final class PrayerDeliveryCoordinator {
           );
           _scheduledWakeEpochMs = wakeEpochMs;
           await _prePrayerAlerts?.syncForPrayer(prayer, now);
+          await _iqamahReminders?.syncForPrayer(prayer, now);
           return;
         }
         _logger.warn(
@@ -621,6 +934,7 @@ final class PrayerDeliveryCoordinator {
       );
       _scheduledWakeEpochMs = wakeEpochMs;
       await _prePrayerAlerts?.syncForPrayer(prayer, now);
+      await _iqamahReminders?.syncForPrayer(prayer, now);
       _logger.info(
         'Scheduled wake at $wakeEpochMs for ${prayer.name} '
         '(azan ${prayer.scheduledAt.millisecondsSinceEpoch}, '

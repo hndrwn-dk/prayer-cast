@@ -6,6 +6,7 @@ import 'package:prayer_cast/support/app_links.dart';
 import 'package:prayer_cast/support/open_support_url.dart';
 import 'package:prayer_cast/support/share_plain_text.dart';
 
+import '../coordinator/prayer_delivery_coordinator.dart';
 import 'delivery_log_page.dart';
 import 'icons/premium_icons.dart';
 import 'theme/prayer_cast_colors.dart';
@@ -14,9 +15,14 @@ import 'widgets/editorial_chrome.dart';
 
 /// Language, adhan history, about, and legal — off the home screen.
 class AppSettingsPage extends ConsumerWidget {
-  const AppSettingsPage({super.key, required this.version});
+  const AppSettingsPage({
+    super.key,
+    required this.version,
+    this.coordinator,
+  });
 
   final String version;
+  final PrayerDeliveryCoordinator? coordinator;
 
   static const ValueKey<String> keyName = ValueKey<String>('app_settings_page');
   static const ValueKey<String> languageIdKey = ValueKey<String>(
@@ -95,7 +101,9 @@ class AppSettingsPage extends ConsumerWidget {
                 onTap: () {
                   Navigator.of(context).push(
                     PageRouteBuilder<void>(
-                      pageBuilder: (_, __, ___) => const DeliveryLogPage(),
+                      pageBuilder: (_, __, ___) => DeliveryLogPage(
+                        coordinator: coordinator,
+                      ),
                       transitionsBuilder: (_, animation, __, child) {
                         return FadeTransition(opacity: animation, child: child);
                       },

@@ -36,13 +36,20 @@ class BootReceiver : BroadcastReceiver() {
         AlarmHealScheduler.enqueue(app)
         val healed = ExactAlarmPlugin.healPersistedWake(app)
         val preHealed = PrePrayerAlert.rearmFromPrefsIfFuture(app)
+        val iqamahHealed = IqamahAlert.rearmFromPrefsIfFuture(app)
         NextPrayerWidget.refresh(app)
         Log.i(
             TAG,
             when {
+                healed && preHealed && iqamahHealed ->
+                    "Healed wake + pre-alert + iqamah after $action"
                 healed && preHealed -> "Healed wake + pre-alert after $action"
+                healed && iqamahHealed -> "Healed wake + iqamah after $action"
+                preHealed && iqamahHealed ->
+                    "Healed pre-alert + iqamah after $action"
                 healed -> "Healed persisted wake after $action"
                 preHealed -> "Healed pre-alert after $action"
+                iqamahHealed -> "Healed iqamah after $action"
                 else -> "No future alarm to re-arm after $action"
             },
         )

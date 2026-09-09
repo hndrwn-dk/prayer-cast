@@ -22,15 +22,21 @@ abstract final class OutcomeExplanation {
   static String en(Outcome outcome) => _en[outcome]!;
 
   static const Map<Outcome, String> _bi = {
-    Outcome.played: 'Adzan berhasil diputar di speaker rumah.',
+    Outcome.played: 'Adhan berhasil diputar di speaker rumah.',
+    Outcome.playedOnPhone: 'Adhan diputar di ponsel.',
+    Outcome.playedBeep: 'Bunyi bip diputar di ponsel.',
+    Outcome.playedTakbir: 'Takbir diputar di ponsel.',
+    Outcome.playedPhoneFallback:
+        'Speaker gagal — Adhan/nada diputar di ponsel sebagai cadangan.',
+    Outcome.iqamahChime: 'Nada iqamah diputar di ponsel.',
     Outcome.suppressedAway:
-        'Perangkat tidak di rumah — adzan tidak diputar.',
+        'Perangkat tidak di rumah — adhan tidak diputar.',
     Outcome.suppressedNotLeader:
-        'Perangkat lain di keluarga yang memutar adzan.',
+        'Perangkat lain di keluarga yang memutar adhan.',
     Outcome.suppressedAlreadyPlaying:
-        'Speaker sudah memutar adzan — duplikat dicegah.',
+        'Speaker sudah memutar adhan — duplikat dicegah.',
     Outcome.suppressedUserDnd:
-        'Mode tenang / tamu aktif — adzan ditunda.',
+        'Mode tenang / tamu aktif — adhan ditunda.',
     Outcome.failedNoTarget:
         'Speaker tersimpan tidak ditemukan di jaringan rumah.',
     Outcome.failedNoRoute:
@@ -38,27 +44,33 @@ abstract final class OutcomeExplanation {
     Outcome.failedCastConnect:
         'Gagal terhubung ke speaker (waktu habis).',
     Outcome.failedLoadMedia:
-        'Speaker menolak memuat audio adzan.',
+        'Speaker menolak memuat audio adhan.',
     Outcome.failedAlarmMissed:
         'Alarm terlambat >60 detik — penghemat baterai OEM mungkin memblokir.',
     Outcome.clockSkew:
         'Jam perangkat melenceng — tidak memimpin pemutaran.',
     Outcome.failedReschedule:
-        'Gagal menjadwalkan adzan berikutnya — mungkin perlu ulang.',
+        'Gagal menjadwalkan adhan berikutnya — mungkin perlu ulang.',
     Outcome.rescheduleRetryArmed:
         'Waktu 15 detik dijadwalkan untuk mencoba lagi.',
   };
 
   static const Map<Outcome, String> _en = {
-    Outcome.played: 'Adzan played successfully on the home speaker.',
+    Outcome.played: 'Adhan played successfully on the home speaker.',
+    Outcome.playedOnPhone: 'Adhan played on this phone.',
+    Outcome.playedBeep: 'Beep played on this phone.',
+    Outcome.playedTakbir: 'Takbir played on this phone.',
+    Outcome.playedPhoneFallback:
+        'Speaker unavailable — played on this phone instead.',
+    Outcome.iqamahChime: 'Iqamah chime played on this phone.',
     Outcome.suppressedAway:
-        'Device was away from home — adzan was not cast.',
+        'Device was away from home — Adhan was not cast.',
     Outcome.suppressedNotLeader:
-        'Another family device led and cast the adzan.',
+        'Another family device led and cast the Adhan.',
     Outcome.suppressedAlreadyPlaying:
-        'Speaker was already playing adzan — duplicate blocked.',
+        'Speaker was already playing Adhan — duplicate blocked.',
     Outcome.suppressedUserDnd:
-        'Quiet hours / guest mode active — adzan suppressed.',
+        'Quiet hours / guest mode active — Adhan suppressed.',
     Outcome.failedNoTarget:
         'Saved speaker was not found on the home network.',
     Outcome.failedNoRoute:
@@ -66,13 +78,13 @@ abstract final class OutcomeExplanation {
     Outcome.failedCastConnect:
         'Could not connect to the speaker (timed out).',
     Outcome.failedLoadMedia:
-        'Speaker rejected loading the adzan audio.',
+        'Speaker rejected loading the Adhan audio.',
     Outcome.failedAlarmMissed:
         'Alarm fired >60s late — OEM battery saver may be blocking.',
     Outcome.clockSkew:
         'Device clock skew detected — did not lead playback.',
     Outcome.failedReschedule:
-        'Failed to schedule next adzan — may need retry.',
+        'Failed to schedule next Adhan — may need retry.',
     Outcome.rescheduleRetryArmed:
         '15-second retry wake scheduled.',
   };

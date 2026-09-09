@@ -76,7 +76,8 @@ final class PrePrayerAlertScheduler {
   Future<void> cancel() => _exactAlarm.cancelPreAlert();
 }
 
-/// Notification copy when Cast delivery fails at azan time.
+/// Notification copy when Cast delivery fails at azan time,
+/// or when phone fallback plays instead.
 abstract final class CastFailureNotificationCopy {
   static ({String title, String body}) forOutcome({
     required String outcomeCode,
@@ -90,28 +91,81 @@ abstract final class CastFailureNotificationCopy {
     if (isId) {
       final body = switch (outcomeCode) {
         'FAILED_NO_TARGET' =>
-          'Speaker "$prayer" tidak ditemukan di WiFi. Buka app dan cek Speaker Setup.',
+          'Speaker tidak ditemukan di WiFi. Buka app dan cek Speaker Setup.',
         'FAILED_NO_ROUTE' =>
-          'Tidak ada jalur ke speaker (VPN atau WiFi berbeda). Adzan $prayer tidak diputar.',
+          'Tidak ada jalur ke speaker (VPN atau WiFi berbeda). Adhan $prayer tidak diputar.',
         'FAILED_CAST_CONNECT' =>
-          'Gagal hubung ke speaker untuk $prayer. Buka app dan coba tes adzan.',
+          'Gagal hubung ke speaker untuk $prayer. Buka app dan coba tes Adhan.',
         'FAILED_LOAD_MEDIA' =>
-          'Speaker menolak audio adzan $prayer. Buka Riwayat adzan untuk detail.',
-        _ => 'Adzan $prayer tidak bisa diputar ke speaker. Buka app untuk detail.',
+          'Speaker menolak audio Adhan $prayer. Buka Riwayat Adhan untuk detail.',
+        _ => 'Adhan $prayer tidak bisa diputar ke speaker. Buka app untuk detail.',
       };
-      return (title: 'Adzan $prayer gagal', body: body);
+      return (title: 'Adhan $prayer gagal', body: body);
     }
     final body = switch (outcomeCode) {
       'FAILED_NO_TARGET' =>
         'Saved speaker not found on WiFi. Open the app and check Speaker Setup.',
       'FAILED_NO_ROUTE' =>
-        'No route to the speaker (VPN or wrong WiFi). $prayer adzan was not cast.',
+        'No route to the speaker (VPN or wrong WiFi). $prayer Adhan was not cast.',
       'FAILED_CAST_CONNECT' =>
         'Could not connect to the speaker for $prayer. Open the app and run a test.',
       'FAILED_LOAD_MEDIA' =>
-        'Speaker rejected the $prayer adzan audio. See Adhan history for details.',
-      _ => '$prayer adzan could not play on the speaker. Open the app for details.',
+        'Speaker rejected the $prayer Adhan audio. See Adhan history for details.',
+      _ => '$prayer Adhan could not play on the speaker. Open the app for details.',
     };
-    return (title: '$prayer adzan failed', body: body);
+    return (title: '$prayer Adhan failed', body: body);
+  }
+
+  /// Short heads-up when Cast failed and the phone played instead.
+  static ({String title, String body}) forPhoneFallback({
+    required String outcomeCode,
+    required String prayerName,
+    required bool fullAdhan,
+    required bool isId,
+  }) {
+    final prayer = prePrayerDisplayName(
+      PrayerDeliveryCoordinator.canonicalPrayerName(prayerName),
+      isId: isId,
+    );
+    final reason = _shortReason(outcomeCode, isId: isId);
+    if (isId) {
+      final action = fullAdhan
+          ? 'diputar di ponsel'
+          : 'nada singkat (lokasi rumah belum yakin)';
+      return (
+        title: '$prayer · $reason — $action',
+        body: fullAdhan
+            ? 'Speaker tidak siap. Adhan $prayer diputar di ponsel.'
+            : 'Speaker tidak siap dan lokasi rumah belum yakin — hanya nada singkat.',
+      );
+    }
+    final action = fullAdhan
+        ? 'played on phone'
+        : 'short chime (home presence uncertain)';
+    return (
+      title: '$prayer · $reason — $action',
+      body: fullAdhan
+          ? 'Speaker was unavailable. $prayer Adhan played on this phone.'
+          : 'Speaker was unavailable and home presence was uncertain — short chime only.',
+    );
+  }
+
+  static String _shortReason(String outcomeCode, {required bool isId}) {
+    if (isId) {
+      return switch (outcomeCode) {
+        'FAILED_NO_TARGET' => 'speaker tidak ditemukan',
+        'FAILED_NO_ROUTE' => 'tidak ada jalur ke speaker',
+        'FAILED_CAST_CONNECT' => 'gagal hubung speaker',
+        'FAILED_LOAD_MEDIA' => 'speaker menolak audio',
+        _ => 'speaker tidak siap',
+      };
+    }
+    return switch (outcomeCode) {
+      'FAILED_NO_TARGET' => 'speaker unreachable',
+      'FAILED_NO_ROUTE' => 'no route to speaker',
+      'FAILED_CAST_CONNECT' => 'could not connect',
+      'FAILED_LOAD_MEDIA' => 'speaker rejected audio',
+      _ => 'speaker unavailable',
+    };
   }
 }

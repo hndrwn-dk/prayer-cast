@@ -59,6 +59,13 @@ final class DeliveryLogDao {
     return query.get();
   }
 
+  /// Removes rows for [sessionId] (e.g. replace cast failure with phone fallback).
+  Future<int> deleteBySessionId(String sessionId) {
+    return (_db.delete(_db.deliveryLogs)
+          ..where((t) => t.sessionId.equals(sessionId)))
+        .go();
+  }
+
   /// Count of [Outcome.failedAlarmMissed] rows with `scheduled_at` in the
   /// last [windowMs] (default 7 days). Used by Phase 6 OEM battery nudge.
   Future<int> countFailedAlarmMissedSince({
