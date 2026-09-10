@@ -128,6 +128,34 @@ void main() {
     }
   });
 
+  test('withDefaultDelivery clears overrides that followed the old default', () {
+    final migrated = PrayerPrefs.defaults
+        .copyWith(
+          deliveryByPrayer: {
+            for (final p in PrayerPrefs.prayerKeys) p: 'cast',
+          },
+          defaultDeliveryMode: PrayerDeliveryMode.cast,
+          defaultsMigrated: true,
+        )
+        .withDefaultDelivery(PrayerDeliveryMode.beep);
+    expect(migrated.defaultDeliveryMode, PrayerDeliveryMode.beep);
+    for (final prayer in PrayerPrefs.prayerKeys) {
+      expect(migrated.deliveryFor(prayer), PrayerDeliveryMode.beep);
+      expect(migrated.hasDeliveryOverride(prayer), isFalse);
+    }
+  });
+
+  test('legacy takbir alert sound maps to longBeep', () {
+    expect(
+      PrePrayerAlertSoundX.parse('takbir'),
+      PrePrayerAlertSound.longBeep,
+    );
+    expect(
+      PrePrayerAlertSoundX.parse('beep'),
+      PrePrayerAlertSound.shortBeep,
+    );
+  });
+
   test('FilePrayerPrefsStore round-trips per-prayer delivery modes', () async {
     final dir = await Directory.systemTemp.createTemp('prayer_prefs_del_');
     addTearDown(() => dir.delete(recursive: true));
@@ -207,14 +235,14 @@ void main() {
         latitude: -6.2,
         longitude: 106.8,
         prePrayerAlertMinutes: 10,
-        prePrayerAlertSound: PrePrayerAlertSound.takbir,
+        prePrayerAlertSound: PrePrayerAlertSound.longBeep,
         travelScheduleUpdates: true,
         deliveryByPrayer: {'fajr': 'takbir'},
       ),
     );
     final read = await store.read();
     expect(read.travelScheduleUpdates, isFalse);
-    expect(read.prePrayerAlertSound, PrePrayerAlertSound.takbir);
+    expect(read.prePrayerAlertSound, PrePrayerAlertSound.longBeep);
     expect(read.deliveryFor('fajr'), PrayerDeliveryMode.takbir);
     expect(read.prePrayerAlertMinutes, 10);
   });

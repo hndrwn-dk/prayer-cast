@@ -34,17 +34,24 @@ extension PrayerDeliveryModeX on PrayerDeliveryMode {
 }
 
 enum PrePrayerAlertSound {
-  beep,
-  takbir,
+  /// Single short notification beep.
+  shortBeep,
+
+  /// Longer reminder tone (legacy wire `takbir` maps here).
+  longBeep,
 }
 
 extension PrePrayerAlertSoundX on PrePrayerAlertSound {
-  String get wire => name;
+  String get wire => switch (this) {
+        PrePrayerAlertSound.shortBeep => 'short_beep',
+        PrePrayerAlertSound.longBeep => 'long_beep',
+      };
 
   static PrePrayerAlertSound parse(String? raw) {
     return switch (raw) {
-      'takbir' => PrePrayerAlertSound.takbir,
-      _ => PrePrayerAlertSound.beep,
+      'long_beep' || 'takbir' => PrePrayerAlertSound.longBeep,
+      // Legacy `beep` and anything unknown → short.
+      _ => PrePrayerAlertSound.shortBeep,
     };
   }
 }
@@ -98,7 +105,7 @@ final class PrayerPrefs {
     this.longitude,
     this.administrativeArea = '',
     this.prePrayerAlertMinutes = 0,
-    this.prePrayerAlertSound = PrePrayerAlertSound.beep,
+    this.prePrayerAlertSound = PrePrayerAlertSound.shortBeep,
     this.iqamahMinutesByPrayer = const {},
     this.iqamahSound = IqamahSound.chime,
     this.travelScheduleUpdates = false,
@@ -353,6 +360,19 @@ final class PrayerPrefs {
     return copyWith(deliveryByPrayer: next);
   }
 
+  /// Sets the household default and drops overrides that were still following
+  /// the previous default, so the schedule rows actually update.
+  PrayerPrefs withDefaultDelivery(PrayerDeliveryMode mode) {
+    if (mode == defaultDeliveryMode) return this;
+    final next = Map<String, String>.from(deliveryByPrayer);
+    for (final prayer in prayerKeys) {
+      if (deliveryFor(prayer) == defaultDeliveryMode) {
+        next.remove(prayer);
+      }
+    }
+    return copyWith(defaultDeliveryMode: mode, deliveryByPrayer: next);
+  }
+
   PrayerPrefs clearDeliveryOverride(String prayerName) {
     final next = Map<String, String>.from(deliveryByPrayer)..remove(prayerName);
     return copyWith(deliveryByPrayer: next);
@@ -444,7 +464,7 @@ final class MemoryPrayerPrefsStore implements PrayerPrefsStore {
 /// administrativeArea (optional; kabupaten/kota match hint)
 /// prePrayerAlertMinutes (0|10|15; optional; default 0)
 /// travelScheduleUpdates (always written 0; auto-travel GPS was removed)
-/// prePrayerAlertSound (beep|takbir; optional; default beep)
+/// prePrayerAlertSound (short_beep|long_beep; legacy beep|takbir; default short_beep)
 /// castFallbackToPhone (0|1; optional; default 1)
 /// volumesByPrayer fajr=0.5,... (optional; missing keys = leave speaker alone)
 /// iqamahMinutesByPrayer fajr=10,... (optional; missing → Maghrib 5 / else 10)
@@ -490,7 +510,7 @@ final class FilePrayerPrefsStore implements PrayerPrefsStore {
           : 0;
       final alertSound = lines.length > 13
           ? PrePrayerAlertSoundX.parse(lines[13].trim())
-          : PrePrayerAlertSound.beep;
+          : PrePrayerAlertSound.shortBeep;
       final castFallback = lines.length > 14
           ? lines[14].trim() != '0'
           : true;

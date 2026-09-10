@@ -118,6 +118,8 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
       return true;
     }
     if (a.prePrayerAlertMinutes != b.prePrayerAlertMinutes) return true;
+    if (a.prePrayerAlertSound != b.prePrayerAlertSound) return true;
+    if (a.iqamahSound != b.iqamahSound) return true;
     return false;
   }
 
@@ -236,10 +238,20 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
               backTooltip: l10n.back,
               onBack: () => Navigator.of(context).maybePop(),
             ),
-            body: asyncPrefs.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text(l10n.loadFailed('$e'))),
-              data: (prefs) {
+            body: Builder(
+              builder: (context) {
+                // Keep showing the last prefs while an autosave reloads the
+                // FutureProvider — otherwise the whole page flashes a spinner
+                // and SegmentedButton / Switch taps look dead.
+                final prefs = asyncPrefs.asData?.value ?? asyncPrefs.value;
+                if (prefs == null) {
+                  if (asyncPrefs.hasError) {
+                    return Center(
+                      child: Text(l10n.loadFailed('${asyncPrefs.error}')),
+                    );
+                  }
+                  return const Center(child: CircularProgressIndicator());
+                }
                 final draft = _draft ?? prefs;
                 _ensureControllers(draft);
                 if (_draft == null &&
@@ -619,9 +631,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                       ? (mode) {
                                           if (mode == null) return;
                                           _updateDraft(
-                                            (d) => d.copyWith(
-                                              defaultDeliveryMode: mode,
-                                            ),
+                                            (d) => d.withDefaultDelivery(mode),
                                           );
                                         }
                                       : null,
@@ -789,10 +799,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                       ),
                     _StickySaveBar(
                       saving: _saving,
-                      label: Localizations.localeOf(context).languageCode ==
-                              'id'
-                          ? 'Selesai'
-                          : 'Done',
+                      label: context.l10n.save,
                       onSave: () => _save(
                         draft.copyWith(
                           city: _cityController.text.trim(),
@@ -949,8 +956,12 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
       _lastSaved = toWrite;
       _draft = toWrite;
       ref.read(adhanNextPrayerProvider).invalidateCache();
-      ref.invalidate(prayerPrefsProvider);
-      ref.invalidate(nextPrayerSnapshotProvider);
+      // Invalidate only when leaving — mid-page invalidates flash a loading
+      // state and make Switch / SegmentedButton taps feel broken.
+      if (popAfter) {
+        ref.invalidate(prayerPrefsProvider);
+        ref.invalidate(nextPrayerSnapshotProvider);
+      }
       final shouldReschedule =
           previous == null || _affectsSchedule(previous, toWrite);
       if (shouldReschedule) {
@@ -1127,7 +1138,9 @@ class _PrePrayerAlertCard extends StatelessWidget {
                 ),
               ],
               selected: {minutes == 10 || minutes == 15 ? minutes : 0},
+              emptySelectionAllowed: false,
               onSelectionChanged: (selected) {
+                if (selected.isEmpty) return;
                 onChanged(selected.first);
               },
             ),
@@ -1141,16 +1154,18 @@ class _PrePrayerAlertCard extends StatelessWidget {
               SegmentedButton<PrePrayerAlertSound>(
                 segments: [
                   ButtonSegment(
-                    value: PrePrayerAlertSound.beep,
-                    label: Text(isId ? 'Ketuk' : 'Beep'),
+                    value: PrePrayerAlertSound.shortBeep,
+                    label: Text(isId ? 'Bip pendek' : 'Short beep'),
                   ),
                   ButtonSegment(
-                    value: PrePrayerAlertSound.takbir,
-                    label: Text(isId ? 'Takbir' : 'Takbir'),
+                    value: PrePrayerAlertSound.longBeep,
+                    label: Text(isId ? 'Bip panjang' : 'Long beep'),
                   ),
                 ],
                 selected: {sound},
+                emptySelectionAllowed: false,
                 onSelectionChanged: (selected) {
+                  if (selected.isEmpty) return;
                   onSoundChanged(selected.first);
                 },
               ),
@@ -1269,7 +1284,9 @@ class _IqamahReminderCard extends StatelessWidget {
                   ),
                 ],
                 selected: {draft.iqamahSound},
+                emptySelectionAllowed: false,
                 onSelectionChanged: (selected) {
+                  if (selected.isEmpty) return;
                   onSoundChanged(selected.first);
                 },
               ),

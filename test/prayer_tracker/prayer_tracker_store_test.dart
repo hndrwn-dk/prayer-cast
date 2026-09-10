@@ -56,6 +56,54 @@ void main() {
     expect(log['asr']?.where, PrayerLogWhere.jamaah);
     expect(log['isha']?.where, PrayerLogWhere.alone);
   });
+
+  test('history survives store reopen like an app update', () async {
+    final file = await _tempFile();
+    final first = FilePrayerTrackerStore(file);
+    await first.writeDay('2026-09-01', {
+      'fajr': const PrayerLogEntry(timing: PrayerLogTiming.onTime),
+    });
+    await first.writeDay('2026-09-02', {
+      'dhuhr': const PrayerLogEntry(where: PrayerLogWhere.jamaah),
+    });
+
+    final afterUpdate = FilePrayerTrackerStore(file);
+    final range = await afterUpdate.readRange('2026-09-01', '2026-09-02');
+    expect(range.keys.toList()..sort(), ['2026-09-01', '2026-09-02']);
+    expect(range['2026-09-01']?['fajr']?.timing, PrayerLogTiming.onTime);
+    expect(range['2026-09-02']?['dhuhr']?.where, PrayerLogWhere.jamaah);
+    expect(File('${file.path}.bak').existsSync(), isTrue);
+  });
+
+  test('recovers from backup when primary JSON is corrupt', () async {
+    final file = await _tempFile();
+    final bak = File('${file.path}.bak');
+    await bak.writeAsString(
+      '{"2026-09-01":{"fajr":{"timing":"onTime"}}}',
+    );
+    await file.writeAsString('{not-json');
+
+    final store = FilePrayerTrackerStore(file);
+    final log = await store.readDay('2026-09-01');
+    expect(log['fajr']?.timing, PrayerLogTiming.onTime);
+    // Primary healed from backup.
+    expect(file.readAsStringSync().contains('2026-09-01'), isTrue);
+  });
+
+  test('refuses write when history is unreadable so disk is not wiped', () async {
+    final file = await _tempFile();
+    await file.writeAsString('{not-json');
+
+    final store = FilePrayerTrackerStore(file);
+    expect(await store.readDay('2026-09-01'), isEmpty);
+    await expectLater(
+      store.writeDay('2026-09-01', {
+        'fajr': const PrayerLogEntry(timing: PrayerLogTiming.onTime),
+      }),
+      throwsStateError,
+    );
+    expect(file.readAsStringSync(), '{not-json');
+  });
 }
 
 Future<File> _tempFile() async {

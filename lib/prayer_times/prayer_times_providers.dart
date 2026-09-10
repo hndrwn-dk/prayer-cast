@@ -52,7 +52,7 @@ final localPrayerPlayerProvider = Provider<LocalPrayerPlayer>((ref) {
   );
 });
 
-final prayerPrefsProvider = FutureProvider.autoDispose<PrayerPrefs>((ref) {
+final prayerPrefsProvider = FutureProvider<PrayerPrefs>((ref) {
   return ref.watch(prayerPrefsStoreProvider).read();
 });
 

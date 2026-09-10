@@ -201,19 +201,16 @@ class _DeliveryLogPageState extends ConsumerState<DeliveryLogPage> {
                             delay: Duration(
                               milliseconds: 40 * index.clamp(0, 8),
                             ),
-                            child: status.kind == OutcomeKind.problem
-                                ? _FailureAttemptCard(
-                                    row: row,
-                                    locale: locale,
-                                    retrying: _retryingId == row.id,
-                                    onRetry: widget.coordinator == null
-                                        ? null
-                                        : () => _retry(row),
-                                  )
-                                : _SuccessAttemptLine(
-                                    row: row,
-                                    locale: locale,
-                                  ),
+                            child: _AttemptCard(
+                              row: row,
+                              locale: locale,
+                              retrying: _retryingId == row.id,
+                              onRetry:
+                                  status.kind == OutcomeKind.problem &&
+                                      widget.coordinator != null
+                                  ? () => _retry(row)
+                                  : null,
+                            ),
                           );
                         },
                       );
@@ -376,40 +373,8 @@ String _deviceLabel(DeliveryLog row, {required bool isId}) {
   return isId ? 'Speaker' : 'Speaker';
 }
 
-class _SuccessAttemptLine extends StatelessWidget {
-  const _SuccessAttemptLine({
-    required this.row,
-    required this.locale,
-  });
-
-  final DeliveryLog row;
-  final Locale locale;
-
-  @override
-  Widget build(BuildContext context) {
-    final outcome = Outcome.fromCode(row.outcome);
-    final status = OutcomeStatus.of(outcome);
-    final when = DateTime.fromMillisecondsSinceEpoch(row.scheduledAt).toLocal();
-    final isId = locale.languageCode == 'id';
-    final line =
-        '${_prayerLabel(row.prayer)} · ${_historyDateLabel(when, locale)} · '
-        '${_deviceLabel(row, isId: isId)} · ${status.shortLabel(locale)}';
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Semantics(
-        label: line,
-        child: Text(
-          line,
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-      ),
-    );
-  }
-}
-
-class _FailureAttemptCard extends StatelessWidget {
-  const _FailureAttemptCard({
+class _AttemptCard extends StatelessWidget {
+  const _AttemptCard({
     required this.row,
     required this.locale,
     required this.retrying,
@@ -428,27 +393,32 @@ class _FailureAttemptCard extends StatelessWidget {
     final explanation = OutcomeExplanation.forOutcome(outcome, locale);
     final when = DateTime.fromMillisecondsSinceEpoch(row.scheduledAt).toLocal();
     final isId = locale.languageCode == 'id';
+    final device = _deviceLabel(row, isId: isId);
     final firedAt = row.firedAt == null
         ? null
         : DateTime.fromMillisecondsSinceEpoch(row.firedAt!);
     final now = DateTime.now();
-    final canRetry = DeliveryRetryWindow.canRetry(
-      scheduledAzan: when,
-      now: now,
-      firedAt: firedAt?.toLocal(),
-    );
-    final disabledReason = DeliveryRetryWindow.disabledReason(
-      scheduledAzan: when,
-      now: now,
-      firedAt: firedAt?.toLocal(),
-      isId: isId,
-    );
+    final canRetry = onRetry != null &&
+        DeliveryRetryWindow.canRetry(
+          scheduledAzan: when,
+          now: now,
+          firedAt: firedAt?.toLocal(),
+        );
+    final disabledReason = onRetry == null
+        ? null
+        : DeliveryRetryWindow.disabledReason(
+            scheduledAzan: when,
+            now: now,
+            firedAt: firedAt?.toLocal(),
+            isId: isId,
+          );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Semantics(
         label:
-            '${_prayerLabel(row.prayer)}, ${status.shortLabel(locale)}, $explanation',
+            '${_prayerLabel(row.prayer)}, ${status.shortLabel(locale)}, '
+            '$device, $explanation',
         child: InkSurface(
           color: PrayerCastColors.canopyDeep,
           borderColor: PrayerCastColors.inkSoft,
@@ -488,6 +458,11 @@ class _FailureAttemptCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           _historyDateLabel(when, locale),
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          device,
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                         const SizedBox(height: 6),

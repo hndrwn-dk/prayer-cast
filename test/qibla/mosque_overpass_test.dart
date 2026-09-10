@@ -137,6 +137,65 @@ void main() {
       );
       expect(mosques.single.bearingDegrees, closeTo(0, 1));
     });
+
+    test(
+      'keeps seven distinct Masjid-prefixed mosques inside 2 km (no dedupe collapse)',
+      () {
+        // Realistic Overpass shape: several named mosques near Marine Parade,
+        // all sharing the "Masjid" prefix, spaced like real OSM ways (some
+        // pairs within 50 m, most farther). None must collapse.
+        const body = '''
+{
+  "elements": [
+    {"type":"way","id":595932319,"center":{"lat":1.3145,"lon":103.9110},
+     "tags":{"amenity":"place_of_worship","religion":"muslim","building":"mosque","name":"Masjid Abdul Aleem Siddique"}},
+    {"type":"way","id":308900485,"center":{"lat":1.3148,"lon":103.9112},
+     "tags":{"amenity":"place_of_worship","religion":"muslim","name":"Masjid Khalid"}},
+    {"type":"way","id":1197550458,"center":{"lat":1.3025,"lon":103.8920},
+     "tags":{"amenity":"place_of_worship","religion":"muslim","name":"Masjid Taha"}},
+    {"type":"way","id":170417140,"center":{"lat":1.3160,"lon":103.9000},
+     "tags":{"amenity":"place_of_worship","religion":"muslim","name":"Masjid Darul Aman"}},
+    {"type":"way","id":306119361,"center":{"lat":1.3050,"lon":103.8950},
+     "tags":{"amenity":"place_of_worship","religion":"muslim","name":"Masjid Kassim"}},
+    {"type":"way","id":401190523,"center":{"lat":1.3180,"lon":103.9050},
+     "tags":{"amenity":"place_of_worship","religion":"muslim","building":"mosque","name":"Masjid Wak Tanjong"}},
+    {"type":"way","id":453583783,"center":{"lat":1.3165,"lon":103.9200},
+     "tags":{"amenity":"place_of_worship","religion":"muslim","building":"mosque","name":"Masjid Kampung Siglap"}},
+    {"type":"node","id":9001,"lat":1.31451,"lon":103.91101,
+     "tags":{"amenity":"place_of_worship","religion":"muslim","name":"Masjid Abdul Aleem Siddique"}}
+  ]
+}
+''';
+        final parsed = parseOverpassMosquesDetailed(
+          body,
+          fromLat: 1.3020,
+          fromLng: 103.9065,
+        );
+        expect(parsed.stats.rawElements, 8);
+        // Node+way twins of the same named mosque merge; the other six stay.
+        expect(parsed.stats.afterFilter, 8);
+        expect(parsed.stats.afterDedupe, 7);
+        expect(parsed.stats.afterCap, 7);
+        expect(parsed.mosques, hasLength(7));
+        final names = parsed.mosques.map((m) => m.name).toSet();
+        expect(names, contains('Masjid Abdul Aleem Siddique'));
+        expect(names, contains('Masjid Khalid'));
+        expect(names, contains('Masjid Kampung Siglap'));
+        expect(names, hasLength(7));
+      },
+    );
+
+    test('reports stage counts when nothing is dropped', () {
+      final parsed = parseOverpassMosquesDetailed(
+        _overpassBody,
+        fromLat: -6.2088,
+        fromLng: 106.8456,
+      );
+      expect(parsed.stats.rawElements, 3);
+      expect(parsed.stats.afterFilter, 2);
+      expect(parsed.stats.afterDedupe, 2);
+      expect(parsed.stats.afterCap, 2);
+    });
   });
 
   group('filters', () {
@@ -168,7 +227,7 @@ void main() {
       },
     );
 
-    test('drops disused, ruined, and under-construction places', () {
+    test('drops only explicit disused:/ruins/construction tags', () {
       expect(
         looksLikeMosque({
           'disused:amenity': 'place_of_worship',
@@ -180,15 +239,22 @@ void main() {
         looksLikeMosque({'building': 'mosque', 'historic': 'ruins'}),
         isFalse,
       );
-      expect(looksLikeMosque({'building': 'construction'}), isFalse);
       expect(
         looksLikeMosque({'building': 'mosque', 'construction': 'yes'}),
         isFalse,
       );
+      // A plain active mosque must not be dropped for unrelated tag text.
       expect(
-        looksLikeMosque({'building': 'mosque', 'disused': 'yes'}),
-        isFalse,
+        looksLikeMosque({
+          'amenity': 'place_of_worship',
+          'religion': 'muslim',
+          'name': 'Masjid Construction Road',
+          'description': 'near the old ruins',
+        }),
+        isTrue,
       );
+      // building=construction alone is not the construction=* key.
+      expect(looksLikeMosque({'building': 'mosque'}), isTrue);
     });
 
     test('mosque label needs building=mosque or a Masjid-style name', () {
@@ -250,6 +316,19 @@ void main() {
       expect(merged, hasLength(2));
     });
 
+    test('does not merge on shared generic tokens alone', () {
+      final merged = dedupeNearbyMosques([
+        at('way:1', 'Masjid Jami', -6.2100, 140),
+        at('node:2', 'Masjid Raya', -6.21002, 142),
+        at('node:3', 'Mosque Surau', -6.21004, 144),
+      ]);
+      expect(merged, hasLength(3));
+      expect(
+        mosqueNamesSimilar('Masjid Jami', 'Masjid Raya'),
+        isFalse,
+      );
+    });
+
     test('keeps same-named mosques that are far apart', () {
       final merged = dedupeNearbyMosques([
         at('way:1', 'Masjid Al-Ikhlas', -6.2100, 140),
@@ -260,7 +339,7 @@ void main() {
   });
 
   group('radius ladder', () {
-    test('stops at the first tier that answers well enough', () async {
+    test('always tries 5 km before early-stop, even when 2 km is dense', () async {
       final radii = <int>[];
       final client = MosqueOverpassClient(
         httpClient: MockClient((request) async {
@@ -269,12 +348,12 @@ void main() {
         }),
       );
       final page = await client.nearby(latitude: -6.2088, longitude: 106.8456);
-      expect(radii, [2000]);
-      expect(page.radiusMeters, 2000);
+      expect(radii, [2000, 5000]);
+      expect(page.radiusMeters, 5000);
       expect(page.mosques, hasLength(6));
     });
 
-    test('climbs while a tier is too thin, then stops', () async {
+    test('climbs while a tier is too thin, then stops at 5 km+', () async {
       final radii = <int>[];
       final client = MosqueOverpassClient(
         httpClient: MockClient((request) async {
@@ -286,6 +365,27 @@ void main() {
       final page = await client.nearby(latitude: -6.2088, longitude: 106.8456);
       expect(radii, [2000, 5000]);
       expect(page.radiusMeters, 5000);
+      expect(page.mosques, hasLength(6));
+    });
+
+    test('widens to 10 km when every lower tier is below the bar', () async {
+      final radii = <int>[];
+      final client = MosqueOverpassClient(
+        httpClient: MockClient((request) async {
+          final radius = _radiusOf(request);
+          radii.add(radius);
+          // 1 at 2km, 2 at 5km, 6 at 10km — must climb all the way.
+          final count = switch (radius) {
+            2000 => 1,
+            5000 => 2,
+            _ => 6,
+          };
+          return http.Response(_bodyWith(count), 200);
+        }),
+      );
+      final page = await client.nearby(latitude: -6.2088, longitude: 106.8456);
+      expect(radii, [2000, 5000, 10000]);
+      expect(page.radiusMeters, 10000);
       expect(page.mosques, hasLength(6));
     });
 
@@ -347,7 +447,12 @@ void main() {
         }),
       );
       final page = await client.nearby(latitude: -6.2088, longitude: 106.8456);
-      expect(hosts, ['lz4.overpass-api.de', 'z.overpass-api.de']);
+      // 2 km: lz4 fails, z answers; 5 km: lz4 answers and early-stops.
+      expect(hosts, [
+        'lz4.overpass-api.de',
+        'z.overpass-api.de',
+        'z.overpass-api.de',
+      ]);
       expect(page.mosques, hasLength(6));
     });
 
@@ -366,7 +471,11 @@ void main() {
         }),
       );
       final page = await client.nearby(latitude: -6.2088, longitude: 106.8456);
-      expect(hosts, ['lz4.overpass-api.de', 'z.overpass-api.de']);
+      expect(hosts, [
+        'lz4.overpass-api.de',
+        'z.overpass-api.de',
+        'z.overpass-api.de',
+      ]);
       expect(page.mosques, hasLength(6));
     });
 

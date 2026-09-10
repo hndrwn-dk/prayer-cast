@@ -185,6 +185,12 @@ final class FilePrayerTrackerStore implements PrayerTrackerStore {
   Map<String, Map<String, dynamic>> _cache = {};
   bool _loaded = false;
 
+  /// True when the on-disk JSON could not be parsed. Writes are refused so a
+  /// bad read never overwrites years of prayer history with `{}`.
+  bool _loadFailed = false;
+
+  File get _backupFile => File('${_file.path}.bak');
+
   static String dayKey(DateTime day) {
     final local = day.toLocal();
     final y = local.year.toString().padLeft(4, '0');
@@ -196,12 +202,34 @@ final class FilePrayerTrackerStore implements PrayerTrackerStore {
   Future<void> _ensureLoaded() async {
     if (_loaded) return;
     _loaded = true;
-    if (!await _file.exists()) return;
+    final primary = await _tryLoad(_file);
+    if (primary != null) {
+      _cache = primary;
+      return;
+    }
+    final backup = await _tryLoad(_backupFile);
+    if (backup != null) {
+      _cache = backup;
+      // Heal the primary from the last good backup.
+      try {
+        await _atomicWrite(jsonEncode(_cache));
+      } catch (_) {}
+      return;
+    }
+    if (await _file.exists() || await _backupFile.exists()) {
+      // File present but unreadable — do not treat as empty.
+      _loadFailed = true;
+    }
+  }
+
+  Future<Map<String, Map<String, dynamic>>?> _tryLoad(File file) async {
+    if (!await file.exists()) return null;
     try {
-      final raw = await _file.readAsString();
+      final raw = await file.readAsString();
+      if (raw.trim().isEmpty) return null;
       final decoded = jsonDecode(raw);
-      if (decoded is! Map) return;
-      _cache = {
+      if (decoded is! Map) return null;
+      return {
         for (final entry in decoded.entries)
           if (entry.key is String && entry.value is Map)
             entry.key as String: {
@@ -209,12 +237,44 @@ final class FilePrayerTrackerStore implements PrayerTrackerStore {
                 if (inner.key is String) inner.key as String: inner.value,
             },
       };
-    } catch (_) {}
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _persist() async {
+    if (_loadFailed) {
+      throw StateError(
+        'Prayer tracker history could not be loaded; refusing to overwrite it.',
+      );
+    }
     await _file.parent.create(recursive: true);
-    await _file.writeAsString(jsonEncode(_cache));
+    final encoded = jsonEncode(_cache);
+    await _atomicWrite(encoded);
+    try {
+      await _backupFile.writeAsString(encoded);
+    } catch (_) {
+      // Backup is best-effort; primary already committed.
+    }
+  }
+
+  /// Write via temp + rename so a crash mid-write cannot leave a half JSON
+  /// that the next launch would treat as empty and wipe.
+  Future<void> _atomicWrite(String encoded) async {
+    final tmp = File('${_file.path}.tmp');
+    await tmp.writeAsString(encoded, flush: true);
+    if (await _file.exists()) {
+      try {
+        await tmp.rename(_file.path);
+        return;
+      } catch (_) {
+        // Some platforms cannot rename over an existing file.
+      }
+    }
+    await _file.writeAsString(encoded, flush: true);
+    try {
+      if (await tmp.exists()) await tmp.delete();
+    } catch (_) {}
   }
 
   static PrayerDayLog decodeDay(Map<String, dynamic> raw) {

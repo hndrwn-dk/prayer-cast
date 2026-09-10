@@ -54,5 +54,26 @@ final class IqamahReminderScheduler {
     );
   }
 
+  /// After a prayer fires, keep that prayer's iqamah if it is still upcoming;
+  /// only then fall through to arm the next prayer's nudge.
+  Future<void> syncAfterDelivery({
+    required NextPrayer delivered,
+    required NextPrayer next,
+    required DateTime now,
+  }) async {
+    final prefs = await _prayerPrefs.read();
+    final deliveredKey =
+        PrayerDeliveryCoordinator.canonicalPrayerName(delivered.name);
+    final minutes = prefs.iqamahMinutesFor(deliveredKey);
+    if (minutes > 0) {
+      final alertAt = delivered.scheduledAt.add(Duration(minutes: minutes));
+      if (alertAt.isAfter(now)) {
+        await syncForPrayer(delivered, now);
+        return;
+      }
+    }
+    await syncForPrayer(next, now);
+  }
+
   Future<void> cancel() => _exactAlarm.cancelIqamahReminder();
 }

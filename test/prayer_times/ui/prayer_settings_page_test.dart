@@ -278,7 +278,7 @@ void main() {
     );
   });
 
-  testWidgets('save without location shows status above Done, not a SnackBar', (
+  testWidgets('save without location shows status above Save, not a SnackBar', (
     tester,
   ) async {
     await _pumpSettings(
@@ -293,7 +293,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Done'));
+    await tester.tap(find.text('Save'));
     await tester.pump();
 
     expect(find.byType(SnackBar), findsNothing);
@@ -305,10 +305,10 @@ void main() {
       find.text('Use current location, or enter city and country first'),
       findsOneWidget,
     );
-    expect(find.text('Done'), findsOneWidget);
+    expect(find.text('Save'), findsOneWidget);
   });
 
-  testWidgets('Done button sits above the Android navigation inset', (
+  testWidgets('Save button sits above the Android navigation inset', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(800, 915);
@@ -322,7 +322,7 @@ void main() {
 
     await _pumpSettings(tester);
 
-    final save = find.widgetWithText(FilledButton, 'Done');
+    final save = find.widgetWithText(FilledButton, 'Save');
     expect(save, findsOneWidget);
     expect(tester.getRect(save).bottom, lessThanOrEqualTo(915 - 48));
   });

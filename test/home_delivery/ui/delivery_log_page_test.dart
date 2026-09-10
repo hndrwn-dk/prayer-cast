@@ -86,10 +86,14 @@ void main() {
 
     await pumpPage(tester);
 
-    // Success rows are a single compact line (prayer · date · device · status).
-    expect(find.textContaining('Maghrib'), findsOneWidget);
-    expect(find.textContaining('Berhasil'), findsOneWidget);
-    expect(find.textContaining('Kitchen Nest'), findsOneWidget);
+    // Success and failure rows share the same card chrome.
+    expect(find.text('Maghrib'), findsOneWidget);
+    expect(find.text('Berhasil'), findsOneWidget);
+    expect(find.text('Kitchen Nest'), findsOneWidget);
+    expect(
+      find.textContaining('Adhan berhasil diputar'),
+      findsOneWidget,
+    );
     // Wire codes are not shown; failures use plain-language copy.
     expect(find.text('PLAYED'), findsNothing);
     expect(find.text('FAILED_NO_TARGET'), findsNothing);

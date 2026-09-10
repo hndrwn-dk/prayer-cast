@@ -182,9 +182,11 @@ void main() {
       );
 
       await repo.prefetch(latitude: _jakartaLat, longitude: _jakartaLng);
-      expect(calls, 1);
+      // Ladder always hits 2 km then 5 km before early-stop.
+      expect(calls, 2);
       final key = mosqueCacheKey(latitude: _jakartaLat, longitude: _jakartaLng);
       expect((await cache.read(key))!.mosques, hasLength(6));
+      expect((await cache.read(key))!.radiusMeters, 5000);
     });
 
     test('stays silent when there is no cache to warm', () async {

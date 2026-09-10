@@ -463,7 +463,15 @@ final class PrayerDeliveryCoordinator {
           final after = isRescheduleRetry(event.prayer)
               ? _clock.now()
               : azanEpoch;
-          await _scheduleNextAfter(after);
+          final delivered = isRescheduleRetry(event.prayer) ||
+                  isDryRunPrayer(event.prayer)
+              ? null
+              : NextPrayer(
+                  name: event.prayer,
+                  scheduledAt: azanEpoch,
+                  voiceId: _resolveVoiceId(event.voiceId),
+                );
+          await _scheduleNextAfter(after, justDelivered: delivered);
         }
       } catch (e, st) {
         _logger.error(
@@ -879,10 +887,32 @@ final class PrayerDeliveryCoordinator {
     await _iqamahReminders?.syncForPrayer(prayer, now);
   }
 
+  /// Keep the just-fired prayer's iqamah if it is still upcoming; otherwise
+  /// arm the next prayer's nudge. Prevents reschedule from cancelling the
+  /// post-adhan iqamah the user is waiting for.
+  Future<void> _syncIqamahAfterSchedule({
+    required NextPrayer next,
+    required DateTime now,
+    NextPrayer? justDelivered,
+  }) async {
+    if (justDelivered != null) {
+      await _iqamahReminders?.syncAfterDelivery(
+        delivered: justDelivered,
+        next: next,
+        now: now,
+      );
+      return;
+    }
+    await _iqamahReminders?.syncForPrayer(next, now);
+  }
+
   /// Alias for settings save — both pre-prayer and iqamah follow the next wake.
   Future<void> refreshIqamahReminder() => refreshPrePrayerAlert();
 
-  Future<void> _scheduleNextAfter(DateTime after) async {
+  Future<void> _scheduleNextAfter(
+    DateTime after, {
+    NextPrayer? justDelivered,
+  }) async {
     var cursor = after;
     for (var i = 0; i < 16; i++) {
       final prayer = await _nextPrayer.next(after: cursor, preferCache: true);
@@ -916,7 +946,11 @@ final class PrayerDeliveryCoordinator {
           );
           _scheduledWakeEpochMs = wakeEpochMs;
           await _prePrayerAlerts?.syncForPrayer(prayer, now);
-          await _iqamahReminders?.syncForPrayer(prayer, now);
+          await _syncIqamahAfterSchedule(
+            next: prayer,
+            now: now,
+            justDelivered: justDelivered,
+          );
           return;
         }
         _logger.warn(
@@ -934,7 +968,11 @@ final class PrayerDeliveryCoordinator {
       );
       _scheduledWakeEpochMs = wakeEpochMs;
       await _prePrayerAlerts?.syncForPrayer(prayer, now);
-      await _iqamahReminders?.syncForPrayer(prayer, now);
+      await _syncIqamahAfterSchedule(
+        next: prayer,
+        now: now,
+        justDelivered: justDelivered,
+      );
       _logger.info(
         'Scheduled wake at $wakeEpochMs for ${prayer.name} '
         '(azan ${prayer.scheduledAt.millisecondsSinceEpoch}, '

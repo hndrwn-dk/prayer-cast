@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -10,7 +11,12 @@ import 'qibla_bearing.dart';
 /// Overpass and Nominatim both ask for an identifiable client with a way to
 /// reach the maintainer; anonymous agents get rate-limited first.
 const kPrayerCastOverpassUserAgent =
-    'PrayerCast/1.0.18 (com.tursinalabs.prayer_cast; https://tursinalabs.com)';
+    'PrayerCast/1.0.19 (com.tursinalabs.prayer_cast; https://tursinalabs.com)';
+
+/// Minimum radius that may early-stop the ladder. Stopping at 2 km left dense
+/// cities with a handful of pins when the previous fixed 5 km search returned
+/// many more (Marine Parade: 5 at 2 km, 16 at 5 km, zero post-process loss).
+const kMosqueEarlyStopMinRadiusMeters = 5000;
 
 /// Failover pair. Both front the same `overpass-api.de` cluster, so a timeout
 /// on one is worth retrying on the other before giving up on a radius tier.
@@ -249,7 +255,7 @@ final class MosqueOverpassClient {
             );
             continue;
           }
-          final parsed = parseOverpassMosques(
+          final parsed = parseOverpassMosquesDetailed(
             response.body,
             fromLat: latitude,
             fromLng: longitude,
@@ -258,11 +264,22 @@ final class MosqueOverpassClient {
           answered = true;
           anyAnswer = true;
           _endpoint = index;
-          if (parsed.length > best.mosques.length) {
-            best = MosqueSearchPage(mosques: parsed, radiusMeters: radius);
+          developer.log(
+            'tier ${radius}m raw=${parsed.stats.rawElements} '
+            'afterFilter=${parsed.stats.afterFilter} '
+            'afterDedupe=${parsed.stats.afterDedupe} '
+            'afterCap=${parsed.stats.afterCap}',
+            name: 'mosque.overpass',
+          );
+          final mosques = parsed.mosques;
+          if (mosques.length > best.mosques.length) {
+            best = MosqueSearchPage(mosques: mosques, radiusMeters: radius);
           }
-          if (parsed.length >= enoughResults) {
-            return MosqueSearchPage(mosques: parsed, radiusMeters: radius);
+          // Never early-stop on the 2 km tier alone — dense cities often hit
+          // the bar there while a 5 km search still has far more mosques.
+          if (mosques.length >= enoughResults &&
+              radius >= kMosqueEarlyStopMinRadiusMeters) {
+            return MosqueSearchPage(mosques: mosques, radiusMeters: radius);
           }
         } on TimeoutException catch (e) {
           sawBusy = true;
@@ -395,8 +412,53 @@ String mosqueOverpassQuery({
   );
 }
 
+/// Counts at each post-processing stage. Used to diagnose coverage loss
+/// without guessing which filter ate the rows.
+final class MosqueParseStats {
+  const MosqueParseStats({
+    required this.rawElements,
+    required this.afterFilter,
+    required this.afterDedupe,
+    required this.afterCap,
+  });
+
+  /// Elements Overpass returned (before any local filtering).
+  final int rawElements;
+
+  /// Survived [looksLikeMosque] (includes the retired-place gate).
+  final int afterFilter;
+
+  /// Survived [dedupeNearbyMosques].
+  final int afterDedupe;
+
+  /// After the client-side [limit] cap.
+  final int afterCap;
+}
+
+final class MosqueParseResult {
+  const MosqueParseResult({required this.mosques, required this.stats});
+
+  final List<NearbyMosque> mosques;
+  final MosqueParseStats stats;
+}
+
 /// Parses an Overpass `out center` JSON body, nearest first.
 List<NearbyMosque> parseOverpassMosques(
+  String body, {
+  required double fromLat,
+  required double fromLng,
+  int limit = 60,
+}) {
+  return parseOverpassMosquesDetailed(
+    body,
+    fromLat: fromLat,
+    fromLng: fromLng,
+    limit: limit,
+  ).mosques;
+}
+
+/// Same as [parseOverpassMosques], plus per-stage counts for diagnostics.
+MosqueParseResult parseOverpassMosquesDetailed(
   String body, {
   required double fromLat,
   required double fromLng,
@@ -407,7 +469,17 @@ List<NearbyMosque> parseOverpassMosques(
     throw const MosqueOverpassFailure('Overpass response is not a JSON object');
   }
   final elements = decoded['elements'];
-  if (elements is! List) return const [];
+  if (elements is! List) {
+    return const MosqueParseResult(
+      mosques: [],
+      stats: MosqueParseStats(
+        rawElements: 0,
+        afterFilter: 0,
+        afterDedupe: 0,
+        afterCap: 0,
+      ),
+    );
+  }
 
   final seen = <String>{};
   final mosques = <NearbyMosque>[];
@@ -446,15 +518,26 @@ List<NearbyMosque> parseOverpassMosques(
       ),
     );
   }
+  final afterFilter = mosques.length;
   final deduped = dedupeNearbyMosques(mosques);
-  if (deduped.length <= limit) return deduped;
-  return deduped.sublist(0, limit);
+  final capped = deduped.length <= limit
+      ? deduped
+      : deduped.sublist(0, limit);
+  return MosqueParseResult(
+    mosques: capped,
+    stats: MosqueParseStats(
+      rawElements: elements.length,
+      afterFilter: afterFilter,
+      afterDedupe: deduped.length,
+      afterCap: capped.length,
+    ),
+  );
 }
 
 /// Collapses the copies OSM keeps of one building — a `place_of_worship` node
 /// sitting inside its own `building=mosque` way, a relation over both — into
 /// a single row. Two POIs merge only when they are within [withinMeters] *and*
-/// their names look like the same place (or one has no name at all).
+/// their names look like the same place (see [mosqueNamesSimilar]).
 List<NearbyMosque> dedupeNearbyMosques(
   List<NearbyMosque> mosques, {
   double withinMeters = kMosqueDedupeMeters,
@@ -473,7 +556,7 @@ List<NearbyMosque> dedupeNearbyMosques(
         toLng: candidate.longitude,
       );
       if (gap > withinMeters) continue;
-      if (!_namesCollide(other.name, candidate.name)) continue;
+      if (!mosqueNamesSimilar(other.name, candidate.name)) continue;
       // Keep the nearest geometry, but take a name over no name.
       if (!other.isNamed && candidate.isNamed) {
         kept[i] = other.withName(candidate.name, candidate.kind);
@@ -486,10 +569,23 @@ List<NearbyMosque> dedupeNearbyMosques(
   return kept;
 }
 
-bool _namesCollide(String a, String b) {
+/// True when two OSM names refer to the same place.
+///
+/// Distance is checked by the caller. Here: merge an unnamed twin with a
+/// named one (node inside its way), or two names whose distinctive tokens
+/// match after stripping generic mosque words. Sharing only "Masjid" /
+/// "Mosque" / "Jami" / … is **not** similarity — those tokens are stripped
+/// first, and an empty remainder does not count as a match.
+bool mosqueNamesSimilar(String a, String b) {
+  final aBlank = a.trim().isEmpty;
+  final bBlank = b.trim().isEmpty;
+  if (aBlank && bBlank) return true;
+  if (aBlank || bBlank) return true;
+
   final left = normalizeMosqueName(a);
   final right = normalizeMosqueName(b);
-  if (left.isEmpty || right.isEmpty) return true;
+  // Both were named, but only generic tokens remained — not the same place.
+  if (left.isEmpty || right.isEmpty) return false;
   if (left == right) return true;
   return left.contains(right) || right.contains(left);
 }
@@ -500,7 +596,8 @@ final _nameNoisePattern = RegExp(
 final _nonWordPattern = RegExp(r'[^a-z0-9]+');
 
 /// Strips punctuation and the generic words nearly every mosque name carries,
-/// so "Masjid Al-Ikhlas" and "Al Ikhlas" compare equal.
+/// so "Masjid Al-Ikhlas" and "Al Ikhlas" compare equal. Remaining empty means
+/// the name had no distinctive tokens — that is not a match on its own.
 String normalizeMosqueName(String raw) {
   final stripped = raw
       .toLowerCase()
@@ -553,35 +650,19 @@ Map<dynamic, dynamic> _tagsMap(Object? raw) {
   return raw is Map ? raw : const {};
 }
 
-const _retiredPrefixes = [
-  'disused:',
-  'abandoned:',
-  'demolished:',
-  'razed:',
-  'removed:',
-  'was:',
-  'construction:',
-  'proposed:',
-];
-
-/// True for places that exist in OSM but not on the ground: closed, ruined,
-/// or not built yet. Sending someone to one of these is worse than showing
-/// nothing.
+/// True for places that exist in OSM but not on the ground: explicitly
+/// disused, ruined, or tagged as under construction on this element.
+///
+/// Only matches `disused:*` key prefixes, `historic=ruins`, and a
+/// `construction=*` tag on the element itself — never a substring anywhere
+/// else in the tag set.
 bool isRetiredPlace(Map<dynamic, dynamic> tags) {
   for (final key in tags.keys) {
-    final name = key.toString().toLowerCase();
-    for (final prefix in _retiredPrefixes) {
-      if (name.startsWith(prefix)) return true;
-    }
+    if (key.toString().toLowerCase().startsWith('disused:')) return true;
   }
   if (tags['historic']?.toString() == 'ruins') return true;
-  if (tags['ruins']?.toString() == 'yes') return true;
-  if (tags['disused']?.toString() == 'yes') return true;
   if (tags.containsKey('construction')) return true;
-  final building = tags['building']?.toString() ?? '';
-  if (building == 'construction' || building == 'ruins') return true;
-  final amenity = tags['amenity']?.toString() ?? '';
-  return amenity == 'construction';
+  return false;
 }
 
 /// True when OSM tags — never the name — say this is somewhere Muslims pray.

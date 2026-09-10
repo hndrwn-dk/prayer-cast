@@ -23,6 +23,8 @@ object PrePrayerAlert {
     private const val KEY_SOUND = "sound"
     private const val REQ_PRE = 1003
     private const val CHANNEL_BEEP = "pre_prayer_alert_beep"
+    private const val CHANNEL_LONG_BEEP = "pre_prayer_alert_long_beep"
+    // Legacy channel id kept so upgrades do not leave an orphan channel.
     private const val CHANNEL_TAKBIR = "pre_prayer_alert_takbir"
     private const val NOTIFICATION_ID = 2002
 
@@ -131,11 +133,18 @@ object PrePrayerAlert {
     }
 
     private fun ensureChannel(context: Context, sound: String): String {
-        val channelId = if (sound == "takbir") CHANNEL_TAKBIR else CHANNEL_BEEP
+        val channelId = when (sound) {
+            "long_beep", "takbir" -> CHANNEL_LONG_BEEP
+            else -> CHANNEL_BEEP
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return channelId
         val manager = context.getSystemService(NotificationManager::class.java)
             ?: return channelId
-        val rawId = if (sound == "takbir") R.raw.takbir else R.raw.beep
+        // Long beep reuses the longer bundled tone; short uses the short beep.
+        val rawId = when (sound) {
+            "long_beep", "takbir" -> R.raw.takbir
+            else -> R.raw.beep
+        }
         val uri = Uri.parse("android.resource://${context.packageName}/$rawId")
         val channel = NotificationChannel(
             channelId,

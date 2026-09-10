@@ -18,10 +18,17 @@ import '../qibla_bearing.dart';
 import '../qibla_location.dart';
 import '../qibla_providers.dart';
 
-/// Dark raster basemap. Still OpenStreetMap data, rendered by CARTO, so both
-/// get credited.
-const kMosqueDarkTileUrl =
-    'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+/// OSM raster basemap. Darkened client-side so we do not depend on a CARTO
+/// (or other) API key for a dark style.
+const kMosqueTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+/// Soft green-tinted darken of the OSM tiles to match the forest chrome.
+const kMosqueTileDarkenFilter = ColorFilter.matrix(<double>[
+  0.28, 0.22, 0.18, 0, -35,
+  0.20, 0.30, 0.18, 0, -40,
+  0.16, 0.20, 0.28, 0, -45,
+  0, 0, 0, 1, 0,
+]);
 
 const kOpenStreetMapCopyrightUrl = 'https://www.openstreetmap.org/copyright';
 
@@ -650,9 +657,12 @@ class _MosqueMapBody extends StatelessWidget {
         onMapEvent: onMapEvent,
       ),
       children: [
-        TileLayer(
-          urlTemplate: kMosqueDarkTileUrl,
-          userAgentPackageName: 'com.tursinalabs.prayer_cast',
+        ColorFiltered(
+          colorFilter: kMosqueTileDarkenFilter,
+          child: TileLayer(
+            urlTemplate: kMosqueTileUrl,
+            userAgentPackageName: 'com.tursinalabs.prayer_cast',
+          ),
         ),
         if (here != null)
           MarkerLayer(
@@ -737,7 +747,7 @@ class _MosqueMapBody extends StatelessWidget {
                   child: const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     child: Text(
-                      '\u00A9 OpenStreetMap contributors \u00A9 CARTO',
+                      '\u00A9 OpenStreetMap contributors',
                       style: TextStyle(
                         fontFamily: PrayerCastTheme.bodyFont,
                         fontSize: 10,
@@ -765,7 +775,7 @@ class _MapCredit extends StatelessWidget {
       key: const ValueKey<String>('mosque_list_credit'),
       onTap: () => openExternalUrl(context, kOpenStreetMapCopyrightUrl),
       child: Text(
-        'Data \u00A9 OpenStreetMap contributors (ODbL) \u00B7 tiles \u00A9 CARTO',
+        'Data \u00A9 OpenStreetMap contributors (ODbL)',
         style: Theme.of(context).textTheme.bodySmall,
       ),
     );
