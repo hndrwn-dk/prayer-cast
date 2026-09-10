@@ -124,7 +124,7 @@ void main() {
     expect(find.text('ARAH'), findsOneWidget);
     expect(find.text('Waktu sholat'), findsOneWidget);
     expect(find.text('Catatan sholat'), findsOneWidget);
-    expect(find.text('Kiblat'), findsOneWidget);
+    expect(find.text('Kiblat/Masjid'), findsOneWidget);
     expect(find.text('|'), findsNothing);
     expect(find.byKey(_pipe0), findsOneWidget);
     expect(find.byKey(_pipe1), findsOneWidget);
@@ -305,8 +305,15 @@ void main() {
     await tester.pump();
     expect(tester.takeException(), isNull);
     expect(find.text('Data hanya tersimpan di ponsel Anda.'), findsOneWidget);
-    expect(find.text('Kiblat'), findsOneWidget);
+    expect(find.text('Kiblat/Masjid'), findsOneWidget);
     expect(find.byKey(_prayerTimesSlab), findsOneWidget);
+
+    // Titles stay one line (same height) — no uneven wrap vs Qibla.
+    final timesH = tester.getSize(find.text('Waktu sholat')).height;
+    final trackerH = tester.getSize(find.text('Catatan sholat')).height;
+    final qiblaH = tester.getSize(find.text('Kiblat/Masjid')).height;
+    expect(timesH, closeTo(trackerH, 1));
+    expect(trackerH, closeTo(qiblaH, 1));
   });
 
   testWidgets('home destinations stay on-screen on a tall phone', (
@@ -320,7 +327,7 @@ void main() {
     );
     expect(scrollable.position.maxScrollExtent, lessThan(80));
     expect(find.byKey(_prayerTimesSlab), findsOneWidget);
-    expect(find.text('Kiblat'), findsOneWidget);
+    expect(find.text('Kiblat/Masjid'), findsOneWidget);
     expect(find.byKey(HomeClosingNote.dividerKey), findsOneWidget);
     final scaffoldH = tester.getSize(find.byType(Scaffold).first).height;
     expect(

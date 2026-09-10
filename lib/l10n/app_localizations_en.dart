@@ -105,7 +105,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prayerTracker => 'Prayer tracker';
 
   @override
-  String get qibla => 'Qibla';
+  String get qibla => 'Qibla/Mosque';
 
   @override
   String get settings => 'Settings';

@@ -217,8 +217,12 @@ final class _FakeNextPrayer implements NextPrayerProvider {
 }
 
 final class _FakeSettings implements DeliverySettings {
+  _FakeSettings({this.deviceId = 'cast-home-1'});
+
+  final String? deviceId;
+
   @override
-  Future<String?> homeCastDeviceId() async => 'cast-home-1';
+  Future<String?> homeCastDeviceId() async => deviceId;
 }
 
 final class _FakeAudio implements AdzanAudioLoader {
@@ -1101,6 +1105,123 @@ void main() {
       alarm.failureNotifications.single.title,
       contains('played on phone'),
     );
+  });
+
+  test('no saved speaker plays phone Adhan without fallback spam', () async {
+    final db = DeliveryDatabase.memory();
+    addTearDown(db.close);
+    final dao = DeliveryLogDao(db);
+    final local = _FakeLocalPlayer();
+    var castAttempts = 0;
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(deviceId: null),
+      audioLoader: _FakeAudio(),
+      deliveryModes: _FakeModes(PrayerDeliveryMode.cast),
+      localPlayer: local,
+      logDao: dao,
+      prayerPrefs: MemoryPrayerPrefsStore(
+        PrayerPrefs.defaults.copyWith(configured: true),
+      ),
+      readLocaleCode: () async => 'en',
+      clock: clock,
+      runDelivery: (request) async {
+        castAttempts++;
+        return const DeliveryAttemptResult(
+          sessionId: 'should-not-run',
+          outcome: Outcome.failedNoTarget,
+          role: 'SOLO',
+        );
+      },
+    );
+    await coordinator.start();
+    final wakeMs = alarm.scheduled.single.epochMs;
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
+        .subtract(PresenceSchedule.scanOffset);
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
+    );
+    clock.advanceTo(azanAt);
+    for (var i = 0; i < 80 && local.calls.isEmpty; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(castAttempts, 0);
+    expect(local.calls, ['adhan:makkah']);
+    final rows = await dao.latest();
+    expect(rows, hasLength(1));
+    expect(rows.single.outcome, Outcome.playedOnPhone.code);
+    expect(rows.single.detail, contains('no_home_speaker'));
+    expect(alarm.failureNotifications, isEmpty);
+  });
+
+  test('castFallbackToPhone off does not play on phone after Cast fail', () async {
+    final db = DeliveryDatabase.memory();
+    addTearDown(db.close);
+    final dao = DeliveryLogDao(db);
+    final local = _FakeLocalPlayer();
+    final prefs = MemoryPrayerPrefsStore(
+      PrayerPrefs.defaults.copyWith(
+        configured: true,
+        castFallbackToPhone: false,
+      ),
+    );
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      deliveryModes: _FakeModes(PrayerDeliveryMode.cast),
+      localPlayer: local,
+      logDao: dao,
+      prayerPrefs: prefs,
+      readLocaleCode: () async => 'en',
+      clock: clock,
+      runDelivery: (request) async {
+        await dao.insertAttempt(
+          sessionId: 'cast-no-fb',
+          prayer: request.prayerName,
+          scheduledAtMs: request.scheduledAzan.millisecondsSinceEpoch,
+          outcome: Outcome.failedCastConnect,
+          presenceState: 'HOME',
+        );
+        return const DeliveryAttemptResult(
+          sessionId: 'cast-no-fb',
+          outcome: Outcome.failedCastConnect,
+          role: 'SOLO',
+          presenceState: 'HOME',
+        );
+      },
+    );
+    await coordinator.start();
+    final wakeMs = alarm.scheduled.single.epochMs;
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
+        .subtract(PresenceSchedule.scanOffset);
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
+    );
+    clock.advanceTo(azanAt);
+    for (var i = 0; i < 80 && alarm.failureNotifications.isEmpty; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(local.calls, isEmpty);
+    final rows = await dao.latest();
+    expect(rows.single.outcome, Outcome.failedCastConnect.code);
+    expect(alarm.failureNotifications, isNotEmpty);
   });
 
   test('cast fail UNKNOWN uses chime fallback', () async {

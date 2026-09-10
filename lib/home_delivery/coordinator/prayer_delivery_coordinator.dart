@@ -563,30 +563,10 @@ final class PrayerDeliveryCoordinator {
         'Local adhan for ${event.prayer} voice=$voiceId (skip Cast)',
         tag: 'PrayerDeliveryCoordinator',
       );
-      await _waitUntilAzan(azanEpoch);
-      if (DeliveryTiming.isTooLate(scheduledAzan: azanEpoch, now: _clock.now())) {
-        return;
-      }
-      await _exactAlarm.showPhonePlaybackControls(prayer: event.prayer);
-      final stopSub = _exactAlarm.onStopLocalPlayback.listen((_) {
-        unawaited(_localPlayer.stop());
-      });
-      final hold = NextPrayer(
-        name: prayerName,
-        // Alarm epochs are UTC instants; hero UI formats local wall time.
-        scheduledAt: azanEpoch.toLocal(),
-        voiceId: voiceId,
-      );
-      _activeHero?.begin(hold);
-      try {
-        await _localPlayer.playAdhan(voiceId: voiceId);
-      } finally {
-        await stopSub.cancel();
-        _activeHero?.clear();
-      }
-      await _logLocalAttempt(
+      await _playPhoneAdhan(
         event: event,
         azanEpoch: azanEpoch,
+        voiceId: voiceId,
         outcome: Outcome.playedOnPhone,
         detail: 'voice=$voiceId',
       );
@@ -594,6 +574,26 @@ final class PrayerDeliveryCoordinator {
     }
 
     final castId = await _settings.homeCastDeviceId();
+    // No saved home speaker: play on this phone as the primary path — not a
+    // "speaker unavailable" fallback. Phone-only users should not see Cast
+    // failure / fallback spam just because a prayer is still set to Cast.
+    if (castId == null || castId.trim().isEmpty) {
+      final voiceId = _resolveVoiceId(event.voiceId);
+      _logger.info(
+        'No home speaker configured; phone Adhan for ${event.prayer} '
+        'voice=$voiceId',
+        tag: 'PrayerDeliveryCoordinator',
+      );
+      await _playPhoneAdhan(
+        event: event,
+        azanEpoch: azanEpoch,
+        voiceId: voiceId,
+        outcome: Outcome.playedOnPhone,
+        detail: 'voice=$voiceId; no_home_speaker',
+      );
+      return;
+    }
+
     final prefs = await _prayerPrefs?.read();
     final volume = prefs?.volumeFor(event.prayer);
     final voiceId = _resolveVoiceId(event.voiceId);
@@ -607,7 +607,7 @@ final class PrayerDeliveryCoordinator {
       audioBytes: audio.bytes,
       contentType: audio.contentType,
       mediaExtension: audio.extension,
-      homeCastDeviceId: castId ?? '',
+      homeCastDeviceId: castId,
       playbackVolume: volume,
       deviceConditions: conditions,
       firedAt: firedAt,
@@ -627,6 +627,43 @@ final class PrayerDeliveryCoordinator {
     }
   }
 
+  Future<void> _playPhoneAdhan({
+    required AlarmFiredEvent event,
+    required DateTime azanEpoch,
+    required String voiceId,
+    required Outcome outcome,
+    String? detail,
+  }) async {
+    await _waitUntilAzan(azanEpoch);
+    if (DeliveryTiming.isTooLate(scheduledAzan: azanEpoch, now: _clock.now())) {
+      return;
+    }
+    await _exactAlarm.showPhonePlaybackControls(prayer: event.prayer);
+    final stopSub = _exactAlarm.onStopLocalPlayback.listen((_) {
+      unawaited(_localPlayer.stop());
+    });
+    final prayerName = canonicalPrayerName(event.prayer);
+    final hold = NextPrayer(
+      name: prayerName,
+      // Alarm epochs are UTC instants; hero UI formats local wall time.
+      scheduledAt: azanEpoch.toLocal(),
+      voiceId: voiceId,
+    );
+    _activeHero?.begin(hold);
+    try {
+      await _localPlayer.playAdhan(voiceId: voiceId);
+    } finally {
+      await stopSub.cancel();
+      _activeHero?.clear();
+    }
+    await _logLocalAttempt(
+      event: event,
+      azanEpoch: azanEpoch,
+      outcome: outcome,
+      detail: detail,
+    );
+  }
+
   /// Returns true when fallback already logged / notified enough.
   Future<bool> _maybePhoneFallback({
     required AlarmFiredEvent event,
@@ -637,6 +674,9 @@ final class PrayerDeliveryCoordinator {
     if (!_castFailureOutcomes.contains(result.outcome)) return false;
     final prefs = await _prayerPrefs?.read();
     if (!(prefs?.castFallbackToPhone ?? true)) return false;
+    // Fallback is only for Cast households. No saved speaker → never this path.
+    final castId = await _settings.homeCastDeviceId();
+    if (castId == null || castId.trim().isEmpty) return false;
 
     final confidentHome = result.presenceState == 'HOME';
     final castDetail =

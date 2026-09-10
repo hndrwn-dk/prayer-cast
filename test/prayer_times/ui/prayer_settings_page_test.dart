@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:ui' show FakeViewPadding;
 
 import 'package:flutter/material.dart';
@@ -7,18 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:prayer_cast/home_delivery/common/clock.dart';
-import 'package:prayer_cast/home_delivery/coordination/device_identity.dart';
-import 'package:prayer_cast/home_delivery/coordinator/adzan_audio_loader.dart';
-import 'package:prayer_cast/home_delivery/coordinator/delivery_settings.dart';
 import 'package:prayer_cast/home_delivery/coordinator/local_prayer_player.dart';
 import 'package:prayer_cast/home_delivery/coordinator/next_prayer_provider.dart';
-import 'package:prayer_cast/home_delivery/coordinator/prayer_delivery_coordinator.dart';
-import 'package:prayer_cast/home_delivery/delivery/delivery_orchestrator.dart';
-import 'package:prayer_cast/home_delivery/logging/outcome.dart';
-import 'package:prayer_cast/home_delivery/platform/device_conditions.dart';
-import 'package:prayer_cast/home_delivery/platform/exact_alarm.dart';
-import 'package:prayer_cast/home_delivery/platform/post_notifications_permission.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/l10n/app_localizations.dart';
@@ -84,152 +73,332 @@ void main() {
     expect(find.byKey(const ValueKey('voice-fajr-fajr_adhan')), findsNothing);
   });
 
-  testWidgets('dry-run stays collapsed until opened', (tester) async {
+  testWidgets('page has no Default delivery control', (tester) async {
     await _pumpSettings(tester);
-    final toggle = find.byKey(const ValueKey('dry_run_toggle'));
+    expect(find.text('Default delivery'), findsNothing);
+    expect(find.text('Default pengiriman'), findsNothing);
+  });
+
+  testWidgets('cast fallback toggle persists off', (tester) async {
+    final store = MemoryPrayerPrefsStore(
+      const PrayerPrefs(
+        city: 'Singapore',
+        country: 'Singapore',
+        methodId: 11,
+        madhabId: PrayerMadhabId.shafi,
+        voiceId: 'standard_adhan',
+        configured: true,
+        defaultsMigrated: true,
+        castFallbackToPhone: true,
+        deliveryByPrayer: {
+          'fajr': 'cast',
+          'dhuhr': 'cast',
+          'asr': 'cast',
+          'maghrib': 'cast',
+          'isha': 'cast',
+        },
+      ),
+    );
+    final engine = AdhanNextPrayerProvider(
+      store: store,
+      client: AladhanClient(
+        httpClient: MockClient((request) async => http.Response('nope', 500)),
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          prayerPrefsStoreProvider.overrideWithValue(store),
+          adhanNextPrayerProvider.overrideWithValue(engine),
+          localPrayerPlayerProvider.overrideWithValue(
+            const SilentLocalPrayerPlayer(),
+          ),
+        ],
+        child: MaterialApp(
+          locale: const Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          theme: PrayerCastTheme.light(),
+          home: const PrayerSettingsPage(),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final toggle = find.byKey(const ValueKey('cast-fallback-switch-true'));
     await tester.scrollUntilVisible(
       toggle,
       300,
       scrollable: _settingsScrollable(),
     );
-    expect(find.text('Test scheduled adhan'), findsOneWidget);
-    expect(find.byKey(const ValueKey('dry_run_1m')), findsNothing);
-    expect(find.byKey(const ValueKey('dry_run_5m')), findsNothing);
+    await Scrollable.ensureVisible(
+      tester.element(toggle),
+      alignment: 0.2,
+      duration: Duration.zero,
+    );
+    await tester.pump();
+    await tester.tap(toggle);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('cast-fallback-switch-false')),
+      findsOneWidget,
+    );
+    expect((await store.read()).castFallbackToPhone, isFalse);
   });
 
-  testWidgets('dry-run offers 1 and 5 minutes only', (tester) async {
+  testWidgets('cast fallback card hidden when no prayer uses Cast', (
+    tester,
+  ) async {
+    await _pumpSettings(
+      tester,
+      prefs: PrayerPrefs.defaults.copyWith(
+        city: 'Singapore',
+        country: 'Singapore',
+        configured: true,
+        defaultsMigrated: true,
+        deliveryByPrayer: {
+          for (final p in PrayerPrefs.prayerKeys) p: 'adhanPhone',
+        },
+      ),
+    );
+    expect(find.text('If the speaker is unavailable'), findsNothing);
+  });
+
+  testWidgets('pre-prayer reminder minutes and sound can be changed', (
+    tester,
+  ) async {
+    final store = MemoryPrayerPrefsStore(
+      const PrayerPrefs(
+        city: 'Singapore',
+        country: 'Singapore',
+        methodId: 11,
+        madhabId: PrayerMadhabId.shafi,
+        voiceId: 'standard_adhan',
+        configured: true,
+        defaultsMigrated: true,
+        prePrayerAlertMinutes: 0,
+        prePrayerAlertSound: PrePrayerAlertSound.shortBeep,
+      ),
+    );
+    final engine = AdhanNextPrayerProvider(
+      store: store,
+      client: AladhanClient(
+        httpClient: MockClient((request) async => http.Response('nope', 500)),
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          prayerPrefsStoreProvider.overrideWithValue(store),
+          adhanNextPrayerProvider.overrideWithValue(engine),
+          localPrayerPlayerProvider.overrideWithValue(
+            const SilentLocalPrayerPlayer(),
+          ),
+        ],
+        child: MaterialApp(
+          locale: const Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          theme: PrayerCastTheme.light(),
+          home: const PrayerSettingsPage(),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final minutesField = find.byKey(const ValueKey('pre-prayer-minutes-0'));
+    await tester.scrollUntilVisible(
+      minutesField,
+      300,
+      scrollable: _settingsScrollable(),
+    );
+    await Scrollable.ensureVisible(
+      tester.element(minutesField),
+      alignment: 0.2,
+      duration: Duration.zero,
+    );
+    await tester.pump();
+    await tester.tap(minutesField);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('10 min').last);
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('pre-prayer-minutes-10')), findsOneWidget);
+    expect(find.byKey(const ValueKey('pre-prayer-sound-shortBeep')), findsOneWidget);
+
+    final soundField = find.byKey(const ValueKey('pre-prayer-sound-shortBeep'));
+    await Scrollable.ensureVisible(
+      tester.element(soundField),
+      alignment: 0.2,
+      duration: Duration.zero,
+    );
+    await tester.pump();
+    await tester.tap(soundField);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Long beep').last);
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('pre-prayer-sound-longBeep')), findsOneWidget);
+    final saved = await store.read();
+    expect(saved.prePrayerAlertMinutes, 10);
+    expect(saved.prePrayerAlertSound, PrePrayerAlertSound.longBeep);
+  });
+
+  testWidgets('per-prayer delivery sheet can select Adhan on phone', (
+    tester,
+  ) async {
+    PrayerDeliveryMode? chosen;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        theme: PrayerCastTheme.light(),
+        home: Scaffold(
+          body: PrayerScheduleTile(
+            prayer: NextPrayer(
+              name: 'fajr',
+              scheduledAt: DateTime(2026, 8, 13, 5, 32),
+              voiceId: 'fajr_adhan',
+            ),
+            voiceId: 'fajr_adhan',
+            deliveryMode: PrayerDeliveryMode.cast,
+            castVolume: null,
+            testing: false,
+            enabled: true,
+            onVoiceChanged: (_) {},
+            onDeliveryChanged: (mode) => chosen = mode,
+            onVolumeChanged: (_) {},
+            onTest: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('delivery-fajr-cast')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Adhan on phone'));
+    await tester.pumpAndSettle();
+    expect(chosen, PrayerDeliveryMode.adhanPhone);
+  });
+
+  testWidgets('changing Fajr delivery persists without Default delivery', (
+    tester,
+  ) async {
+    const sampleBody = '''
+{
+  "code": 200,
+  "status": "OK",
+  "data": {
+    "timings": {
+      "Fajr": "05:00",
+      "Dhuhr": "12:00",
+      "Asr": "15:30",
+      "Maghrib": "18:00",
+      "Isha": "19:30"
+    },
+    "meta": {
+      "latitude": 1.35,
+      "longitude": 103.82,
+      "timezone": "Asia/Singapore",
+      "method": { "id": 11, "name": "MUIS" }
+    }
+  }
+}
+''';
+    final store = MemoryPrayerPrefsStore(
+      const PrayerPrefs(
+        city: 'Singapore',
+        country: 'Singapore',
+        methodId: 11,
+        madhabId: PrayerMadhabId.shafi,
+        voiceId: 'standard_adhan',
+        configured: true,
+        defaultsMigrated: true,
+        deliveryByPrayer: {
+          'fajr': 'cast',
+          'dhuhr': 'cast',
+          'asr': 'cast',
+          'maghrib': 'cast',
+          'isha': 'cast',
+        },
+      ),
+    );
+    final engine = AdhanNextPrayerProvider(
+      store: store,
+      client: AladhanClient(
+        httpClient: MockClient(
+          (request) async => http.Response(sampleBody, 200),
+        ),
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          prayerPrefsStoreProvider.overrideWithValue(store),
+          adhanNextPrayerProvider.overrideWithValue(engine),
+          localPrayerPlayerProvider.overrideWithValue(
+            const SilentLocalPrayerPlayer(),
+          ),
+        ],
+        child: MaterialApp(
+          locale: const Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          theme: PrayerCastTheme.light(),
+          home: const PrayerSettingsPage(),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Default delivery'), findsNothing);
+    final fajrDelivery = find.byKey(const ValueKey('delivery-fajr-cast'));
+    await tester.scrollUntilVisible(
+      fajrDelivery,
+      300,
+      scrollable: _settingsScrollable(),
+    );
+    await Scrollable.ensureVisible(
+      tester.element(fajrDelivery),
+      alignment: 0.2,
+      duration: Duration.zero,
+    );
+    await tester.pump();
+    await tester.tap(fajrDelivery);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Adhan on phone'));
+    await tester.pumpAndSettle();
+    // Autosave debounce is 500ms.
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('delivery-fajr-adhanPhone')),
+      findsOneWidget,
+    );
+    final saved = await store.read();
+    expect(saved.deliveryFor('fajr'), PrayerDeliveryMode.adhanPhone);
+    expect(saved.deliveryFor('dhuhr'), PrayerDeliveryMode.cast);
+  });
+
+  testWidgets('Test scheduled adhan is hidden for regular users', (
+    tester,
+  ) async {
     await _pumpSettings(tester);
-    await _revealDryRun(tester);
-    expect(find.text('In 1 minute'), findsOneWidget);
-    expect(find.text('In 5 minutes'), findsOneWidget);
-    expect(find.text('In 10 minutes'), findsNothing);
-    expect(find.text('In 1 hour'), findsNothing);
-    expect(find.byKey(const ValueKey('dry_run_1m')), findsOneWidget);
-    expect(find.byKey(const ValueKey('dry_run_5m')), findsOneWidget);
-    expect(find.byKey(const ValueKey('dry_run_10m')), findsNothing);
-    expect(find.byKey(const ValueKey('dry_run_1h')), findsNothing);
-  });
-
-  testWidgets('dry-run buttons are localized in Indonesian', (tester) async {
-    await _pumpSettings(tester, locale: const Locale('id'));
-    await _revealDryRun(tester);
-
-    expect(find.text('Dalam 1 menit'), findsOneWidget);
-    expect(find.text('Dalam 5 menit'), findsOneWidget);
-    expect(find.text('Dalam 10 menit'), findsNothing);
-    expect(find.text('Dalam 1 jam'), findsNothing);
-  });
-
-  testWidgets('dry-run shows inline time, not a SnackBar', (tester) async {
-    final alarm = _FakeExactAlarm();
-    addTearDown(alarm.dispose);
-    final t0 = DateTime(2026, 8, 13, 20, 35);
-    final coordinator = _coordinator(
-      alarm: alarm,
-      clock: FakeClock(t0),
-      next: NextPrayer(
-        name: 'isha',
-        scheduledAt: t0.add(const Duration(hours: 2)),
-        voiceId: 'standard_adhan',
-      ),
-    );
-    await coordinator.start();
-
-    await _pumpSettings(tester, coordinator: coordinator);
-    await _tapDryRunButton(tester, const ValueKey('dry_run_5m'));
-    await tester.pump();
-
-    expect(find.byType(SnackBar), findsNothing);
-    expect(find.byKey(const ValueKey('dry_run_status')), findsOneWidget);
-    expect(find.text('Test adhan at 20:40'), findsOneWidget);
-    expect(find.text('SCHEDULE'), findsWidgets);
-  });
-
-  testWidgets('dry-run prompts for notifications when not granted', (
-    tester,
-  ) async {
-    final alarm = _FakeExactAlarm();
-    addTearDown(alarm.dispose);
-    final t0 = DateTime(2026, 8, 13, 20, 35);
-    final coordinator = _coordinator(
-      alarm: alarm,
-      clock: FakeClock(t0),
-      next: NextPrayer(
-        name: 'dhuhr',
-        scheduledAt: t0.add(const Duration(hours: 2)),
-        voiceId: 'standard_adhan',
-      ),
-    );
-    await coordinator.start();
-
-    var requested = 0;
-    await _pumpSettings(
-      tester,
-      coordinator: coordinator,
-      postNotifications: PostNotificationsPermission(
-        isAndroid: true,
-        androidSdkInt: 33,
-        readGranted: () async => false,
-        requestGrant: () async {
-          requested++;
-          return true;
-        },
-      ),
-    );
-    await _tapDryRunButton(tester, const ValueKey('dry_run_1m'));
-    await tester.pump();
-
-    expect(find.byKey(NotificationDisclosureDialog.dialogKey), findsOneWidget);
-    await tester.tap(find.byKey(NotificationDisclosureDialog.continueKey));
-    await tester.pump();
-    await tester.pump();
-
-    expect(requested, 1);
-    expect(alarm.scheduled.length, 1);
-    expect(alarm.scheduled.single.prayer, 'dhuhr-dryrun');
-    expect(find.text('Test adhan at 20:37'), findsOneWidget);
-  });
-
-  testWidgets('dry-run still schedules if notification prompt is skipped', (
-    tester,
-  ) async {
-    final alarm = _FakeExactAlarm();
-    addTearDown(alarm.dispose);
-    final t0 = DateTime(2026, 8, 13, 20, 35);
-    final coordinator = _coordinator(
-      alarm: alarm,
-      clock: FakeClock(t0),
-      next: NextPrayer(
-        name: 'dhuhr',
-        scheduledAt: t0.add(const Duration(hours: 2)),
-        voiceId: 'standard_adhan',
-      ),
-    );
-    await coordinator.start();
-
-    var requested = 0;
-    await _pumpSettings(
-      tester,
-      coordinator: coordinator,
-      postNotifications: PostNotificationsPermission(
-        isAndroid: true,
-        androidSdkInt: 33,
-        readGranted: () async => false,
-        requestGrant: () async {
-          requested++;
-          return false;
-        },
-      ),
-    );
-    await _tapDryRunButton(tester, const ValueKey('dry_run_5m'));
-    await tester.pump();
-    await tester.tap(find.byKey(NotificationDisclosureDialog.skipKey));
-    await tester.pump();
-    await tester.pump();
-
-    expect(requested, 0);
-    expect(alarm.scheduled.length, 1);
-    expect(find.text('Test adhan at 20:40'), findsOneWidget);
+    expect(find.text('Test scheduled adhan'), findsNothing);
+    expect(find.byKey(const ValueKey('dry_run_toggle')), findsNothing);
   });
 
   testWidgets('notification disclosure copy is localized in Indonesian', (
@@ -249,33 +418,6 @@ void main() {
     expect(find.text('Tampilkan notifikasi uji'), findsOneWidget);
     expect(find.text('Izinkan'), findsOneWidget);
     expect(find.text('Nanti saja'), findsOneWidget);
-  });
-
-  testWidgets('dry-run failure stays on the card, not a SnackBar', (
-    tester,
-  ) async {
-    final alarm = _FakeExactAlarm();
-    addTearDown(alarm.dispose);
-    final coordinator = _coordinator(
-      alarm: alarm,
-      clock: FakeClock(DateTime(2026, 8, 13, 20, 35)),
-      next: NextPrayer(
-        name: 'isha',
-        scheduledAt: DateTime(2026, 8, 13, 22, 0),
-        voiceId: 'standard_adhan',
-      ),
-    );
-
-    await _pumpSettings(tester, coordinator: coordinator);
-    await _tapDryRunButton(tester, const ValueKey('dry_run_5m'));
-    await tester.pump();
-
-    expect(find.byType(SnackBar), findsNothing);
-    expect(find.byKey(const ValueKey('dry_run_status')), findsOneWidget);
-    expect(
-      find.textContaining('Could not schedule test adhan'),
-      findsOneWidget,
-    );
   });
 
   testWidgets('save without location shows status above Save, not a SnackBar', (
@@ -498,47 +640,10 @@ Finder _settingsScrollable() {
       .first;
 }
 
-Future<void> _revealDryRun(WidgetTester tester) async {
-  final toggle = find.byKey(const ValueKey('dry_run_toggle'));
-  await tester.scrollUntilVisible(
-    toggle,
-    300,
-    scrollable: _settingsScrollable(),
-  );
-  await Scrollable.ensureVisible(
-    tester.element(toggle),
-    alignment: 0.15,
-    duration: Duration.zero,
-  );
-  await tester.pump();
-  await tester.tap(toggle);
-  await tester.pump();
-}
-
-Future<void> _tapDryRunButton(WidgetTester tester, Key key) async {
-  await _revealDryRun(tester);
-  final button = find.byKey(key);
-  await tester.scrollUntilVisible(
-    button,
-    200,
-    scrollable: _settingsScrollable(),
-  );
-  await Scrollable.ensureVisible(
-    tester.element(button),
-    alignment: 0.35,
-    duration: Duration.zero,
-  );
-  await tester.pump();
-  await tester.tap(button);
-  await tester.pump();
-}
-
 Future<void> _pumpSettings(
   WidgetTester tester, {
-  PrayerDeliveryCoordinator? coordinator,
   PrayerPrefs? prefs,
   LocationResolving locationResolver = const LocationResolver(),
-  PostNotificationsPermission? postNotifications,
   Locale locale = const Locale('en'),
 }) async {
   final store = MemoryPrayerPrefsStore(prefs ?? PrayerPrefs.defaults);
@@ -563,11 +668,7 @@ Future<void> _pumpSettings(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         theme: PrayerCastTheme.light(),
         home: PrayerSettingsPage(
-          coordinator: coordinator,
           locationResolver: locationResolver,
-          postNotifications:
-              postNotifications ??
-              const PostNotificationsPermission(isAndroid: false),
         ),
       ),
     ),
@@ -575,156 +676,6 @@ Future<void> _pumpSettings(
   await tester.pump();
   await tester.pump();
   await tester.pump();
-}
-
-PrayerDeliveryCoordinator _coordinator({
-  required _FakeExactAlarm alarm,
-  required FakeClock clock,
-  required NextPrayer next,
-}) {
-  return PrayerDeliveryCoordinator(
-    exactAlarm: alarm,
-    nextPrayer: _FixedNextPrayer(next),
-    deviceConditions: _FakeConditions(),
-    settings: _FakeSettings(),
-    audioLoader: _FakeAudio(),
-    runDelivery: (request) async => const DeliveryAttemptResult(
-      sessionId: 'sess',
-      outcome: Outcome.played,
-      role: 'SOLO',
-    ),
-    clock: clock,
-  );
-}
-
-final class _FixedNextPrayer implements NextPrayerProvider {
-  _FixedNextPrayer(this.prayer);
-  final NextPrayer prayer;
-
-  @override
-  Future<NextPrayer> next({
-    required DateTime after,
-    bool preferCache = false,
-  }) async => prayer;
-}
-
-final class _FakeExactAlarm implements ExactAlarmPlatform {
-  final _fireController = StreamController<AlarmFiredEvent>.broadcast();
-  final scheduled = <({int epochMs, String prayer, String voiceId})>[];
-
-  @override
-  Stream<AlarmFiredEvent> get onFired => _fireController.stream;
-
-  @override
-  Future<void> scheduleNext({
-    required int epochMs,
-    required String prayer,
-    required String voiceId,
-  }) async {
-    scheduled
-      ..clear()
-      ..add((epochMs: epochMs, prayer: prayer, voiceId: voiceId));
-  }
-
-  @override
-  Future<void> cancel() async {}
-
-  @override
-  Future<bool> canScheduleExactAlarms() async => true;
-
-  @override
-  Future<void> requestExactAlarmPermission() async {}
-
-  @override
-  Future<void> stopForegroundService() async {}
-
-  @override
-  Future<void> showPhonePlaybackControls({required String prayer}) async {}
-
-  @override
-  Future<void> playLocalBeep() async {}
-
-  @override
-  Future<void> playLocalTakbir() async {}
-
-  @override
-  Future<void> syncTravelLocation({
-    required bool enabled,
-    double? latitude,
-    double? longitude,
-  }) async {}
-
-  @override
-  Stream<void> get onStopLocalPlayback => const Stream.empty();
-
-  @override
-  Future<ScheduledAlarm?> readScheduled() async => null;
-
-  @override
-  Future<void> schedulePreAlert({
-    required int epochMs,
-    required String title,
-    required String body,
-    String sound = 'beep',
-  }) async {}
-
-  @override
-  Future<void> cancelPreAlert() async {}
-
-  @override
-  Future<void> scheduleIqamahReminder({
-    required int epochMs,
-    required String title,
-    required String body,
-    required String prayer,
-    String sound = 'chime',
-  }) async {}
-
-  @override
-  Future<void> cancelIqamahReminder() async {}
-
-  @override
-  Future<List<PendingIqamahLog>> drainPendingIqamahLogs() async => const [];
-
-  @override
-  Future<void> showDeliveryFailureNotification({
-    required String title,
-    required String body,
-  }) async {}
-
-  @override
-  Future<void> markDeliveryReady() async {}
-
-  @override
-  Future<void> acknowledgeAlarmFire() async {}
-
-  Future<void> dispose() => _fireController.close();
-}
-
-final class _FakeSettings implements DeliverySettings {
-  @override
-  Future<String?> homeCastDeviceId() async => 'cast-home-1';
-}
-
-final class _FakeAudio implements AdzanAudioLoader {
-  @override
-  Future<AdzanAudioData> load(String voiceId) async => AdzanAudioData(
-    bytes: Uint8List.fromList(List<int>.filled(32, 1)),
-    contentType: 'audio/mpeg',
-    extension: 'mp3',
-  );
-}
-
-final class _FakeConditions implements DeviceConditionsProvider {
-  @override
-  Future<DeviceConditions> current() async => const DeviceConditions(
-    formFactor: DeviceFormFactor.phone,
-    isPluggedIn: true,
-    isScreenOn: true,
-    batteryPercent: 80,
-    batterySaverActive: false,
-    clockSkewDetected: false,
-  );
 }
 
 final class _TimeoutLocationResolver implements LocationResolving {

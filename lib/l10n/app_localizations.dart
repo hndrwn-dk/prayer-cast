@@ -275,7 +275,7 @@ abstract class AppLocalizations {
   /// No description provided for @qibla.
   ///
   /// In en, this message translates to:
-  /// **'Qibla'**
+  /// **'Qibla/Mosque'**
   String get qibla;
 
   /// Home gear icon and settings page title

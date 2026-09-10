@@ -105,7 +105,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get prayerTracker => 'Catatan sholat';
 
   @override
-  String get qibla => 'Kiblat';
+  String get qibla => 'Kiblat/Masjid';
 
   @override
   String get settings => 'Pengaturan';

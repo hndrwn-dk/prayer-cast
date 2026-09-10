@@ -12,8 +12,6 @@ import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/soft_pill.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
 
-import 'package:prayer_cast/home_delivery/platform/post_notifications_permission.dart';
-
 import '../adzan_voices.dart';
 import '../aladhan_client.dart';
 import '../indonesia_location.dart';
@@ -21,7 +19,6 @@ import '../location_resolver.dart';
 import '../prayer_prefs.dart';
 import '../prayer_times_providers.dart';
 import 'location_disclosure.dart';
-import 'notification_disclosure.dart';
 
 /// Premium prayer-time settings: location, method, schedule + voice test.
 class PrayerSettingsPage extends ConsumerStatefulWidget {
@@ -29,14 +26,10 @@ class PrayerSettingsPage extends ConsumerStatefulWidget {
     super.key,
     this.coordinator,
     this.locationResolver = const LocationResolver(),
-    this.postNotifications = const PostNotificationsPermission(),
-    this.showNotificationDisclosure = showNotificationDisclosureDialog,
   });
 
   final PrayerDeliveryCoordinator? coordinator;
   final LocationResolving locationResolver;
-  final PostNotificationsPermission postNotifications;
-  final Future<bool> Function(BuildContext context) showNotificationDisclosure;
 
   @override
   ConsumerState<PrayerSettingsPage> createState() => _PrayerSettingsPageState();
@@ -51,10 +44,6 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
   bool _editingPlace = false;
   bool _scheduleExpanded = false;
   String? _testingPrayer;
-  bool _schedulingDryRun = false;
-  String? _dryRunStatus;
-  bool _dryRunIsError = false;
-  String? _dryRunArmedLabel;
   String? _pageStatus;
   bool _pageStatusIsError = false;
   String? _scheduleError;
@@ -81,10 +70,12 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
     _rememberAladhan(prefs.methodId);
     _controllersReady = true;
     _lastSaved ??= prefs;
+    _draft ??= prefs;
   }
 
   void _updateDraft(PrayerPrefs Function(PrayerPrefs current) update) {
-    final current = _draft;
+    final current =
+        _draft ?? ref.read(prayerPrefsProvider).asData?.value;
     if (current == null) return;
     final next = update(current);
     setState(() => _draft = next);
@@ -252,15 +243,15 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                   }
                   return const Center(child: CircularProgressIndicator());
                 }
-                final draft = _draft ?? prefs;
-                _ensureControllers(draft);
-                if (_draft == null &&
+                final needsScheduleKick = _draft == null &&
                     _schedule.isEmpty &&
                     !_loadingSchedule &&
-                    _scheduleError == null) {
+                    _scheduleError == null;
+                final draft = _draft ?? prefs;
+                _ensureControllers(draft);
+                if (needsScheduleKick) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (mounted) unawaited(_refreshSchedule(draft));
-                    if (mounted) unawaited(_refreshArmedDryRun());
                   });
                 }
 
@@ -596,53 +587,6 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                   l10n.scheduleVoiceHint,
                                   style: text.bodyMedium,
                                 ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  Localizations.localeOf(context)
-                                              .languageCode ==
-                                          'id'
-                                      ? 'Default pengiriman'
-                                      : 'Default delivery',
-                                  style: text.bodyMedium,
-                                ),
-                                const SizedBox(height: 8),
-                                DropdownButtonFormField<PrayerDeliveryMode>(
-                                  key: ValueKey(
-                                    'default-delivery-${draft.defaultDeliveryMode.name}',
-                                  ),
-                                  initialValue: draft.defaultDeliveryMode,
-                                  isExpanded: true,
-                                  style: PrayerCastTheme.forestDropdown,
-                                  dropdownColor: Theme.of(context)
-                                      .colorScheme
-                                      .surfaceContainerHigh,
-                                  items: [
-                                    for (final mode
-                                        in PrayerDeliveryMode.values)
-                                      DropdownMenuItem(
-                                        value: mode,
-                                        child: Text(
-                                          deliveryDisplayName(l10n, mode),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                  ],
-                                  onChanged: _testingPrayer == null
-                                      ? (mode) {
-                                          if (mode == null) return;
-                                          _updateDraft(
-                                            (d) => d.withDefaultDelivery(mode),
-                                          );
-                                        }
-                                      : null,
-                                  decoration: _fieldDecoration(null).copyWith(
-                                    isDense: true,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 12,
-                                    ),
-                                  ),
-                                ),
                                 if (_scheduleError != null) ...[
                                   const SizedBox(height: 12),
                                   Text(
@@ -731,15 +675,22 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                             ),
                           ),
                           const SizedBox(height: 14),
-                          _CastFallbackCard(
-                            enabled: draft.castFallbackToPhone,
-                            onChanged: (enabled) {
-                              _updateDraft(
-                                (d) => d.copyWith(castFallbackToPhone: enabled),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 14),
+                          if (PrayerPrefs.prayerKeys.any(
+                            (p) =>
+                                draft.deliveryFor(p) == PrayerDeliveryMode.cast,
+                          )) ...[
+                            _CastFallbackCard(
+                              enabled: draft.castFallbackToPhone,
+                              onChanged: (enabled) {
+                                _updateDraft(
+                                  (d) => d.copyWith(
+                                    castFallbackToPhone: enabled,
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                          ],
                           _PrePrayerAlertCard(
                             minutes: draft.prePrayerAlertMinutes,
                             sound: draft.prePrayerAlertSound,
@@ -770,25 +721,6 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                               );
                             },
                           ),
-                          const SizedBox(height: 14),
-                          _DryRunCard(
-                            enabled:
-                                widget.coordinator != null &&
-                                !_schedulingDryRun &&
-                                _testingPrayer == null,
-                            statusText: _dryRunStatus,
-                            statusIsError: _dryRunIsError,
-                            armedLabel: _dryRunArmedLabel,
-                            onCancelArmed: _dryRunArmedLabel == null
-                                ? null
-                                : () => unawaited(_cancelArmedDryRun()),
-                            onIn1Minute: () => _scheduleDryRun(
-                              PrayerDeliveryCoordinator.dryRunIn1Minute,
-                            ),
-                            onIn5Minutes: () => _scheduleDryRun(
-                              PrayerDeliveryCoordinator.dryRunIn5Minutes,
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -816,73 +748,6 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
         },
       ),
     );
-  }
-
-  Future<void> _scheduleDryRun(Duration untilAzan) async {
-    final coordinator = widget.coordinator;
-    final l10n = context.l10n;
-    if (coordinator == null) return;
-    setState(() => _schedulingDryRun = true);
-    try {
-      final alreadyGranted = await widget.postNotifications.isGranted();
-      if (!alreadyGranted) {
-        if (!mounted) return;
-        final proceed = await widget.showNotificationDisclosure(context);
-        if (proceed && mounted) {
-          await widget.postNotifications.request();
-        }
-      }
-      if (!mounted) return;
-      final azanAt = await coordinator.scheduleDryRun(untilAzan: untilAzan);
-      if (!mounted) return;
-      final local = azanAt.toLocal();
-      final hh = local.hour.toString().padLeft(2, '0');
-      final mm = local.minute.toString().padLeft(2, '0');
-      _setDryRunStatus(l10n.dryRunScheduled('$hh:$mm'), error: false);
-      await _refreshArmedDryRun();
-    } catch (e) {
-      if (!mounted) return;
-      _setDryRunStatus(l10n.dryRunFailed('$e'), error: true);
-    } finally {
-      if (mounted) setState(() => _schedulingDryRun = false);
-    }
-  }
-
-  Future<void> _refreshArmedDryRun() async {
-    final coordinator = widget.coordinator;
-    if (coordinator == null) {
-      if (mounted) setState(() => _dryRunArmedLabel = null);
-      return;
-    }
-    final armed = await coordinator.readArmedDryRun();
-    if (!mounted) return;
-    if (armed == null) {
-      setState(() => _dryRunArmedLabel = null);
-      return;
-    }
-    final wake = DateTime.fromMillisecondsSinceEpoch(armed.epochMs).toLocal();
-    final hh = wake.hour.toString().padLeft(2, '0');
-    final mm = wake.minute.toString().padLeft(2, '0');
-    final isId = Localizations.localeOf(context).languageCode == 'id';
-    setState(() {
-      _dryRunArmedLabel = isId
-          ? 'Tes bersenjata · bunyi sekitar $hh:$mm'
-          : 'Test armed · fires around $hh:$mm';
-    });
-  }
-
-  Future<void> _cancelArmedDryRun() async {
-    final coordinator = widget.coordinator;
-    if (coordinator == null) return;
-    await coordinator.cancelDryRun();
-    if (!mounted) return;
-    setState(() {
-      _dryRunArmedLabel = null;
-      _dryRunStatus = Localizations.localeOf(context).languageCode == 'id'
-          ? 'Tes dibatalkan'
-          : 'Test cancelled';
-      _dryRunIsError = false;
-    });
   }
 
   Future<void> _testDelivery(String prayerName, PrayerPrefs draft) async {
@@ -971,13 +836,6 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
       if (!mounted) return;
       if (popAfter) {
         Navigator.of(context).maybePop(toWrite);
-      } else {
-        setState(() {
-          _pageStatus = Localizations.localeOf(context).languageCode == 'id'
-              ? 'Tersimpan'
-              : 'Saved';
-          _pageStatusIsError = false;
-        });
       }
     } catch (e) {
       if (!mounted) return;
@@ -991,13 +849,6 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
     _saveDebounce?.cancel();
     _draft = prefs;
     await _persistDraft(popAfter: true);
-  }
-
-  void _setDryRunStatus(String message, {required bool error}) {
-    setState(() {
-      _dryRunStatus = message;
-      _dryRunIsError = error;
-    });
   }
 
   void _setPageStatus(String message, {required bool error}) {
@@ -1048,37 +899,29 @@ class _CastFallbackCard extends StatelessWidget {
       color: PrayerCastColors.canopyDeep,
       borderRadius: BorderRadius.circular(14),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isId
-                        ? 'Jika speaker tidak tersedia'
-                        : 'If the speaker is unavailable',
-                    style: text.titleMedium,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    isId
-                        ? 'Putar Adhan di ponsel (atau nada singkat jika lokasi rumah belum yakin).'
-                        : 'Play Adhan on this phone (or a short chime if home presence is uncertain).',
-                    style: text.bodySmall?.copyWith(
-                      color: PrayerCastColors.mistDeep,
-                    ),
-                  ),
-                ],
+        padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+        child: SwitchListTile(
+          key: ValueKey('cast-fallback-switch-$enabled'),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          title: Text(
+            isId
+                ? 'Jika speaker tidak tersedia'
+                : 'If the speaker is unavailable',
+            style: text.titleMedium,
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              isId
+                  ? 'Hanya bila speaker rumah sudah disimpan. Putar Adhan di ponsel jika Cast gagal (atau nada singkat jika lokasi rumah belum yakin).'
+                  : 'Only when a home speaker is saved. Play Adhan on this phone if Cast fails (or a short chime if home presence is uncertain).',
+              style: text.bodySmall?.copyWith(
+                color: PrayerCastColors.mistDeep,
               ),
             ),
-            Switch(
-              value: enabled,
-              onChanged: onChanged,
-            ),
-          ],
+          ),
+          value: enabled,
+          onChanged: onChanged,
         ),
       ),
     );
@@ -1098,10 +941,14 @@ class _PrePrayerAlertCard extends StatelessWidget {
   final ValueChanged<int> onChanged;
   final ValueChanged<PrePrayerAlertSound> onSoundChanged;
 
+  static int _normalizedMinutes(int raw) =>
+      raw == 10 || raw == 15 ? raw : 0;
+
   @override
   Widget build(BuildContext context) {
     final isId = Localizations.localeOf(context).languageCode == 'id';
     final text = Theme.of(context).textTheme;
+    final selectedMinutes = _normalizedMinutes(minutes);
     return Material(
       color: PrayerCastColors.canopyDeep,
       borderRadius: BorderRadius.circular(14),
@@ -1122,52 +969,73 @@ class _PrePrayerAlertCard extends StatelessWidget {
               style: text.bodyMedium,
             ),
             const SizedBox(height: 12),
-            SegmentedButton<int>(
-              segments: [
-                ButtonSegment(
-                  value: 0,
-                  label: Text(isId ? 'Mati' : 'Off'),
-                ),
-                ButtonSegment(
-                  value: 10,
-                  label: Text(isId ? '10 mnt' : '10 min'),
-                ),
-                ButtonSegment(
-                  value: 15,
-                  label: Text(isId ? '15 mnt' : '15 min'),
-                ),
+            DropdownButtonFormField<int>(
+              key: ValueKey('pre-prayer-minutes-$selectedMinutes'),
+              initialValue: selectedMinutes,
+              isExpanded: true,
+              style: PrayerCastTheme.forestDropdown,
+              dropdownColor:
+                  Theme.of(context).colorScheme.surfaceContainerHigh,
+              items: [
+                for (final m in const [0, 10, 15])
+                  DropdownMenuItem(
+                    value: m,
+                    child: Text(
+                      m == 0
+                          ? (isId ? 'Mati' : 'Off')
+                          : (isId ? '$m mnt' : '$m min'),
+                    ),
+                  ),
               ],
-              selected: {minutes == 10 || minutes == 15 ? minutes : 0},
-              emptySelectionAllowed: false,
-              onSelectionChanged: (selected) {
-                if (selected.isEmpty) return;
-                onChanged(selected.first);
+              onChanged: (value) {
+                if (value == null) return;
+                onChanged(value);
               },
+              decoration:
+                  _PrayerSettingsPageState._fieldDecoration(null).copyWith(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+              ),
             ),
-            if (minutes > 0) ...[
+            if (selectedMinutes > 0) ...[
               const SizedBox(height: 12),
               Text(
                 isId ? 'Suara pengingat' : 'Reminder sound',
                 style: text.bodyMedium,
               ),
               const SizedBox(height: 8),
-              SegmentedButton<PrePrayerAlertSound>(
-                segments: [
-                  ButtonSegment(
+              DropdownButtonFormField<PrePrayerAlertSound>(
+                key: ValueKey('pre-prayer-sound-${sound.name}'),
+                initialValue: sound,
+                isExpanded: true,
+                style: PrayerCastTheme.forestDropdown,
+                dropdownColor:
+                    Theme.of(context).colorScheme.surfaceContainerHigh,
+                items: [
+                  DropdownMenuItem(
                     value: PrePrayerAlertSound.shortBeep,
-                    label: Text(isId ? 'Bip pendek' : 'Short beep'),
+                    child: Text(isId ? 'Bip pendek' : 'Short beep'),
                   ),
-                  ButtonSegment(
+                  DropdownMenuItem(
                     value: PrePrayerAlertSound.longBeep,
-                    label: Text(isId ? 'Bip panjang' : 'Long beep'),
+                    child: Text(isId ? 'Bip panjang' : 'Long beep'),
                   ),
                 ],
-                selected: {sound},
-                emptySelectionAllowed: false,
-                onSelectionChanged: (selected) {
-                  if (selected.isEmpty) return;
-                  onSoundChanged(selected.first);
+                onChanged: (value) {
+                  if (value == null) return;
+                  onSoundChanged(value);
                 },
+                decoration:
+                    _PrayerSettingsPageState._fieldDecoration(null).copyWith(
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
               ),
             ],
           ],
@@ -1272,23 +1140,35 @@ class _IqamahReminderCard extends StatelessWidget {
                 style: text.bodyMedium,
               ),
               const SizedBox(height: 8),
-              SegmentedButton<IqamahSound>(
-                segments: [
-                  ButtonSegment(
+              DropdownButtonFormField<IqamahSound>(
+                key: ValueKey('iqamah-sound-${draft.iqamahSound.name}'),
+                initialValue: draft.iqamahSound,
+                isExpanded: true,
+                style: PrayerCastTheme.forestDropdown,
+                dropdownColor:
+                    Theme.of(context).colorScheme.surfaceContainerHigh,
+                items: [
+                  DropdownMenuItem(
                     value: IqamahSound.silent,
-                    label: Text(isId ? 'Diam' : 'Silent'),
+                    child: Text(isId ? 'Diam' : 'Silent'),
                   ),
-                  ButtonSegment(
+                  DropdownMenuItem(
                     value: IqamahSound.chime,
-                    label: Text(isId ? 'Nada' : 'Chime'),
+                    child: Text(isId ? 'Nada' : 'Chime'),
                   ),
                 ],
-                selected: {draft.iqamahSound},
-                emptySelectionAllowed: false,
-                onSelectionChanged: (selected) {
-                  if (selected.isEmpty) return;
-                  onSoundChanged(selected.first);
+                onChanged: (value) {
+                  if (value == null) return;
+                  onSoundChanged(value);
                 },
+                decoration:
+                    _PrayerSettingsPageState._fieldDecoration(null).copyWith(
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
               ),
             ],
           ],
@@ -1316,142 +1196,6 @@ class _IqamahReminderCard extends StatelessWidget {
       'isha' => 'Isha',
       _ => key,
     };
-  }
-}
-
-class _DryRunCard extends StatefulWidget {
-  const _DryRunCard({
-    required this.enabled,
-    required this.onIn1Minute,
-    required this.onIn5Minutes,
-    this.statusText,
-    this.statusIsError = false,
-    this.armedLabel,
-    this.onCancelArmed,
-  });
-
-  final bool enabled;
-  final VoidCallback onIn1Minute;
-  final VoidCallback onIn5Minutes;
-  final String? statusText;
-  final bool statusIsError;
-  final String? armedLabel;
-  final VoidCallback? onCancelArmed;
-
-  @override
-  State<_DryRunCard> createState() => _DryRunCardState();
-}
-
-class _DryRunCardState extends State<_DryRunCard> {
-  bool _expanded = false;
-
-  @override
-  void didUpdateWidget(covariant _DryRunCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if ((widget.statusText != null &&
-            widget.statusText != oldWidget.statusText) ||
-        (widget.armedLabel != null &&
-            widget.armedLabel != oldWidget.armedLabel)) {
-      _expanded = true;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final l10n = context.l10n;
-    final isId = Localizations.localeOf(context).languageCode == 'id';
-    return InkSurface(
-      borderColor: PrayerCastColors.inkSoft,
-      borderWidth: PrayerCastTheme.cardHairline,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          InkWell(
-            key: const ValueKey('dry_run_toggle'),
-            onTap: () => setState(() => _expanded = !_expanded),
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(l10n.dryRunTitle, style: text.titleLarge),
-                  ),
-                  AnimatedRotation(
-                    turns: _expanded ? 0.25 : 0,
-                    duration: const Duration(milliseconds: 180),
-                    child: PremiumIcons.caretRight(
-                      size: 18,
-                      color: PrayerCastColors.mistDeep,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (widget.armedLabel != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              widget.armedLabel!,
-              style: text.bodyMedium?.copyWith(color: PrayerCastColors.dawn),
-            ),
-            if (widget.onCancelArmed != null) ...[
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: widget.enabled ? widget.onCancelArmed : null,
-                  child: Text(isId ? 'Batalkan tes' : 'Cancel test'),
-                ),
-              ),
-            ],
-          ],
-          if (_expanded) ...[
-            const SizedBox(height: 6),
-            Text(l10n.dryRunHint, style: text.bodyMedium),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: PrayerCastTheme.minTap,
-                    child: OutlinedButton(
-                      key: const ValueKey('dry_run_1m'),
-                      onPressed: widget.enabled ? widget.onIn1Minute : null,
-                      child: Text(l10n.dryRunIn1Minute),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: SizedBox(
-                    height: PrayerCastTheme.minTap,
-                    child: OutlinedButton(
-                      key: const ValueKey('dry_run_5m'),
-                      onPressed: widget.enabled ? widget.onIn5Minutes : null,
-                      child: Text(l10n.dryRunIn5Minutes),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (widget.statusText != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                widget.statusText!,
-                key: const ValueKey('dry_run_status'),
-                style: text.bodyMedium?.copyWith(
-                  color: widget.statusIsError
-                      ? PrayerCastColors.dangerSoft
-                      : PrayerCastColors.mist,
-                ),
-              ),
-            ],
-          ],
-        ],
-      ),
-    );
   }
 }
 
