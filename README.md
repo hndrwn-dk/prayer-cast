@@ -72,7 +72,7 @@ and is not an in-app purchase.
 Prayer Cast is free, with no ads and no in-app purchases. If it is useful to
 you, a donation helps keep it maintained:
 
-[ko-fi.com/hendrawandaryonokarso](https://ko-fi.com/hendrawandaryonokarso)
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/hendrawandaryonokarso)
 
 ## Develop
 
