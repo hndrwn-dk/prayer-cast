@@ -5,6 +5,7 @@ you are actually home. No account, no ads, no in-app purchases.
 
 [Google Play](https://play.google.com/store/apps/details?id=com.tursinalabs.prayer_cast)
 · [Privacy policy](https://tursinalabs.com/privacy/prayer-cast)
+· [Support on Ko-fi](https://ko-fi.com/hendrawandaryonokarso)
 
 ## Screenshots
 
@@ -65,6 +66,13 @@ system geocoder, and OpenStreetMap (Overpass / Nominatim) for mosques.
 
 Ko-fi is a donation opened in the system browser. It does not unlock features
 and is not an in-app purchase.
+
+## Support
+
+Prayer Cast is free, with no ads and no in-app purchases. If it is useful to
+you, a donation helps keep it maintained:
+
+[ko-fi.com/hendrawandaryonokarso](https://ko-fi.com/hendrawandaryonokarso)
 
 ## Develop
 
