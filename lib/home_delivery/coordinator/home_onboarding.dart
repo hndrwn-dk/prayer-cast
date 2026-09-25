@@ -136,10 +136,29 @@ final class HomeOnboarding {
   }
 
   /// Persist Cast id (Signal A), friendly name, and LAN fingerprint (Signal B).
+  ///
+  /// Also ensures a random household election secret exists (created here if
+  /// missing). Other phones must [importElectionSecret] with the same value.
   Future<CapturedFingerprint> saveHomeSpeaker(CastReceiver receiver) async {
     await _store.writeHomeCastId(receiver.deviceId);
     await _store.writeHomeCastFriendlyName(receiver.friendlyName);
-    return _lanFingerprint.captureHome();
+    final captured = await _lanFingerprint.captureHome();
+    await _lanFingerprint.electionSecret();
+    return captured;
+  }
+
+  /// Current household election code (creates one if needed).
+  ///
+  /// Share this with other phones in the house so election HMAC matches.
+  Future<String> householdElectionCode() => _lanFingerprint.electionSecret();
+
+  /// Import a household election code from another phone (join path).
+  Future<void> importElectionSecret(String secret) async {
+    final trimmed = secret.trim();
+    if (trimmed.isEmpty) {
+      throw ArgumentError.value(secret, 'secret', 'Election secret is empty');
+    }
+    await _store.writeElectionSecret(trimmed);
   }
 
   /// Clear the saved Cast target only (Signal A).

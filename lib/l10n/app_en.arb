@@ -229,6 +229,16 @@
       "name": {"type": "String"}
     }
   },
+  "householdCodeTitle": "Household code",
+  "householdCodeBody": "Share this code with other phones in your home so only one phone casts Adhan. Do not post it publicly.",
+  "householdCodeCopy": "Copy",
+  "householdCodeCopied": "Household code copied",
+  "householdCodeDone": "Done",
+  "householdCodeShow": "Show household code",
+  "householdCodeImportTitle": "Enter household code",
+  "householdCodeImportHint": "Paste code from another phone",
+  "householdCodeImportConfirm": "Save",
+  "householdCodeImported": "Household code saved",
   "removeHomeSpeaker": "Remove default speaker",
   "removeHomeSpeakerConfirmTitle": "Remove default speaker?",
   "removeHomeSpeakerConfirmBody": "Prayer Cast will stop using this speaker. Your Google Home devices are not deleted.",

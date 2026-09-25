@@ -138,6 +138,7 @@ void main() {
             browser: browser,
             store: store,
             clock: FakeClock(scheduler.now()),
+            confirmSdkCastSighting: (id) async => id == castId,
           ),
       fingerprintStore: store,
       identity: DeviceIdentity(

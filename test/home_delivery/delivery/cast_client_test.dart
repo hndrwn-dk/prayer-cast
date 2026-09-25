@@ -81,6 +81,14 @@ final class FakeCastPlatform implements CastPlatform {
   }
 
   @override
+  Future<bool> confirmSdkSighting(
+    String deviceId, {
+    Duration budget = const Duration(seconds: 4),
+  }) async {
+    return devices.any((d) => d.deviceId == deviceId);
+  }
+
+  @override
   Future<double> getVolume() async => initialVolume;
 
   @override

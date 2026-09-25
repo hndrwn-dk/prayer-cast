@@ -83,6 +83,8 @@ final class HomeDeliveryRuntime {
     // thread during headless boot can stall the isolate before runApp.
     final scheduler = const WallScheduler();
     final browser = NsdMdnsBrowser(logger: logger);
+    // Cast platform before presence so Signal A can require SDK confirmation.
+    final castPlatform = FlutterCastPlatform(logger: logger);
     final lanFingerprint = LanFingerprint(
       browser: browser,
       store: fingerprintStore,
@@ -91,15 +93,16 @@ final class HomeDeliveryRuntime {
     final presence = PresenceService(
       browser: browser,
       store: fingerprintStore,
+      lanFingerprint: lanFingerprint,
       clock: scheduler,
       logger: logger,
+      confirmSdkCastSighting: (castId) => castPlatform.confirmSdkSighting(castId),
     );
     final identity = DeviceIdentity(store: deviceIdStore, logger: logger);
     final discovery = NsdAdzanDiscovery(logger: logger);
     final transport = await UdpUnicastTransport.bind(logger: logger).timeout(
       const Duration(seconds: 2),
     );
-    final castPlatform = FlutterCastPlatform(logger: logger);
     final castClient = CastClient(platform: castPlatform, logger: logger);
     final audioLoader = AssetAdzanAudioLoader(logger: logger);
     final localPlayer = AudioplayersLocalPrayerPlayer(

@@ -464,6 +464,37 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get householdCodeTitle => 'Household code';
+
+  @override
+  String get householdCodeBody =>
+      'Share this code with other phones in your home so only one phone casts Adhan. Do not post it publicly.';
+
+  @override
+  String get householdCodeCopy => 'Copy';
+
+  @override
+  String get householdCodeCopied => 'Household code copied';
+
+  @override
+  String get householdCodeDone => 'Done';
+
+  @override
+  String get householdCodeShow => 'Show household code';
+
+  @override
+  String get householdCodeImportTitle => 'Enter household code';
+
+  @override
+  String get householdCodeImportHint => 'Paste code from another phone';
+
+  @override
+  String get householdCodeImportConfirm => 'Save';
+
+  @override
+  String get householdCodeImported => 'Household code saved';
+
+  @override
   String get removeHomeSpeaker => 'Remove default speaker';
 
   @override

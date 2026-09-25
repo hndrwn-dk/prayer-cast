@@ -70,6 +70,26 @@ void main() {
     expect(await store.readHomeCastFriendlyName(), 'Kitchen Nest');
     expect(captured.hashes, isNotEmpty);
     expect(await store.readHashes(), captured.hashes);
+    final code = await onboarding.householdElectionCode();
+    expect(code, isNotEmpty);
+    expect(
+      LanFingerprint.isLegacyCastDerivedElectionSecret(code, 'cast-home-1'),
+      isFalse,
+    );
+  });
+
+  test('importElectionSecret shares household code across stores', () async {
+    await onboarding.saveHomeSpeaker(cast.devices.first);
+    final code = await onboarding.householdElectionCode();
+
+    final otherStore = MemoryFingerprintStore();
+    final other = HomeOnboarding(
+      castPlatform: cast,
+      store: otherStore,
+      lanFingerprint: LanFingerprint(browser: browser, store: otherStore),
+    );
+    await other.importElectionSecret(code);
+    expect(await other.householdElectionCode(), code);
   });
 
   test('clearHomeSpeaker drops Cast target and keeps LAN extras', () async {

@@ -5,9 +5,9 @@
 /// two phones in the same house do not produce identical stored hashes (each
 /// still evaluates Jaccard against its own saved set).
 ///
-/// [electionSecret] is the household HMAC key for election UDP. When a home
-/// Cast id is saved, it is derived from that id so every phone that picked
-/// the same speaker holds the same value — unlike the per-install salt.
+/// [electionSecret] is the household HMAC key for election UDP. It is a
+/// high-entropy random value created at onboarding (or imported when joining
+/// another phone). It must never be derived from the public Cast device id.
 abstract interface class FingerprintStore {
   Future<String?> readSalt();
 

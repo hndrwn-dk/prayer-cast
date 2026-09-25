@@ -142,14 +142,53 @@ final class LanFingerprint {
     return digest.toString().substring(0, 8);
   }
 
-  /// Household election HMAC derived from the same Cast id.
+  /// Legacy Cast-id KDF — forgeable by any LAN host that browses mDNS.
   ///
-  /// A per-install random secret has no QR/pair path, so CLAIMs failed MAC
-  /// on the other phone. Phones that saved the same speaker converge here.
-  static String householdElectionSecret(String homeCastId) {
+  /// Kept only to detect and rotate weak secrets still on disk. Never use as
+  /// the live election HMAC key.
+  static String legacyCastDerivedElectionSecret(String homeCastId) {
     return sha256
         .convert(utf8.encode('prayer-cast-election|$homeCastId'))
         .toString();
+  }
+
+  /// True when [secret] is the old Cast-id derivation (public on the LAN).
+  static bool isLegacyCastDerivedElectionSecret(
+    String secret,
+    String homeCastId,
+  ) {
+    if (secret.isEmpty || homeCastId.isEmpty) return false;
+    return secret == legacyCastDerivedElectionSecret(homeCastId);
+  }
+
+  /// Persist a random household election secret; rotate Cast-derived values.
+  ///
+  /// Used by [LanFingerprint] and delivery so HMAC keys never come from the
+  /// public Cast device id.
+  static Future<String> ensureElectionSecretInStore(
+    FingerprintStore store, {
+    SaltGenerator saltGenerator = const SecureSaltGenerator(),
+    HomeDeliveryLogger logger = const SilentLogger(),
+  }) async {
+    final existing = await store.readElectionSecret();
+    final castId = await store.readHomeCastIdResilient();
+    if (existing != null &&
+        existing.isNotEmpty &&
+        castId != null &&
+        castId.isNotEmpty &&
+        isLegacyCastDerivedElectionSecret(existing, castId)) {
+      logger.warn(
+        'Rotating Cast-derived election secret to a random household key',
+        tag: 'LanFingerprint',
+      );
+      final rotated = saltGenerator.generate();
+      await store.writeElectionSecret(rotated);
+      return rotated;
+    }
+    if (existing != null && existing.isNotEmpty) return existing;
+    final created = saltGenerator.generate();
+    await store.writeElectionSecret(created);
+    return created;
   }
 
   Future<String> shortHashForHome() async {
@@ -162,7 +201,7 @@ final class LanFingerprint {
     return shortHash(hashes);
   }
 
-  /// Household-shared election HMAC secret.
+  /// Household-shared election HMAC secret (random; never Cast-id derived).
   Future<String> electionSecret() => _ensureElectionSecret();
 
   Future<String> _ensureSalt() async {
@@ -173,22 +212,11 @@ final class LanFingerprint {
     return created;
   }
 
-  Future<String> _ensureElectionSecret() async {
-    final castId = await _store.readHomeCastIdResilient();
-    if (castId != null && castId.isNotEmpty) {
-      final derived = householdElectionSecret(castId);
-      final existing = await _store.readElectionSecret();
-      if (existing != derived) {
-        await _store.writeElectionSecret(derived);
-      }
-      return derived;
-    }
-    final existing = await _store.readElectionSecret();
-    if (existing != null && existing.isNotEmpty) return existing;
-    final created = _saltGenerator.generate();
-    await _store.writeElectionSecret(created);
-    return created;
-  }
+  Future<String> _ensureElectionSecret() => ensureElectionSecretInStore(
+        _store,
+        saltGenerator: _saltGenerator,
+        logger: _logger,
+      );
 }
 
 /// Result of an onboarding capture.

@@ -215,15 +215,12 @@ final class DeliveryOrchestrator {
       udpPort: _transport.localEndpoint.port,
     );
 
-    var sharedSecret = await _fingerprintStore.readElectionSecret();
-    if (castId != null && castId.isNotEmpty) {
-      final derived = LanFingerprint.householdElectionSecret(castId);
-      if (sharedSecret != derived) {
-        await _fingerprintStore.writeElectionSecret(derived);
-        sharedSecret = derived;
-      }
-    }
-    if (sharedSecret == null || sharedSecret.isEmpty) {
+    // Random household secret (or imported join code) — never Cast-id KDF.
+    final sharedSecret = await LanFingerprint.ensureElectionSecretInStore(
+      _fingerprintStore,
+      logger: _logger,
+    );
+    if (sharedSecret.isEmpty) {
       return _finish(
         request: request,
         sessionId: sessionId,

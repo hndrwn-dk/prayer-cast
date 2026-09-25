@@ -444,9 +444,16 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
+      expect(find.byKey(const ValueKey('household_election_code_dialog')),
+          findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('household_election_code_done')));
+      await tester.pumpAndSettle();
+
       expect(await store.readHomeCastId(), 'nest-1');
       expect(await store.readHomeCastFriendlyName(), 'Nest Mini Kitchen');
       expect(cast.discoverCalls, 0);
+      expect(await store.readElectionSecret(), isNotNull);
+      expect(await store.readElectionSecret(), isNotEmpty);
     },
   );
 

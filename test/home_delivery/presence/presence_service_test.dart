@@ -21,11 +21,15 @@ void main() {
     );
   });
 
-  PresenceService buildService(FakeMdnsBrowser browser) {
+  PresenceService buildService(
+    FakeMdnsBrowser browser, {
+    SdkCastSightingConfirmer? confirmSdkCastSighting,
+  }) {
     return PresenceService(
       browser: browser,
       store: store,
       clock: clock,
+      confirmSdkCastSighting: confirmSdkCastSighting,
     );
   }
 
@@ -136,7 +140,49 @@ void main() {
   });
 
   group('scan() Signal A and B', () {
-    test('Signal A: saved Cast id discoverable → HOME', () async {
+    test('Signal A: NSD + SDK confirmation → HOME', () async {
+      final browser = FakeMdnsBrowser([
+        [
+          const DiscoveredService(
+            instanceName: 'Kitchen',
+            serviceType: '_googlecast._tcp',
+            txt: {'id': 'home-cast-id'},
+          ),
+        ],
+      ]);
+      final service = buildService(
+        browser,
+        confirmSdkCastSighting: (id) async => id == 'home-cast-id',
+      );
+
+      final snap = await service.scan();
+      expect(snap.state, PresenceState.home);
+      expect(snap.signal, PresenceSignal.a);
+    });
+
+    test('Signal A: NSD hit without SDK confirmation is not HOME', () async {
+      final browser = FakeMdnsBrowser([
+        [
+          const DiscoveredService(
+            instanceName: 'Kitchen',
+            serviceType: '_googlecast._tcp',
+            txt: {'id': 'home-cast-id'},
+          ),
+        ],
+      ]);
+      // Spoofed NSD only — confirmer rejects.
+      final service = buildService(
+        browser,
+        confirmSdkCastSighting: (id) async => false,
+      );
+
+      final snap = await service.scan();
+      expect(snap.signal, isNot(PresenceSignal.a));
+      expect(snap.scan.detected, isFalse);
+    });
+
+    test('Signal A: NSD hit with no confirmer falls through (not HOME via A)',
+        () async {
       final browser = FakeMdnsBrowser([
         [
           const DiscoveredService(
@@ -149,8 +195,7 @@ void main() {
       final service = buildService(browser);
 
       final snap = await service.scan();
-      expect(snap.state, PresenceState.home);
-      expect(snap.signal, PresenceSignal.a);
+      expect(snap.signal, isNot(PresenceSignal.a));
     });
 
     test('Signal B: fingerprint match when Cast id absent', () async {
