@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
@@ -80,8 +81,7 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.speakerSaved(receiver.friendlyName))),
       );
-      // Brief beat so the row checkmark / progress is visible before pop.
-      await Future<void>.delayed(const Duration(milliseconds: 320));
+      await _showHouseholdCodeDialog();
       if (!mounted) return;
       Navigator.of(context).maybePop(receiver);
     } catch (e) {
@@ -93,6 +93,147 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
         _savingDeviceId = null;
         _saveSucceeded = false;
       });
+    }
+  }
+
+  Future<void> _showHouseholdCodeDialog() async {
+    final l10n = context.l10n;
+    final onboarding = ref.read(homeOnboardingProvider);
+    final code = await onboarding.householdElectionCode();
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierColor: PrayerCastColors.ink.withValues(alpha: 0.72),
+      builder: (ctx) {
+        return Theme(
+          data: PrayerCastTheme.forest(),
+          child: AlertDialog(
+            key: const ValueKey('household_election_code_dialog'),
+            backgroundColor: PrayerCastColors.canopyDeep,
+            surfaceTintColor: Colors.transparent,
+            title: Text(
+              l10n.householdCodeTitle,
+              style: const TextStyle(
+                color: PrayerCastColors.surfaceRaised,
+                fontSize: 22,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  l10n.householdCodeBody,
+                  style: TextStyle(
+                    color: PrayerCastColors.mist.withValues(alpha: 0.92),
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SelectableText(
+                  code,
+                  key: const ValueKey('household_election_code_value'),
+                  style: const TextStyle(
+                    color: PrayerCastColors.surfaceRaised,
+                    fontFamily: 'monospace',
+                    fontSize: 13,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                key: const ValueKey('household_election_code_copy'),
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: code));
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(content: Text(l10n.householdCodeCopied)),
+                    );
+                  }
+                },
+                child: Text(l10n.householdCodeCopy),
+              ),
+              TextButton(
+                key: const ValueKey('household_election_code_done'),
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text(l10n.householdCodeDone),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _importHouseholdCodeDialog() async {
+    if (_busy) return;
+    final l10n = context.l10n;
+    final controller = TextEditingController();
+    final imported = await showDialog<bool>(
+      context: context,
+      barrierColor: PrayerCastColors.ink.withValues(alpha: 0.72),
+      builder: (ctx) {
+        return Theme(
+          data: PrayerCastTheme.forest(),
+          child: AlertDialog(
+            key: const ValueKey('household_election_import_dialog'),
+            backgroundColor: PrayerCastColors.canopyDeep,
+            surfaceTintColor: Colors.transparent,
+            title: Text(
+              l10n.householdCodeImportTitle,
+              style: const TextStyle(
+                color: PrayerCastColors.surfaceRaised,
+                fontSize: 22,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            content: TextField(
+              key: const ValueKey('household_election_import_field'),
+              controller: controller,
+              autofocus: true,
+              style: const TextStyle(color: PrayerCastColors.surfaceRaised),
+              decoration: InputDecoration(
+                hintText: l10n.householdCodeImportHint,
+                hintStyle: TextStyle(
+                  color: PrayerCastColors.mist.withValues(alpha: 0.55),
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(l10n.removeHomeSpeakerCancel),
+              ),
+              TextButton(
+                key: const ValueKey('household_election_import_confirm'),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(l10n.householdCodeImportConfirm),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (imported != true || !mounted) {
+      controller.dispose();
+      return;
+    }
+    try {
+      await ref.read(homeOnboardingProvider).importElectionSecret(controller.text);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.householdCodeImported)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.speakerSaveFailed('$e'))),
+      );
+    } finally {
+      controller.dispose();
     }
   }
 
@@ -370,6 +511,28 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                               : l10n.speakersFound(visibleSpeakers.length),
                           style: text.titleMedium,
                         ),
+                      ),
+                      PopupMenuButton<String>(
+                        key: const ValueKey('household_code_menu'),
+                        enabled: !_busy && !_selecting,
+                        tooltip: l10n.householdCodeTitle,
+                        onSelected: (value) {
+                          if (value == 'show') {
+                            unawaited(_showHouseholdCodeDialog());
+                          } else if (value == 'import') {
+                            unawaited(_importHouseholdCodeDialog());
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'show',
+                            child: Text(l10n.householdCodeShow),
+                          ),
+                          PopupMenuItem(
+                            value: 'import',
+                            child: Text(l10n.householdCodeImportTitle),
+                          ),
+                        ],
                       ),
                       if (showSelect) ...[
                         _CircleIconButton(

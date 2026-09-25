@@ -6,6 +6,12 @@ import 'mdns_browser.dart';
 import 'presence_schedule.dart';
 import 'presence_state.dart';
 
+/// Confirms the saved Cast target via Cast SDK / MediaRouter — never NSD alone.
+///
+/// Presence must not import `delivery/`; the app shell wires this to
+/// [CastPlatform.confirmSdkSighting].
+typedef SdkCastSightingConfirmer = Future<bool> Function(String castDeviceId);
+
 /// Presence state machine with mandatory hysteresis (spec §3.4, §3.6).
 ///
 /// WHY: The adzan must not fire when nobody is home, but Cast speakers
@@ -24,6 +30,7 @@ final class PresenceService {
     Clock clock = const SystemClock(),
     HomeDeliveryLogger logger = const SilentLogger(),
     this.awayHysteresis = const Duration(seconds: 90),
+    this.confirmSdkCastSighting,
   })  : _browser = browser,
         _store = store,
         _lanFingerprint = lanFingerprint ??
@@ -34,6 +41,13 @@ final class PresenceService {
   /// Minimum span between the first and latest consecutive false scans
   /// before transitioning to [PresenceState.away] (§3.4).
   final Duration awayHysteresis;
+
+  /// When non-null, Signal A requires this to return true after an NSD hint.
+  ///
+  /// NSD `_googlecast._tcp` TXT `id` is unauthenticated — a guest can
+  /// re-advertise the saved Cast id. Without confirmation, Signal A must not
+  /// fire from NSD alone (falls through to Signal B).
+  final SdkCastSightingConfirmer? confirmSdkCastSighting;
 
   final MdnsBrowser _browser;
   final FingerprintStore _store;
@@ -92,17 +106,34 @@ final class PresenceService {
   Future<PresenceScanResult> _detect({required DateTime now}) async {
     final homeCastId = await _store.readHomeCastIdResilient();
 
-    // Signal A: saved Cast target discoverable. Browse Cast only first so we
-    // can early-exit without waiting on the full fingerprint set (§3.6).
+    // Signal A: saved Cast target discoverable via NSD *and* Cast SDK.
+    // Browse Cast only first so we can early-exit (§3.6) when both agree.
     if (homeCastId != null && homeCastId.isNotEmpty) {
       final castServices = await _browser.browse(
         serviceTypes: const ['_googlecast._tcp'],
         budget: LanFingerprint.browseBudget,
         shouldStop: (soFar) => soFar.any((s) => s.txt['id'] == homeCastId),
       );
-      final hit = castServices.any((s) => s.txt['id'] == homeCastId);
-      if (hit) {
-        return PresenceScanResult.detected(signal: PresenceSignal.a);
+      final nsdHit = castServices.any((s) => s.txt['id'] == homeCastId);
+      if (nsdHit) {
+        final confirmer = confirmSdkCastSighting;
+        if (confirmer == null) {
+          _logger.warn(
+            'Signal A NSD hit for $homeCastId without SDK confirmer; '
+            'falling through to Signal B',
+            tag: 'PresenceService',
+          );
+        } else {
+          final sdkOk = await confirmer(homeCastId);
+          if (sdkOk) {
+            return PresenceScanResult.detected(signal: PresenceSignal.a);
+          }
+          _logger.warn(
+            'Signal A NSD hit for $homeCastId rejected — Cast SDK did not '
+            'confirm (possible mDNS spoof)',
+            tag: 'PresenceService',
+          );
+        }
       }
     }
 

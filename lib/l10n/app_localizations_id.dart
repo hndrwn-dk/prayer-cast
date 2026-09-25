@@ -466,6 +466,37 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
+  String get householdCodeTitle => 'Kode rumah';
+
+  @override
+  String get householdCodeBody =>
+      'Bagikan kode ini ke ponsel lain di rumah agar hanya satu yang cast Adzan. Jangan bagikan secara publik.';
+
+  @override
+  String get householdCodeCopy => 'Salin';
+
+  @override
+  String get householdCodeCopied => 'Kode rumah disalin';
+
+  @override
+  String get householdCodeDone => 'Selesai';
+
+  @override
+  String get householdCodeShow => 'Tampilkan kode rumah';
+
+  @override
+  String get householdCodeImportTitle => 'Masukkan kode rumah';
+
+  @override
+  String get householdCodeImportHint => 'Tempel kode dari ponsel lain';
+
+  @override
+  String get householdCodeImportConfirm => 'Simpan';
+
+  @override
+  String get householdCodeImported => 'Kode rumah disimpan';
+
+  @override
   String get removeHomeSpeaker => 'Hapus speaker default';
 
   @override

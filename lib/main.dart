@@ -1586,6 +1586,13 @@ final class _NoopCastPlatform implements CastPlatform {
   Future<void> warmUp() async {}
 
   @override
+  Future<bool> confirmSdkSighting(
+    String deviceId, {
+    Duration budget = const Duration(seconds: 4),
+  }) async =>
+      false;
+
+  @override
   Future<double> getVolume() async => 0.5;
 
   @override

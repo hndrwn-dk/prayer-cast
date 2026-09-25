@@ -82,6 +82,13 @@ abstract interface class CastPlatform {
     Duration timeout = const Duration(seconds: 20),
   });
 
+  /// True when the Cast SDK / MediaRouter lists [deviceId] (NSD alone is never
+  /// enough — guests can forge `_googlecast._tcp` TXT).
+  Future<bool> confirmSdkSighting(
+    String deviceId, {
+    Duration budget = const Duration(seconds: 4),
+  });
+
   /// Emits when the receiver reports IDLE/FINISHED after loadMedia.
   Stream<CastPlaybackEvent> get playbackEvents;
 
@@ -632,6 +639,63 @@ final class FlutterCastPlatform implements CastPlatform {
         error: e,
         stackTrace: st,
       );
+    }
+  }
+
+  @override
+  Future<bool> confirmSdkSighting(
+    String deviceId, {
+    Duration budget = const Duration(seconds: 4),
+  }) async {
+    if (deviceId.isEmpty) return false;
+    await _ensureCastContext();
+    final discovery = cast.GoogleCastDiscoveryManager.instance;
+    try {
+      await discovery.startDiscovery();
+    } catch (e, st) {
+      _logger.warn(
+        'Cast SDK sighting discovery failed',
+        tag: 'FlutterCastPlatform',
+        error: e,
+        stackTrace: st,
+      );
+      return false;
+    }
+
+    final sdkIds = <String>{};
+    void ingest(Iterable devices) {
+      final map = <String, String>{};
+      for (final d in devices) {
+        CastSdkDeviceMap.put(
+          map,
+          deviceId: d.deviceID,
+          friendlyName: d.friendlyName,
+        );
+      }
+      sdkIds.addAll(map.keys);
+    }
+
+    ingest(discovery.devices);
+    final sub = discovery.devicesStream.listen(ingest);
+    final deadline = DateTime.now().add(budget);
+    try {
+      while (DateTime.now().isBefore(deadline)) {
+        ingest(discovery.devices);
+        if (CastDiscoveryPolicy.sdkConfirmedMatch(
+          matchId: deviceId,
+          sdkDeviceIds: sdkIds,
+        )) {
+          return true;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      }
+      ingest(discovery.devices);
+      return CastDiscoveryPolicy.sdkConfirmedMatch(
+        matchId: deviceId,
+        sdkDeviceIds: sdkIds,
+      );
+    } finally {
+      await sub.cancel();
     }
   }
 

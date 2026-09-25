@@ -902,6 +902,66 @@ abstract class AppLocalizations {
   /// **'{name} saved as home speaker'**
   String speakerSaved(String name);
 
+  /// No description provided for @householdCodeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Household code'**
+  String get householdCodeTitle;
+
+  /// No description provided for @householdCodeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Share this code with other phones in your home so only one phone casts Adhan. Do not post it publicly.'**
+  String get householdCodeBody;
+
+  /// No description provided for @householdCodeCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get householdCodeCopy;
+
+  /// No description provided for @householdCodeCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Household code copied'**
+  String get householdCodeCopied;
+
+  /// No description provided for @householdCodeDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get householdCodeDone;
+
+  /// No description provided for @householdCodeShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show household code'**
+  String get householdCodeShow;
+
+  /// No description provided for @householdCodeImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter household code'**
+  String get householdCodeImportTitle;
+
+  /// No description provided for @householdCodeImportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste code from another phone'**
+  String get householdCodeImportHint;
+
+  /// No description provided for @householdCodeImportConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get householdCodeImportConfirm;
+
+  /// No description provided for @householdCodeImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Household code saved'**
+  String get householdCodeImported;
+
   /// No description provided for @removeHomeSpeaker.
   ///
   /// In en, this message translates to:

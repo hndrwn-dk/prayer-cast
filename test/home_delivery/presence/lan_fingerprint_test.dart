@@ -21,8 +21,9 @@ void main() {
     });
   });
 
-  group('household Cast-id fingerprint / election secret', () {
-    test('matches across phones that saved the same speaker', () {
+  group('household fingerprint / election secret', () {
+    test('fingerprint short matches across phones; election secret does not '
+        'derive from Cast id', () {
       const nest = '5b3609fd-home-group';
       final a = LanFingerprint.householdFingerprintShort(nest);
       final b = LanFingerprint.householdFingerprintShort(nest);
@@ -32,22 +33,26 @@ void main() {
         LanFingerprint.householdFingerprintShort('other-house'),
         isNot(a),
       );
+      final legacy = LanFingerprint.legacyCastDerivedElectionSecret(nest);
+      expect(legacy, LanFingerprint.legacyCastDerivedElectionSecret(nest));
       expect(
-        LanFingerprint.householdElectionSecret(nest),
-        LanFingerprint.householdElectionSecret(nest),
+        LanFingerprint.isLegacyCastDerivedElectionSecret(legacy, nest),
+        isTrue,
       );
       expect(
-        LanFingerprint.householdElectionSecret(nest),
-        isNot(LanFingerprint.householdElectionSecret('other-house')),
+        LanFingerprint.isLegacyCastDerivedElectionSecret(legacy, 'other'),
+        isFalse,
       );
     });
 
-    test('shortHashForHome and electionSecret ignore per-install salt',
+    test('electionSecret is random per store and rotates Cast-derived values',
         () async {
       const nest = 'cast-shared-nest';
       final phoneA = MemoryFingerprintStore(
         salt: 'salt-phone-a',
         homeCastId: nest,
+        electionSecret:
+            LanFingerprint.legacyCastDerivedElectionSecret(nest),
       );
       final phoneB = MemoryFingerprintStore(
         salt: 'salt-phone-b',
@@ -62,11 +67,34 @@ void main() {
         store: phoneB,
       );
       expect(await fpA.shortHashForHome(), await fpB.shortHashForHome());
-      expect(await fpA.electionSecret(), await fpB.electionSecret());
+      final secretA = await fpA.electionSecret();
+      final secretB = await fpB.electionSecret();
       expect(
-        await fpA.electionSecret(),
-        LanFingerprint.householdElectionSecret(nest),
+        LanFingerprint.isLegacyCastDerivedElectionSecret(secretA, nest),
+        isFalse,
       );
+      expect(secretA, isNot(LanFingerprint.legacyCastDerivedElectionSecret(nest)));
+      // Independent phones get independent secrets until they import.
+      expect(secretA, isNot(secretB));
+      expect(secretA, hasLength(32));
+      expect(secretB, hasLength(32));
+    });
+
+    test('imported election secret is shared across phones', () async {
+      const nest = 'cast-shared-nest';
+      final phoneA = MemoryFingerprintStore(homeCastId: nest);
+      final phoneB = MemoryFingerprintStore(homeCastId: nest);
+      final fpA = LanFingerprint(
+        browser: FakeMdnsBrowser(const []),
+        store: phoneA,
+      );
+      final code = await fpA.electionSecret();
+      await phoneB.writeElectionSecret(code);
+      final fpB = LanFingerprint(
+        browser: FakeMdnsBrowser(const []),
+        store: phoneB,
+      );
+      expect(await fpB.electionSecret(), code);
     });
   });
 
