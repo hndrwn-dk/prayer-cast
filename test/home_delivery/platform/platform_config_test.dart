@@ -162,11 +162,24 @@ void main() {
     expect(flutter, contains('engineForActivity'));
     expect(flutter, contains('discardHungEngine'));
     expect(flutter, contains('markDeliveryReady'));
+    expect(flutter, contains('onEngineWillDestroy'));
+    expect(flutter, contains('isDestroyed(engine)'));
+    expect(flutter, contains('DeliveryEnginePolicy.reuse'));
     final activity = File(
       'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/MainActivity.kt',
     ).readAsStringSync();
     expect(activity, contains('engineForActivity()'));
+    expect(activity, contains('onUiAttached()'));
+    expect(activity, contains('onUiDetached('));
     expect(activity, isNot(contains('return PrayerCastFlutter.cached()')));
+    expect(activity, isNot(contains('return !PrayerCastFlutter.isDeliveryReady()')));
+    final destroyAt = activity.indexOf('fun shouldDestroyEngineWithHost');
+    final configureAt = activity.indexOf('fun configureFlutterEngine');
+    expect(destroyAt, greaterThan(0));
+    expect(
+      activity.substring(destroyAt, configureAt),
+      contains('destroyEngineWithHost()'),
+    );
     // Play Console: enableEdgeToEdge before setContentView (super.onCreate).
     expect(activity, contains('enableEdgeToEdge('));
     expect(

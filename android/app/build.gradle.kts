@@ -92,6 +92,7 @@ tasks.configureEach {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     // NotificationCompat + ContextCompat for FGS / alarm receiver (spec §5.5).
     implementation("androidx.core:core-ktx:1.15.0")
     // EdgeToEdge.enable for pre-Android 15 (Play Console guidance).

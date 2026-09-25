@@ -28,16 +28,28 @@ class MainActivity : FlutterFragmentActivity() {
         LaunchPrayerPlugin.notifyNewIntent(intent)
     }
 
+    override fun onDestroy() {
+        // Before super, so the hang restart is posted after Flutter detaches
+        // the view. Destroying the engine while the view is still in layout
+        // is the setViewportMetrics crash.
+        PrayerCastFlutter.onUiDetached(applicationContext)
+        super.onDestroy()
+    }
+
     override fun provideFlutterEngine(context: Context): FlutterEngine? {
-        // Only reuse the FGS engine after Dart marked delivery ready.
-        // A hung boot (splash forever) must not be reused — discard it so
-        // a fresh engine can still play the persisted pending fire.
+        // Cancel the headless hang restart before it can destroy an engine
+        // this activity is about to attach a FlutterView to.
+        PrayerCastFlutter.onUiAttached()
         return PrayerCastFlutter.engineForActivity()
     }
 
     override fun shouldDestroyEngineWithHost(): Boolean {
-        // Keep a ready shared delivery engine alive when leaving the UI.
-        return !PrayerCastFlutter.isDeliveryReady()
+        // Never. Flutter only evicts a destroyed engine from
+        // FlutterEngineCache when getCachedEngineId() is set. We cache via
+        // provideFlutterEngine, so a host destroy leaves a detached engine.
+        // The next notification tap then crashes in setViewportMetrics and
+        // the adhan waits for a new process.
+        return DeliveryEnginePolicy.destroyEngineWithHost()
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
