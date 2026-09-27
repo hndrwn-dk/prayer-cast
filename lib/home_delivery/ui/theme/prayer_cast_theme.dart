@@ -33,6 +33,19 @@ abstract final class PrayerCastTheme {
     systemStatusBarContrastEnforced: false,
   );
 
+  /// Dark icons on transparent bars for light (mist) screens.
+  ///
+  /// Same rule as [forestSystemUi]: no bar colors. Flutter's
+  /// [SystemUiOverlayStyle.dark] carries systemNavigationBarColor, which maps
+  /// to the deprecated Window.setNavigationBarColor.
+  static const SystemUiOverlayStyle mistSystemUi = SystemUiOverlayStyle(
+    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light,
+    systemNavigationBarIconBrightness: Brightness.dark,
+    systemNavigationBarContrastEnforced: false,
+    systemStatusBarContrastEnforced: false,
+  );
+
   /// Selected value inside forest dropdowns. Regular weight so titles
   /// (titleMedium / dawn section labels) stay the loudest type.
   static const TextStyle forestDropdown = TextStyle(
@@ -157,7 +170,7 @@ abstract final class PrayerCastTheme {
         scrolledUnderElevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: PrayerCastColors.ink,
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        systemOverlayStyle: mistSystemUi,
         titleTextStyle: TextStyle(
           fontFamily: displayFont,
           fontSize: 22,
