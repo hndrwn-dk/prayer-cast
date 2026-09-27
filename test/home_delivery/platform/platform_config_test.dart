@@ -108,6 +108,8 @@ void main() {
     for (final relative in [
       'android/app/src/main/res/values/styles.xml',
       'android/app/src/main/res/values-night/styles.xml',
+      'android/app/src/main/res/values-v29/styles.xml',
+      'android/app/src/main/res/values-night-v29/styles.xml',
       'android/app/src/main/res/values-v31/styles.xml',
       'android/app/src/main/res/values-night-v31/styles.xml',
     ]) {
