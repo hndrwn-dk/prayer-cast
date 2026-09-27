@@ -230,6 +230,7 @@ void main() {
 
     // Verify healPersistedWake structure
     expect(exact, contains('fun healPersistedWake'));
+    expect(exact, contains('replayPendingFireIfNeeded(context)'));
     expect(exact, contains('rearmFromPrefsIfFuture(context)'));
     expect(exact, contains('return armRescheduleRetry(context)'));
 
@@ -243,18 +244,29 @@ void main() {
     expect(exact, contains('RESCHEDULE_RETRY_PRAYER'));
     expect(exact, contains('RESCHEDULE_RETRY_DELAY_MS'));
 
-    // Verify the flow: healPersistedWake calls rearmFromPrefsIfFuture first,
-    // then falls back to armRescheduleRetry if that returns false
+    // Verify the flow: healPersistedWake replays unacked real pending only
+    // (no fall-through to retry), else rearms future prefs, else retry.
     final healFunction = RegExp(
-      r'fun healPersistedWake.*?\{.*?if \(rearmFromPrefsIfFuture.*?return true.*?return armRescheduleRetry',
+      r'fun healPersistedWake.*?\{'
+      r'.*?if \(hasRealPendingFire.*?\{'
+      r'.*?return replayPendingFireIfNeeded'
+      r'.*?\}'
+      r'.*?if \(rearmFromPrefsIfFuture.*?return true'
+      r'.*?return armRescheduleRetry',
       dotAll: true,
     );
     expect(
       healFunction.hasMatch(exact),
       isTrue,
       reason:
-          'healPersistedWake should call rearmFromPrefsIfFuture first, then armRescheduleRetry as fallback',
+          'healPersistedWake should replay pending exclusively when present, '
+          'else rearmFromPrefsIfFuture, else armRescheduleRetry',
     );
+
+    // Defense: reschedule-retry must not overwrite a real pending payload.
+    expect(exact, contains('Never let a synthetic reschedule-retry erase'));
+    // cancel must preserve pending keys (IqamahAlert-style).
+    expect(exact, contains('Preserve unacked pending delivery keys'));
   });
 
   test('AndroidManifest does not enable global cleartext HTTP', () {

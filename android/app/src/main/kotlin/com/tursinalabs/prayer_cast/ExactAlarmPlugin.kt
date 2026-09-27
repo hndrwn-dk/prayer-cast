@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import androidx.core.content.ContextCompat
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -312,6 +313,18 @@ class ExactAlarmPlugin(
             val epoch = (payload["scheduledEpochMs"] as? Number)?.toLong() ?: return
             val fired = (payload["firedAtMs"] as? Number)?.toLong() ?: return
             val voice = payload["voiceId"] as? String ?: ""
+            // Never let a synthetic reschedule-retry erase an unacked real prayer.
+            // Heal / retry fires would otherwise drop Maghrib (etc.) forever.
+            if (prayer == RESCHEDULE_RETRY_PRAYER) {
+                val existing = readPersistedPendingFire(context)
+                val existingPrayer = existing?.get("prayer") as? String
+                if (existingPrayer != null &&
+                    existingPrayer.isNotEmpty() &&
+                    existingPrayer != RESCHEDULE_RETRY_PRAYER
+                ) {
+                    return
+                }
+            }
             context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
                 .putString(KEY_PENDING_PRAYER, prayer)
@@ -412,7 +425,14 @@ class ExactAlarmPlugin(
             )
             alarmManager.cancel(operation)
             if (clearPrefs) {
-                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+                // Preserve unacked pending delivery keys (same idea as
+                // [IqamahAlert.cancel] keeping pending_chime_logs).
+                val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                val pending = readPersistedPendingFire(context)
+                prefs.edit().clear().apply()
+                if (pending != null) {
+                    persistPendingFire(context, pending)
+                }
                 NextPrayerWidget.refresh(context)
             }
         }
@@ -420,6 +440,9 @@ class ExactAlarmPlugin(
         /**
          * Same decision [BootReceiver] and [AlarmHealWorker] use.
          *
+         * Unacked real pending fire → [replayPendingFireIfNeeded] only
+         * (never [armRescheduleRetry], which would later emit a synthetic
+         * fire whose [acknowledgeAlarmFire] clears the real pending).
          * Future persisted epoch → [rearmFromPrefsIfFuture].
          * Past or missing epoch → [armRescheduleRetry] (not a second copy
          * of that path).
@@ -430,8 +453,52 @@ class ExactAlarmPlugin(
          */
         @JvmStatic
         fun healPersistedWake(context: Context): Boolean {
+            if (hasRealPendingFire(context)) {
+                return replayPendingFireIfNeeded(context)
+            }
             if (rearmFromPrefsIfFuture(context)) return true
             return armRescheduleRetry(context)
+        }
+
+        /** Unacked pending payload for a real prayer (not reschedule-retry). */
+        @JvmStatic
+        fun hasRealPendingFire(context: Context): Boolean {
+            val pending = readPersistedPendingFire(context) ?: return false
+            val prayer = pending["prayer"] as? String ?: return false
+            return prayer.isNotEmpty() && prayer != RESCHEDULE_RETRY_PRAYER
+        }
+
+        /**
+         * Re-start FGS + Dart for an unacked real prayer fire left on disk
+         * after process death. Must run before [armRescheduleRetry], which
+         * would otherwise [persistPendingFire] a `reschedule-retry` and
+         * erase the real pending payload.
+         */
+        @JvmStatic
+        fun replayPendingFireIfNeeded(context: Context): Boolean {
+            if (!hasRealPendingFire(context)) return false
+            val pending = readPersistedPendingFire(context) ?: return false
+            val prayer = pending["prayer"] as? String ?: return false
+            val scheduledEpochMs =
+                (pending["scheduledEpochMs"] as? Number)?.toLong() ?: return false
+            if (scheduledEpochMs <= 0L) return false
+            val firedAtMs =
+                (pending["firedAtMs"] as? Number)?.toLong()
+                    ?: System.currentTimeMillis()
+            val voiceId = pending["voiceId"] as? String ?: ""
+            return try {
+                val serviceIntent = Intent(context, AdzanForegroundService::class.java).apply {
+                    action = AdzanForegroundService.ACTION_START
+                    putExtra(EXTRA_PRAYER, prayer)
+                    putExtra(EXTRA_SCHEDULED_EPOCH_MS, scheduledEpochMs)
+                    putExtra(EXTRA_VOICE_ID, voiceId)
+                    putExtra(AdzanAlarmReceiver.EXTRA_FIRED_AT_MS, firedAtMs)
+                }
+                ContextCompat.startForegroundService(context, serviceIntent)
+                true
+            } catch (_: Exception) {
+                false
+            }
         }
 
         /**

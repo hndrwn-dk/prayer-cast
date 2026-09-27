@@ -17,7 +17,8 @@ import java.util.concurrent.TimeUnit
  * ColorOS Auto-launch / MIUI Startup Manager can swallow BOOT_COMPLETED.
  * This worker reads the same persisted epoch [BootReceiver] reads and
  * calls [ExactAlarmPlugin.healPersistedWake] — the same
- * rearm-or-[armRescheduleRetry] path, not a parallel scheduler.
+ * replay-pending / rearm-or-[armRescheduleRetry] path, not a parallel
+ * scheduler.
  *
  * Honest limit: WorkManager itself can be delayed or dropped by the same
  * OEM autostart / battery gates. Interval is hours, not minutes, so this
