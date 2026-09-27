@@ -316,8 +316,8 @@ class ExactAlarmPlugin(
             // Never let a synthetic reschedule-retry erase an unacked real prayer.
             // Heal / retry fires would otherwise drop Maghrib (etc.) forever.
             if (prayer == RESCHEDULE_RETRY_PRAYER) {
-                val existing = readPersistedPendingFire(context)
-                val existingPrayer = existing?.get("prayer") as? String
+                val existingPrayer = readPersistedPendingFire(context)
+                    ?.get("prayer") as? String
                 if (existingPrayer != null &&
                     existingPrayer.isNotEmpty() &&
                     existingPrayer != RESCHEDULE_RETRY_PRAYER
@@ -425,14 +425,15 @@ class ExactAlarmPlugin(
             )
             alarmManager.cancel(operation)
             if (clearPrefs) {
-                // Preserve unacked pending delivery keys (same idea as
-                // [IqamahAlert.cancel] keeping pending_chime_logs).
-                val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                val pending = readPersistedPendingFire(context)
-                prefs.edit().clear().apply()
-                if (pending != null) {
-                    persistPendingFire(context, pending)
-                }
+                // Drop schedule keys only. A full clear() would wipe an
+                // unacked pending fire (and apply() is async, so a later
+                // persistPendingFire restore can still lose the race).
+                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .edit()
+                    .remove(KEY_PRAYER)
+                    .remove(KEY_EPOCH)
+                    .remove(KEY_VOICE_ID)
+                    .apply()
                 NextPrayerWidget.refresh(context)
             }
         }
@@ -473,6 +474,11 @@ class ExactAlarmPlugin(
          * after process death. Must run before [armRescheduleRetry], which
          * would otherwise [persistPendingFire] a `reschedule-retry` and
          * erase the real pending payload.
+         *
+         * Prefer a direct FGS start (BOOT_COMPLETED / alarm exemption).
+         * If the OS blocks that (WorkManager hours later), fall back to
+         * AlarmClock with the original wake extras — never a synthetic
+         * retry name — so the receiver can start FGS the normal way.
          */
         @JvmStatic
         fun replayPendingFireIfNeeded(context: Context): Boolean {
@@ -486,18 +492,24 @@ class ExactAlarmPlugin(
                 (pending["firedAtMs"] as? Number)?.toLong()
                     ?: System.currentTimeMillis()
             val voiceId = pending["voiceId"] as? String ?: ""
-            return try {
-                val serviceIntent = Intent(context, AdzanForegroundService::class.java).apply {
+            val app = context.applicationContext
+            try {
+                val serviceIntent = Intent(app, AdzanForegroundService::class.java).apply {
                     action = AdzanForegroundService.ACTION_START
                     putExtra(EXTRA_PRAYER, prayer)
                     putExtra(EXTRA_SCHEDULED_EPOCH_MS, scheduledEpochMs)
                     putExtra(EXTRA_VOICE_ID, voiceId)
                     putExtra(AdzanAlarmReceiver.EXTRA_FIRED_AT_MS, firedAtMs)
                 }
-                ContextCompat.startForegroundService(context, serviceIntent)
-                true
+                ContextCompat.startForegroundService(app, serviceIntent)
+                return true
             } catch (_: Exception) {
-                false
+                return try {
+                    armAlarmClock(app, scheduledEpochMs, prayer, voiceId)
+                    true
+                } catch (_: Exception) {
+                    false
+                }
             }
         }
 

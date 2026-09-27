@@ -108,17 +108,23 @@ void main() {
     for (final relative in [
       'android/app/src/main/res/values/styles.xml',
       'android/app/src/main/res/values-night/styles.xml',
+      'android/app/src/main/res/values-v29/styles.xml',
+      'android/app/src/main/res/values-night-v29/styles.xml',
       'android/app/src/main/res/values-v31/styles.xml',
       'android/app/src/main/res/values-night-v31/styles.xml',
     ]) {
       final xml = File(relative).readAsStringSync();
+      // Transparent bars come from the theme, applied by the framework, so
+      // no deprecated Window.setStatusBarColor call lands in the dex.
       expect(
         xml,
-        isNot(contains('name="android:statusBarColor"')),
+        contains('name="android:statusBarColor">@android:color/transparent'),
       );
       expect(
         xml,
-        isNot(contains('name="android:navigationBarColor"')),
+        contains(
+          'name="android:navigationBarColor">@android:color/transparent',
+        ),
       );
       expect(
         xml,
@@ -135,8 +141,14 @@ void main() {
     final activity = File(
       'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/MainActivity.kt',
     ).readAsStringSync();
-    expect(activity, contains('enableEdgeToEdge()'));
+    expect(activity, contains('WindowCompat.setDecorFitsSystemWindows'));
     expect(activity, isNot(contains('Color.TRANSPARENT')));
+    // androidx EdgeToEdgeApi23/26/29 call Window.setStatusBarColor and
+    // setNavigationBarColor. Play Console flags both on Android 15+.
+    expect(
+      activity,
+      isNot(contains('import androidx.activity.enableEdgeToEdge')),
+    );
   });
 
   test('main paints before bootstrap and recovers hung FGS engine', () {
@@ -180,10 +192,10 @@ void main() {
       activity.substring(destroyAt, configureAt),
       contains('destroyEngineWithHost()'),
     );
-    // Play Console: enableEdgeToEdge before setContentView (super.onCreate).
-    expect(activity, contains('enableEdgeToEdge('));
+    // Edge-to-edge must be set before setContentView (super.onCreate).
+    expect(activity, contains('WindowCompat.setDecorFitsSystemWindows'));
     expect(
-      activity.indexOf('enableEdgeToEdge('),
+      activity.indexOf('WindowCompat.setDecorFitsSystemWindows'),
       lessThan(activity.indexOf('super.onCreate(savedInstanceState)')),
     );
     final exact = File(
@@ -265,8 +277,10 @@ void main() {
 
     // Defense: reschedule-retry must not overwrite a real pending payload.
     expect(exact, contains('Never let a synthetic reschedule-retry erase'));
-    // cancel must preserve pending keys (IqamahAlert-style).
-    expect(exact, contains('Preserve unacked pending delivery keys'));
+    // cancel must drop schedule keys only, not wipe pending via clear().
+    expect(exact, contains('Drop schedule keys only'));
+    expect(exact, contains('.remove(KEY_PRAYER)'));
+    expect(exact, isNot(contains('.edit().clear().apply()')));
   });
 
   test('AndroidManifest does not enable global cleartext HTTP', () {
