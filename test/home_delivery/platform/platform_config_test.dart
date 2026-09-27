@@ -112,13 +112,17 @@ void main() {
       'android/app/src/main/res/values-night-v31/styles.xml',
     ]) {
       final xml = File(relative).readAsStringSync();
+      // Transparent bars come from the theme, applied by the framework, so
+      // no deprecated Window.setStatusBarColor call lands in the dex.
       expect(
         xml,
-        isNot(contains('name="android:statusBarColor"')),
+        contains('name="android:statusBarColor">@android:color/transparent'),
       );
       expect(
         xml,
-        isNot(contains('name="android:navigationBarColor"')),
+        contains(
+          'name="android:navigationBarColor">@android:color/transparent',
+        ),
       );
       expect(
         xml,
@@ -135,8 +139,14 @@ void main() {
     final activity = File(
       'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/MainActivity.kt',
     ).readAsStringSync();
-    expect(activity, contains('enableEdgeToEdge()'));
+    expect(activity, contains('WindowCompat.setDecorFitsSystemWindows'));
     expect(activity, isNot(contains('Color.TRANSPARENT')));
+    // androidx EdgeToEdgeApi23/26/29 call Window.setStatusBarColor and
+    // setNavigationBarColor. Play Console flags both on Android 15+.
+    expect(
+      activity,
+      isNot(contains('import androidx.activity.enableEdgeToEdge')),
+    );
   });
 
   test('main paints before bootstrap and recovers hung FGS engine', () {
@@ -180,10 +190,10 @@ void main() {
       activity.substring(destroyAt, configureAt),
       contains('destroyEngineWithHost()'),
     );
-    // Play Console: enableEdgeToEdge before setContentView (super.onCreate).
-    expect(activity, contains('enableEdgeToEdge('));
+    // Edge-to-edge must be set before setContentView (super.onCreate).
+    expect(activity, contains('WindowCompat.setDecorFitsSystemWindows'));
     expect(
-      activity.indexOf('enableEdgeToEdge('),
+      activity.indexOf('WindowCompat.setDecorFitsSystemWindows'),
       lessThan(activity.indexOf('super.onCreate(savedInstanceState)')),
     );
     final exact = File(

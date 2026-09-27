@@ -7,10 +7,13 @@
         <item name="android:windowBackground">@drawable/launch_background</item>
         <item name="android:forceDarkAllowed">false</item>
         <item name="android:windowFullscreen">false</item>
-        <!-- System bar colors and cutout mode are owned by
-             MainActivity.enableEdgeToEdge(); avoid deprecated window theme
-             attrs that Play Console flags on Android 15+. -->
+        <!-- Transparent bars via theme attrs, not androidx enableEdgeToEdge().
+             The framework applies these, so no deprecated
+             Window.setStatusBarColor call lands in the dex. Android 15+
+             ignores them and enforces edge-to-edge itself. -->
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
     <!-- Theme applied to the Android Window as soon as the process has started.
          This theme determines the color of the Android Window while your
@@ -21,5 +24,7 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@color/forest_ink</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 </resources>
