@@ -9,7 +9,8 @@ import android.util.Log
  * Re-arms the exact alarm after reboot or [adb install -r] (spec §5.5).
  *
  * Package replace force-stops the app and drops AlarmManager clocks.
- * If prefs still hold a future wake, re-arm natively. If the stored
+ * If prefs still hold an unacked real pending fire, replay that delivery.
+ * Else if prefs still hold a future wake, re-arm natively. If the stored
  * epoch is already past (Asr fired, Dart never rescheduled Maghrib),
  * arm a short [reschedule-retry] so FGS + Dart can schedule the next
  * real prayer without waiting for the user to open the app.
