@@ -19,6 +19,25 @@
       "clock": {"type": "String"}
     }
   },
+  "adhanCountdownMinutes": "{count} min",
+  "@adhanCountdownMinutes": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "adhanCountdownHours": "{count} hr",
+  "@adhanCountdownHours": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "adhanCountdownHoursMinutes": "{hours} hr {minutes} min",
+  "@adhanCountdownHoursMinutes": {
+    "placeholders": {
+      "hours": {"type": "int"},
+      "minutes": {"type": "int"}
+    }
+  },
   "homeDetected": "home detected",
   "notHome": "not home",
   "checkingHome": "looking for home",

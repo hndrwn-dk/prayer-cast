@@ -38,6 +38,21 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
+  String adhanCountdownMinutes(int count) {
+    return '$count menit';
+  }
+
+  @override
+  String adhanCountdownHours(int count) {
+    return '$count jam';
+  }
+
+  @override
+  String adhanCountdownHoursMinutes(int hours, int minutes) {
+    return '$hours jam $minutes menit';
+  }
+
+  @override
   String get homeDetected => 'di rumah';
 
   @override

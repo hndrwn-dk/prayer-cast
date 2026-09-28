@@ -38,6 +38,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String adhanCountdownMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
+  String adhanCountdownHours(int count) {
+    return '$count hr';
+  }
+
+  @override
+  String adhanCountdownHoursMinutes(int hours, int minutes) {
+    return '$hours hr $minutes min';
+  }
+
+  @override
   String get homeDetected => 'home detected';
 
   @override

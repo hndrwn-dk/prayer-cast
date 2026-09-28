@@ -146,6 +146,24 @@ abstract class AppLocalizations {
   /// **'in {clock}'**
   String adhanCountdownIn(String clock);
 
+  /// No description provided for @adhanCountdownMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min'**
+  String adhanCountdownMinutes(int count);
+
+  /// No description provided for @adhanCountdownHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} hr'**
+  String adhanCountdownHours(int count);
+
+  /// No description provided for @adhanCountdownHoursMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} hr {minutes} min'**
+  String adhanCountdownHoursMinutes(int hours, int minutes);
+
   /// No description provided for @homeDetected.
   ///
   /// In en, this message translates to:
