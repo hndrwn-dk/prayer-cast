@@ -196,7 +196,7 @@ class ExactAlarmPlugin(
         }
     }
 
-        override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+    override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
         eventSink = events
         // Deliver any pending fire that arrived before Dart listened
         // (in-memory, or persisted across a process restart within grace).
@@ -224,7 +224,7 @@ class ExactAlarmPlugin(
         eventSink = null
     }
 
-        fun emitAlarmFired(
+    fun emitAlarmFired(
         prayer: String,
         scheduledEpochMs: Long,
         firedAtMs: Long,
