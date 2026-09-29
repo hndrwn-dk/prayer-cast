@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import '../common/logger.dart';
 import '../common/scheduler.dart';
@@ -204,6 +205,14 @@ final class Election {
 
   void _refreshEndpoints() {
     for (final peer in _registry.homePeers) {
+      final learned = _endpointsById[peer.deviceId];
+      // Keep a working IPv4 datagram source over an IPv6-only mDNS hint —
+      // the election socket cannot deliver to IPv6.
+      if (learned != null &&
+          learned.host.type == InternetAddressType.IPv4 &&
+          peer.endpoint.host.type != InternetAddressType.IPv4) {
+        continue;
+      }
       _endpointsById[peer.deviceId] = peer.endpoint;
     }
   }
@@ -569,21 +578,22 @@ final class Election {
 
     switch (message) {
       case ClaimMessage():
-        _endpointsById.putIfAbsent(message.deviceId, () => packet.from);
+        // Always learn the UDP source — mDNS may have stored IPv6 first.
+        _endpointsById[message.deviceId] = packet.from;
         _claims[message.deviceId] = message;
       case LeadMessage():
         if (!_acceptFromClaimRanked(message)) return;
-        _endpointsById.putIfAbsent(message.deviceId, () => packet.from);
+        _endpointsById[message.deviceId] = packet.from;
         _onLeadMessage(message);
       case PlayingMessage():
         if (!_acceptFromClaimRanked(message)) return;
-        _endpointsById.putIfAbsent(message.deviceId, () => packet.from);
+        _endpointsById[message.deviceId] = packet.from;
         _currentLeaderId = message.deviceId;
         final c = _playingHeard;
         if (c != null && !c.isCompleted) c.complete();
       case YieldMessage():
         if (!_acceptFromClaimRanked(message)) return;
-        _endpointsById.putIfAbsent(message.deviceId, () => packet.from);
+        _endpointsById[message.deviceId] = packet.from;
         if (_currentLeaderId == null ||
             message.deviceId == _currentLeaderId) {
           _currentLeaderId = message.deviceId;
