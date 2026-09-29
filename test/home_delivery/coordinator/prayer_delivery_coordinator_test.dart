@@ -415,17 +415,18 @@ void main() {
     );
   });
 
-  test('start 82s after T-120 skips that prayer and arms the next', () async {
+  test('start 82s after T-120 still arms that prayer (azan still upcoming)',
+      () async {
     final maghribWake = maghrib.scheduledAt.add(PresenceSchedule.scanOffset);
     clock.advanceTo(maghribWake.add(const Duration(seconds: 82)));
     final coordinator = buildCoordinator();
     await coordinator.start();
 
     expect(alarm.scheduled, hasLength(1));
-    expect(alarm.scheduled.single.prayer, 'isha');
+    expect(alarm.scheduled.single.prayer, 'maghrib');
     expect(
       alarm.scheduled.single.epochMs,
-      isha.scheduledAt.add(PresenceSchedule.scanOffset).millisecondsSinceEpoch,
+      maghribWake.millisecondsSinceEpoch,
     );
   });
 

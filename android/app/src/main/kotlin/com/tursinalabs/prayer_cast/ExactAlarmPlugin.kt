@@ -196,13 +196,24 @@ class ExactAlarmPlugin(
         }
     }
 
-    override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+        override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
         eventSink = events
         // Deliver any pending fire that arrived before Dart listened
         // (in-memory, or persisted across a process restart within grace).
         // Keep the disk copy until [acknowledgeAlarmFire] so a hung FGS
         // engine can be discarded and a fresh MainActivity engine retries.
-        val fire = pendingFire ?: readPersistedPendingFire(context)
+        // Prefer a real disk pending over in-memory reschedule-retry so a
+        // late synthetic emit cannot hide Maghrib (etc.) at listen time.
+        val disk = readPersistedPendingFire(context)
+        val diskPrayer = disk?.get("prayer") as? String
+        val fire = if (diskPrayer != null &&
+            diskPrayer.isNotEmpty() &&
+            diskPrayer != RESCHEDULE_RETRY_PRAYER
+        ) {
+            disk
+        } else {
+            pendingFire ?: disk
+        }
         fire?.let {
             events?.success(it)
             pendingFire = null
@@ -213,12 +224,17 @@ class ExactAlarmPlugin(
         eventSink = null
     }
 
-    fun emitAlarmFired(
+        fun emitAlarmFired(
         prayer: String,
         scheduledEpochMs: Long,
         firedAtMs: Long,
         voiceId: String,
     ) {
+        // Match emitFromBackground: never deliver a synthetic retry over
+        // an unacked real prayer (Dart ack would wipe the real pending).
+        if (prayer == RESCHEDULE_RETRY_PRAYER && hasRealPendingFire(context)) {
+            return
+        }
         val payload = mapOf(
             "prayer" to prayer,
             "scheduledEpochMs" to scheduledEpochMs,
@@ -248,6 +264,8 @@ class ExactAlarmPlugin(
         const val KEY_VOICE_ID = "voiceId"
         const val RESCHEDULE_RETRY_PRAYER = "reschedule-retry"
         private const val RESCHEDULE_RETRY_DELAY_MS = 15_000L
+        /** Match Dart DeliveryTiming.graceAfterAzan for overdue catch-up. */
+        private const val OVERDUE_DELIVERY_GRACE_MS = 5 * 60 * 1000L
         private const val REQ_FIRE = 1001
         private const val REQ_SHOW = 1002
 
@@ -291,6 +309,12 @@ class ExactAlarmPlugin(
             firedAtMs: Long,
             voiceId: String,
         ) {
+            // Synthetic retry must not reach Dart (or overwrite in-memory
+            // pendingFire) while a real unacked prayer is on disk —
+            // acknowledgeAlarmFire would clear the real pending.
+            if (prayer == RESCHEDULE_RETRY_PRAYER && hasRealPendingFire(context)) {
+                return
+            }
             val payload = mapOf(
                 "prayer" to prayer,
                 "scheduledEpochMs" to scheduledEpochMs,
@@ -445,8 +469,11 @@ class ExactAlarmPlugin(
          * (never [armRescheduleRetry], which would later emit a synthetic
          * fire whose [acknowledgeAlarmFire] clears the real pending).
          * Future persisted epoch → [rearmFromPrefsIfFuture].
-         * Past or missing epoch → [armRescheduleRetry] (not a second copy
-         * of that path).
+         * Past epoch still within azan delivery grace → [fireOverduePrefsIfEligible]
+         * (do not jump to reschedule-retry while Maghrib azan is still
+         * upcoming — that skips the prayer after reboot/update).
+         * Past grace or missing epoch → [armRescheduleRetry] (not a second
+         * copy of that path).
          *
          * WorkManager is not immune to ColorOS Auto-launch / MIUI autostart
          * blocks. This shrinks the window when BOOT_COMPLETED never arrives;
@@ -458,6 +485,7 @@ class ExactAlarmPlugin(
                 return replayPendingFireIfNeeded(context)
             }
             if (rearmFromPrefsIfFuture(context)) return true
+            if (fireOverduePrefsIfEligible(context)) return true
             return armRescheduleRetry(context)
         }
 
@@ -518,8 +546,9 @@ class ExactAlarmPlugin(
          * Returns true when an alarm was armed.
          *
          * If the epoch already passed (device was off through the prayer, or
-         * Dart never rescheduled), [armRescheduleRetry] starts a Dart
-         * reschedule without waiting for the user to open the app.
+         * Dart never rescheduled), prefer [fireOverduePrefsIfEligible] when
+         * azan is still within grace; otherwise [armRescheduleRetry] starts a
+         * Dart reschedule without waiting for the user to open the app.
          */
         @JvmStatic
         fun rearmFromPrefsIfFuture(context: Context): Boolean {
@@ -539,6 +568,50 @@ class ExactAlarmPlugin(
                 false
             } catch (_: Exception) {
                 false
+            }
+        }
+
+        /**
+         * Wake epoch is already past, but azan (+ grace) has not — start FGS
+         * for that prayer instead of [armRescheduleRetry].
+         *
+         * Wake is T−120. A reboot/update at wake+90s still has ~30s before
+         * azan; jumping to reschedule-retry would skip Maghrib. Matches Dart
+         * [DeliveryTiming.graceAfterAzan] (5 minutes after azan).
+         */
+        @JvmStatic
+        fun fireOverduePrefsIfEligible(context: Context): Boolean {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val prayer = prefs.getString(KEY_PRAYER, null) ?: return false
+            if (prayer.isEmpty() || prayer == RESCHEDULE_RETRY_PRAYER) return false
+            if (!prefs.contains(KEY_EPOCH)) return false
+            val epochMs = prefs.getLong(KEY_EPOCH, 0L)
+            if (epochMs <= 0L) return false
+            val now = System.currentTimeMillis()
+            if (epochMs > now) return false
+            // wake = azan − 120s ⇒ azan = wake + 120s
+            val azanEpochMs = epochMs + 120_000L
+            if (now > azanEpochMs + OVERDUE_DELIVERY_GRACE_MS) return false
+            val voiceId = prefs.getString(KEY_VOICE_ID, null) ?: ""
+            val app = context.applicationContext
+            try {
+                val serviceIntent = Intent(app, AdzanForegroundService::class.java).apply {
+                    action = AdzanForegroundService.ACTION_START
+                    putExtra(EXTRA_PRAYER, prayer)
+                    putExtra(EXTRA_SCHEDULED_EPOCH_MS, epochMs)
+                    putExtra(EXTRA_VOICE_ID, voiceId)
+                    putExtra(AdzanAlarmReceiver.EXTRA_FIRED_AT_MS, now)
+                }
+                ContextCompat.startForegroundService(app, serviceIntent)
+                return true
+            } catch (_: Exception) {
+                return try {
+                    // Past epoch → AlarmManager fires immediately via receiver.
+                    armAlarmClock(app, epochMs, prayer, voiceId)
+                    true
+                } catch (_: Exception) {
+                    false
+                }
             }
         }
 

@@ -257,13 +257,15 @@ void main() {
     expect(exact, contains('RESCHEDULE_RETRY_DELAY_MS'));
 
     // Verify the flow: healPersistedWake replays unacked real pending only
-    // (no fall-through to retry), else rearms future prefs, else retry.
+    // (no fall-through to retry), else rearms future prefs, else fires
+    // overdue-but-eligible prefs, else retry.
     final healFunction = RegExp(
       r'fun healPersistedWake.*?\{'
       r'.*?if \(hasRealPendingFire.*?\{'
       r'.*?return replayPendingFireIfNeeded'
       r'.*?\}'
       r'.*?if \(rearmFromPrefsIfFuture.*?return true'
+      r'.*?if \(fireOverduePrefsIfEligible.*?return true'
       r'.*?return armRescheduleRetry',
       dotAll: true,
     );
@@ -272,15 +274,19 @@ void main() {
       isTrue,
       reason:
           'healPersistedWake should replay pending exclusively when present, '
-          'else rearmFromPrefsIfFuture, else armRescheduleRetry',
+          'else rearmFromPrefsIfFuture, else fireOverduePrefsIfEligible, '
+          'else armRescheduleRetry',
     );
 
     // Defense: reschedule-retry must not overwrite a real pending payload.
     expect(exact, contains('Never let a synthetic reschedule-retry erase'));
+    expect(exact, contains('hasRealPendingFire(context)'));
     // cancel must drop schedule keys only, not wipe pending via clear().
     expect(exact, contains('Drop schedule keys only'));
     expect(exact, contains('.remove(KEY_PRAYER)'));
     expect(exact, isNot(contains('.edit().clear().apply()')));
+    expect(exact, contains('fun fireOverduePrefsIfEligible'));
+    expect(exact, contains('OVERDUE_DELIVERY_GRACE_MS'));
   });
 
   test('AndroidManifest does not enable global cleartext HTTP', () {

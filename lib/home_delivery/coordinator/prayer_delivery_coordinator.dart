@@ -963,16 +963,20 @@ final class PrayerDeliveryCoordinator {
       final nowMs = now.millisecondsSinceEpoch;
 
       // Wake already past: still arm it when AlarmManager will fire
-      // immediately and delivery is still eligible (package replace /
-      // late open inside T−120..T, within the 60s OEM window).
+      // immediately and azan is still within [DeliveryTiming] grace
+      // (package replace / reboot / late open inside T−120..T+grace).
+      // Do NOT reuse the Cast OEM 60s-after-wake gate here — that window
+      // is for multi-peer election in the orchestrator. Catch-up after
+      // heal must still reach beep/phone (and attempt Cast) while azan
+      // has not passed grace; otherwise Maghrib is skipped while azan
+      // is still upcoming (wake+61s..T).
       // Otherwise skip — opening after Isha+5 must not blast the speaker.
       if (wakeEpochMs <= nowMs) {
         final wakeLate = Duration(milliseconds: nowMs - wakeEpochMs);
         final stillEligible = !DeliveryTiming.isTooLate(
-              scheduledAzan: prayer.scheduledAt,
-              now: now,
-            ) &&
-            wakeLate <= DeliveryOrchestrator.alarmMissedThreshold;
+          scheduledAzan: prayer.scheduledAt,
+          now: now,
+        );
         if (stillEligible) {
           _logger.warn(
             'Next wake $wakeEpochMs already past by ${wakeLate.inSeconds}s '
