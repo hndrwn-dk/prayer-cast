@@ -126,10 +126,7 @@ void main() {
           'name="android:navigationBarColor">@android:color/transparent',
         ),
       );
-      expect(
-        xml,
-        isNot(contains('windowLayoutInDisplayCutoutMode')),
-      );
+      expect(xml, isNot(contains('windowLayoutInDisplayCutoutMode')));
     }
     final theme = File(
       'lib/home_delivery/ui/theme/prayer_cast_theme.dart',
@@ -184,7 +181,10 @@ void main() {
     expect(activity, contains('onUiAttached()'));
     expect(activity, contains('onUiDetached('));
     expect(activity, isNot(contains('return PrayerCastFlutter.cached()')));
-    expect(activity, isNot(contains('return !PrayerCastFlutter.isDeliveryReady()')));
+    expect(
+      activity,
+      isNot(contains('return !PrayerCastFlutter.isDeliveryReady()')),
+    );
     final destroyAt = activity.indexOf('fun shouldDestroyEngineWithHost');
     final configureAt = activity.indexOf('fun configureFlutterEngine');
     expect(destroyAt, greaterThan(0));
@@ -235,59 +235,64 @@ void main() {
     expect(gradle, contains('InitializationProvider'));
   });
 
-  test('healPersistedWake uses correct conditional logic for past/missing epoch', () {
-    final exact = File(
-      'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/ExactAlarmPlugin.kt',
-    ).readAsStringSync();
+  test(
+    'healPersistedWake uses correct conditional logic for past/missing epoch',
+    () {
+      final exact = File(
+        'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/ExactAlarmPlugin.kt',
+      ).readAsStringSync();
 
-    // Verify healPersistedWake structure
-    expect(exact, contains('fun healPersistedWake'));
-    expect(exact, contains('replayPendingFireIfNeeded(context)'));
-    expect(exact, contains('rearmFromPrefsIfFuture(context)'));
-    expect(exact, contains('return armRescheduleRetry(context)'));
+      // Verify healPersistedWake structure
+      expect(exact, contains('fun healPersistedWake'));
+      expect(exact, contains('replayPendingFireIfNeeded(context)'));
+      expect(exact, contains('rearmFromPrefsIfFuture(context)'));
+      expect(exact, contains('return armRescheduleRetry(context)'));
 
-    // Verify rearmFromPrefsIfFuture checks for future epoch
-    expect(exact, contains('fun rearmFromPrefsIfFuture'));
-    expect(exact, contains('epochMs <= System.currentTimeMillis()'));
-    expect(exact, contains('return false'));
+      // Verify rearmFromPrefsIfFuture checks for future epoch
+      expect(exact, contains('fun rearmFromPrefsIfFuture'));
+      expect(exact, contains('epochMs <= System.currentTimeMillis()'));
+      expect(exact, contains('return false'));
 
-    // Verify armRescheduleRetry is the fallback for past/missing epochs
-    expect(exact, contains('fun armRescheduleRetry'));
-    expect(exact, contains('RESCHEDULE_RETRY_PRAYER'));
-    expect(exact, contains('RESCHEDULE_RETRY_DELAY_MS'));
+      // Verify armRescheduleRetry is the fallback for past/missing epochs
+      expect(exact, contains('fun armRescheduleRetry'));
+      expect(exact, contains('RESCHEDULE_RETRY_PRAYER'));
+      expect(exact, contains('RESCHEDULE_RETRY_DELAY_MS'));
 
-    // Verify the flow: healPersistedWake replays unacked real pending only
-    // (no fall-through to retry), else rearms future prefs, else fires
-    // overdue-but-eligible prefs, else retry.
-    final healFunction = RegExp(
-      r'fun healPersistedWake.*?\{'
-      r'.*?if \(hasRealPendingFire.*?\{'
-      r'.*?return replayPendingFireIfNeeded'
-      r'.*?\}'
-      r'.*?if \(rearmFromPrefsIfFuture.*?return true'
-      r'.*?if \(fireOverduePrefsIfEligible.*?return true'
-      r'.*?return armRescheduleRetry',
-      dotAll: true,
-    );
-    expect(
-      healFunction.hasMatch(exact),
-      isTrue,
-      reason:
-          'healPersistedWake should replay pending exclusively when present, '
-          'else rearmFromPrefsIfFuture, else fireOverduePrefsIfEligible, '
-          'else armRescheduleRetry',
-    );
+      // Verify the flow: healPersistedWake replays unacked real pending only
+      // (no fall-through to retry), else rearms future prefs, else fires
+      // overdue-but-eligible prefs, else retry.
+      final healFunction = RegExp(
+        r'fun healPersistedWake.*?\{'
+        r'.*?if \(hasRealPendingFire.*?\{'
+        r'.*?return replayPendingFireIfNeeded'
+        r'.*?\}'
+        r'.*?if \(rearmFromPrefsIfFuture.*?return true'
+        r'.*?if \(fireOverduePrefsIfEligible.*?return true'
+        r'.*?return armRescheduleRetry',
+        dotAll: true,
+      );
+      expect(
+        healFunction.hasMatch(exact),
+        isTrue,
+        reason:
+            'healPersistedWake should replay pending exclusively when present, '
+            'else rearmFromPrefsIfFuture, else fireOverduePrefsIfEligible, '
+            'else armRescheduleRetry',
+      );
 
-    // Defense: reschedule-retry must not overwrite a real pending payload.
-    expect(exact, contains('Never let a synthetic reschedule-retry erase'));
-    expect(exact, contains('hasRealPendingFire(context)'));
-    // cancel must drop schedule keys only, not wipe pending via clear().
-    expect(exact, contains('Drop schedule keys only'));
-    expect(exact, contains('.remove(KEY_PRAYER)'));
-    expect(exact, isNot(contains('.edit().clear().apply()')));
-    expect(exact, contains('fun fireOverduePrefsIfEligible'));
-    expect(exact, contains('OVERDUE_DELIVERY_GRACE_MS'));
-  });
+      // Defense: reschedule-retry must not overwrite a real pending payload.
+      expect(exact, contains('Never let a synthetic reschedule-retry erase'));
+      expect(exact, contains('hasRealPendingFire(context)'));
+      // cancel must drop schedule keys only, not wipe pending via clear().
+      expect(exact, contains('Drop schedule keys only'));
+      expect(exact, contains('.remove(KEY_PRAYER)'));
+      expect(exact, isNot(contains('.edit().clear().apply()')));
+      expect(exact, contains('fun fireOverduePrefsIfEligible'));
+      expect(exact, contains('OVERDUE_DELIVERY_GRACE_MS'));
+      expect(exact, contains('5 * 60 * 1000L'));
+      expect(exact, contains('epochMs + 120_000L'));
+    },
+  );
 
   test('AndroidManifest does not enable global cleartext HTTP', () {
     final manifest = File(

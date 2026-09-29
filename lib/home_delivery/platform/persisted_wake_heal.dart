@@ -37,7 +37,7 @@ bool isOverdueWakeStillEligible({
   required String? prayer,
 }) {
   if (!isRealPendingPrayer(prayer)) return false;
-  if (storedEpochMs < 0 || storedEpochMs > nowMs) return false;
+  if (storedEpochMs <= 0 || storedEpochMs > nowMs) return false;
   final azanEpochMs = storedEpochMs + kWakeLeadBeforeAzan.inMilliseconds;
   return nowMs <= azanEpochMs + kOverdueDeliveryGrace.inMilliseconds;
 }

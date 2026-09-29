@@ -228,40 +228,60 @@ final class _FakeSettings implements DeliverySettings {
 final class _FakeAudio implements AdzanAudioLoader {
   @override
   Future<AdzanAudioData> load(String voiceId) async => AdzanAudioData(
-        bytes: Uint8List.fromList(List<int>.filled(32, 1)),
-        contentType: 'audio/mpeg',
-        extension: 'mp3',
-      );
+    bytes: Uint8List.fromList(List<int>.filled(32, 1)),
+    contentType: 'audio/mpeg',
+    extension: 'mp3',
+  );
 }
 
 final class _FakeConditions implements DeviceConditionsProvider {
   @override
   Future<DeviceConditions> current() async => const DeviceConditions(
-        formFactor: DeviceFormFactor.phone,
-        isPluggedIn: true,
-        isScreenOn: true,
-        batteryPercent: 80,
-        batterySaverActive: false,
-        clockSkewDetected: false,
-      );
+    formFactor: DeviceFormFactor.phone,
+    isPluggedIn: true,
+    isScreenOn: true,
+    batteryPercent: 80,
+    batterySaverActive: false,
+    clockSkewDetected: false,
+  );
 }
 
 final class _RecordingLogger implements HomeDeliveryLogger {
   final warns = <String>[];
 
   @override
-  void debug(String message, {String? tag, Object? error, StackTrace? stackTrace}) {}
+  void debug(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {}
 
   @override
-  void info(String message, {String? tag, Object? error, StackTrace? stackTrace}) {}
+  void info(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {}
 
   @override
-  void warn(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
+  void warn(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
     warns.add(message);
   }
 
   @override
-  void error(String message, {String? tag, Object? error, StackTrace? stackTrace}) {}
+  void error(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {}
 }
 
 final class _FakeModes implements PrayerDeliveryModeSource {
@@ -289,8 +309,7 @@ final class _FakeLocalPlayer implements LocalPrayerPlayer {
   Future<void> playAdhan({
     required String voiceId,
     bool waitUntilDone = true,
-  }) async =>
-      calls.add('adhan:$voiceId');
+  }) async => calls.add('adhan:$voiceId');
 
   @override
   Future<void> stop() async => calls.add('stop');
@@ -385,49 +404,142 @@ void main() {
     );
   }
 
-  test('start schedules wake = azan + PresenceSchedule.scanOffset with voiceId',
-      () async {
+  test(
+    'start schedules wake = azan + PresenceSchedule.scanOffset with voiceId',
+    () async {
+      final coordinator = buildCoordinator();
+      await coordinator.start();
+
+      final expectedWake = maghrib.scheduledAt
+          .add(PresenceSchedule.scanOffset)
+          .millisecondsSinceEpoch;
+      expect(alarm.scheduled, hasLength(1));
+      expect(alarm.scheduled.single.epochMs, expectedWake);
+      expect(alarm.scheduled.single.prayer, 'maghrib');
+      expect(alarm.scheduled.single.voiceId, 'makkah');
+      expect(coordinator.scheduledWakeEpochMs, expectedWake);
+    },
+  );
+
+  test(
+    'start 30s after T-120 still arms that prayer to fire immediately',
+    () async {
+      final maghribWake = maghrib.scheduledAt.add(PresenceSchedule.scanOffset);
+      clock.advanceTo(maghribWake.add(const Duration(seconds: 30)));
+      final coordinator = buildCoordinator();
+      await coordinator.start();
+
+      expect(alarm.scheduled, hasLength(1));
+      expect(alarm.scheduled.single.prayer, 'maghrib');
+      expect(
+        alarm.scheduled.single.epochMs,
+        maghribWake.millisecondsSinceEpoch,
+      );
+    },
+  );
+
+  test(
+    'start 82s after T-120 still arms that prayer (azan still upcoming)',
+    () async {
+      final maghribWake = maghrib.scheduledAt.add(PresenceSchedule.scanOffset);
+      clock.advanceTo(maghribWake.add(const Duration(seconds: 82)));
+      final coordinator = buildCoordinator();
+      await coordinator.start();
+
+      expect(alarm.scheduled, hasLength(1));
+      expect(alarm.scheduled.single.prayer, 'maghrib');
+      expect(
+        alarm.scheduled.single.epochMs,
+        maghribWake.millisecondsSinceEpoch,
+      );
+    },
+  );
+
+  test(
+    'Cast fire 82s after T-120 plays on phone, does not run election',
+    () async {
+      final db = DeliveryDatabase.memory();
+      addTearDown(db.close);
+      final local = _FakeLocalPlayer();
+      final maghribWake = maghrib.scheduledAt.add(PresenceSchedule.scanOffset);
+      clock.advanceTo(maghribWake.add(const Duration(seconds: 82)));
+      final coordinator = PrayerDeliveryCoordinator(
+        exactAlarm: alarm,
+        nextPrayer: _FakeNextPrayer([maghrib, isha]),
+        deviceConditions: _FakeConditions(),
+        settings: _FakeSettings(),
+        audioLoader: _FakeAudio(),
+        deliveryModes: _FakeModes(PrayerDeliveryMode.cast),
+        localPlayer: local,
+        logDao: DeliveryLogDao(db),
+        runDelivery: (request) async {
+          deliveries.add(request);
+          return const DeliveryAttemptResult(
+            sessionId: 'sess',
+            outcome: Outcome.played,
+            role: 'SOLO',
+          );
+        },
+        clock: clock,
+      );
+      await coordinator.start();
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib',
+          scheduledEpochMs: maghribWake.millisecondsSinceEpoch,
+          firedAtMs: clock.now().millisecondsSinceEpoch,
+          voiceId: 'makkah',
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(deliveries, isEmpty);
+      expect(local.calls, isEmpty);
+
+      clock.advanceTo(maghrib.scheduledAt);
+      for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+
+      expect(deliveries, isEmpty);
+      expect(local.calls, ['adhan:makkah']);
+      expect(alarm.scheduled.single.prayer, 'isha');
+      final rows = await DeliveryLogDao(db).latest();
+      expect(rows.single.outcome, Outcome.playedOnPhone.code);
+    },
+  );
+
+  test('duplicate onFired for the same wake still acknowledges', () async {
     final coordinator = buildCoordinator();
     await coordinator.start();
-
-    final expectedWake = maghrib.scheduledAt
-        .add(PresenceSchedule.scanOffset)
-        .millisecondsSinceEpoch;
-    expect(alarm.scheduled, hasLength(1));
-    expect(alarm.scheduled.single.epochMs, expectedWake);
-    expect(alarm.scheduled.single.prayer, 'maghrib');
-    expect(alarm.scheduled.single.voiceId, 'makkah');
-    expect(coordinator.scheduledWakeEpochMs, expectedWake);
-  });
-
-  test('start 30s after T-120 still arms that prayer to fire immediately',
-      () async {
-    final maghribWake = maghrib.scheduledAt.add(PresenceSchedule.scanOffset);
-    clock.advanceTo(maghribWake.add(const Duration(seconds: 30)));
-    final coordinator = buildCoordinator();
-    await coordinator.start();
-
-    expect(alarm.scheduled, hasLength(1));
-    expect(alarm.scheduled.single.prayer, 'maghrib');
-    expect(
-      alarm.scheduled.single.epochMs,
-      maghribWake.millisecondsSinceEpoch,
+    final wakeMs = alarm.scheduled.single.epochMs;
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
     );
-  });
+    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    final acksAfterFirst = alarm.callOrder
+        .where((c) => c == 'acknowledgeAlarmFire')
+        .length;
+    expect(acksAfterFirst, 1);
 
-  test('start 82s after T-120 still arms that prayer (azan still upcoming)',
-      () async {
-    final maghribWake = maghrib.scheduledAt.add(PresenceSchedule.scanOffset);
-    clock.advanceTo(maghribWake.add(const Duration(seconds: 82)));
-    final coordinator = buildCoordinator();
-    await coordinator.start();
-
-    expect(alarm.scheduled, hasLength(1));
-    expect(alarm.scheduled.single.prayer, 'maghrib');
-    expect(
-      alarm.scheduled.single.epochMs,
-      maghribWake.millisecondsSinceEpoch,
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs + 10,
+        voiceId: 'makkah',
+      ),
     );
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(alarm.callOrder.where((c) => c == 'acknowledgeAlarmFire').length, 2);
+    expect(deliveries, hasLength(1));
   });
 
   test('start after azan+5 skips that prayer and arms the next', () async {
@@ -439,107 +551,111 @@ void main() {
     expect(alarm.scheduled.single.prayer, 'isha');
   });
 
-  test('fire → orchestrator with reconstructed azanEpoch → reschedule next',
-      () async {
-    final deliveryDone = Completer<void>();
-    final coordinator = PrayerDeliveryCoordinator(
-      exactAlarm: alarm,
-      nextPrayer: _FakeNextPrayer([maghrib, isha]),
-      deviceConditions: _FakeConditions(),
-      settings: _FakeSettings(),
-      audioLoader: _FakeAudio(),
-      runDelivery: (request) async {
-        deliveries.add(request);
-        deliveryDone.complete();
-        return const DeliveryAttemptResult(
-          sessionId: 'sess',
-          outcome: Outcome.played,
-          role: 'SOLO',
-        );
-      },
-      clock: clock,
-    );
-    await coordinator.start();
-    final wakeMs = alarm.scheduled.single.epochMs;
-    alarm.callOrder.clear();
+  test(
+    'fire → orchestrator with reconstructed azanEpoch → reschedule next',
+    () async {
+      final deliveryDone = Completer<void>();
+      final coordinator = PrayerDeliveryCoordinator(
+        exactAlarm: alarm,
+        nextPrayer: _FakeNextPrayer([maghrib, isha]),
+        deviceConditions: _FakeConditions(),
+        settings: _FakeSettings(),
+        audioLoader: _FakeAudio(),
+        runDelivery: (request) async {
+          deliveries.add(request);
+          deliveryDone.complete();
+          return const DeliveryAttemptResult(
+            sessionId: 'sess',
+            outcome: Outcome.played,
+            role: 'SOLO',
+          );
+        },
+        clock: clock,
+      );
+      await coordinator.start();
+      final wakeMs = alarm.scheduled.single.epochMs;
+      alarm.callOrder.clear();
 
-    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
-    alarm.emit(
-      AlarmFiredEvent(
-        prayer: 'maghrib',
-        scheduledEpochMs: wakeMs,
-        firedAtMs: wakeMs + 50,
-        voiceId: 'makkah',
-      ),
-    );
-    await deliveryDone.future;
-    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
+      clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib',
+          scheduledEpochMs: wakeMs,
+          firedAtMs: wakeMs + 50,
+          voiceId: 'makkah',
+        ),
+      );
+      await deliveryDone.future;
+      for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
 
-    expect(deliveries, hasLength(1));
-    final req = deliveries.single;
-    expect(req.prayerName, 'maghrib');
-    expect(req.scheduledAzan, maghrib.scheduledAt);
-    expect(req.voiceId, 'makkah');
-    expect(req.homeCastDeviceId, 'cast-home-1');
-    expect(alarm.stopForegroundCalls, 1);
+      expect(deliveries, hasLength(1));
+      final req = deliveries.single;
+      expect(req.prayerName, 'maghrib');
+      expect(req.scheduledAzan, maghrib.scheduledAt);
+      expect(req.voiceId, 'makkah');
+      expect(req.homeCastDeviceId, 'cast-home-1');
+      expect(alarm.stopForegroundCalls, 1);
 
-    // Exactly one alarm queued — now for isha with its voiceId.
-    expect(alarm.scheduled, hasLength(1));
-    expect(alarm.scheduled.single.prayer, 'isha');
-    expect(alarm.scheduled.single.voiceId, 'madinah');
-    final ishaWake = isha.scheduledAt
-        .add(PresenceSchedule.scanOffset)
-        .millisecondsSinceEpoch;
-    expect(alarm.scheduled.single.epochMs, ishaWake);
-    expect(coordinator.lastHandledWakeEpochMs, wakeMs);
-  });
+      // Exactly one alarm queued — now for isha with its voiceId.
+      expect(alarm.scheduled, hasLength(1));
+      expect(alarm.scheduled.single.prayer, 'isha');
+      expect(alarm.scheduled.single.voiceId, 'madinah');
+      final ishaWake = isha.scheduledAt
+          .add(PresenceSchedule.scanOffset)
+          .millisecondsSinceEpoch;
+      expect(alarm.scheduled.single.epochMs, ishaWake);
+      expect(coordinator.lastHandledWakeEpochMs, wakeMs);
+    },
+  );
 
-  test('scheduleNext runs before stopForegroundService on successful delivery',
-      () async {
-    final deliveryDone = Completer<void>();
-    final coordinator = PrayerDeliveryCoordinator(
-      exactAlarm: alarm,
-      nextPrayer: _FakeNextPrayer([maghrib, isha]),
-      deviceConditions: _FakeConditions(),
-      settings: _FakeSettings(),
-      audioLoader: _FakeAudio(),
-      runDelivery: (request) async {
-        deliveries.add(request);
-        deliveryDone.complete();
-        return const DeliveryAttemptResult(
-          sessionId: 'sess',
-          outcome: Outcome.played,
-          role: 'SOLO',
-        );
-      },
-      clock: clock,
-    );
-    await coordinator.start();
-    final wakeMs = alarm.scheduled.single.epochMs;
-    alarm.callOrder.clear();
+  test(
+    'scheduleNext runs before stopForegroundService on successful delivery',
+    () async {
+      final deliveryDone = Completer<void>();
+      final coordinator = PrayerDeliveryCoordinator(
+        exactAlarm: alarm,
+        nextPrayer: _FakeNextPrayer([maghrib, isha]),
+        deviceConditions: _FakeConditions(),
+        settings: _FakeSettings(),
+        audioLoader: _FakeAudio(),
+        runDelivery: (request) async {
+          deliveries.add(request);
+          deliveryDone.complete();
+          return const DeliveryAttemptResult(
+            sessionId: 'sess',
+            outcome: Outcome.played,
+            role: 'SOLO',
+          );
+        },
+        clock: clock,
+      );
+      await coordinator.start();
+      final wakeMs = alarm.scheduled.single.epochMs;
+      alarm.callOrder.clear();
 
-    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
-    alarm.emit(
-      AlarmFiredEvent(
-        prayer: 'maghrib',
-        scheduledEpochMs: wakeMs,
-        firedAtMs: wakeMs,
-        voiceId: 'makkah',
-      ),
-    );
-    await deliveryDone.future;
-    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
+      clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib',
+          scheduledEpochMs: wakeMs,
+          firedAtMs: wakeMs,
+          voiceId: 'makkah',
+        ),
+      );
+      await deliveryDone.future;
+      for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
 
-    expect(alarm.callOrder, [
-      'scheduleNext',
-      'acknowledgeAlarmFire',
-      'stopForegroundService',
-    ]);
-  });
+      expect(alarm.callOrder, [
+        'scheduleNext',
+        'acknowledgeAlarmFire',
+        'stopForegroundService',
+      ]);
+    },
+  );
 
   test('stopForegroundService still runs when reschedule throws', () async {
     final deliveryDone = Completer<void>();
@@ -669,50 +785,53 @@ void main() {
     },
   );
 
-  test('missing voiceId logs warning and falls back to defaultVoiceId', () async {
-    final logger = _RecordingLogger();
-    final deliveryDone = Completer<void>();
-    final coordinator = PrayerDeliveryCoordinator(
-      exactAlarm: alarm,
-      nextPrayer: _FakeNextPrayer([maghrib, isha]),
-      deviceConditions: _FakeConditions(),
-      settings: _FakeSettings(),
-      audioLoader: _FakeAudio(),
-      runDelivery: (request) async {
-        deliveries.add(request);
-        deliveryDone.complete();
-        return const DeliveryAttemptResult(
-          sessionId: 'sess',
-          outcome: Outcome.played,
-          role: 'SOLO',
-        );
-      },
-      clock: clock,
-      logger: logger,
-    );
-    await coordinator.start();
-    final wakeMs = alarm.scheduled.single.epochMs;
+  test(
+    'missing voiceId logs warning and falls back to defaultVoiceId',
+    () async {
+      final logger = _RecordingLogger();
+      final deliveryDone = Completer<void>();
+      final coordinator = PrayerDeliveryCoordinator(
+        exactAlarm: alarm,
+        nextPrayer: _FakeNextPrayer([maghrib, isha]),
+        deviceConditions: _FakeConditions(),
+        settings: _FakeSettings(),
+        audioLoader: _FakeAudio(),
+        runDelivery: (request) async {
+          deliveries.add(request);
+          deliveryDone.complete();
+          return const DeliveryAttemptResult(
+            sessionId: 'sess',
+            outcome: Outcome.played,
+            role: 'SOLO',
+          );
+        },
+        clock: clock,
+        logger: logger,
+      );
+      await coordinator.start();
+      final wakeMs = alarm.scheduled.single.epochMs;
 
-    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
-    alarm.emit(
-      AlarmFiredEvent(
-        prayer: 'maghrib',
-        scheduledEpochMs: wakeMs,
-        firedAtMs: wakeMs,
-        voiceId: '',
-      ),
-    );
-    await deliveryDone.future;
-    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
+      clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib',
+          scheduledEpochMs: wakeMs,
+          firedAtMs: wakeMs,
+          voiceId: '',
+        ),
+      );
+      await deliveryDone.future;
+      for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
 
-    expect(deliveries.single.voiceId, PrayerDeliveryCoordinator.defaultVoiceId);
-    expect(
-      logger.warns.any((m) => m.contains('missing voiceId')),
-      isTrue,
-    );
-  });
+      expect(
+        deliveries.single.voiceId,
+        PrayerDeliveryCoordinator.defaultVoiceId,
+      );
+      expect(logger.warns.any((m) => m.contains('missing voiceId')), isTrue);
+    },
+  );
 
   test('null voiceId logs warning and falls back to defaultVoiceId', () async {
     final logger = _RecordingLogger();
@@ -757,58 +876,60 @@ void main() {
   });
 
   test('StaticNextPrayerProvider returns prayers after the cursor', () async {
-    final provider = StaticNextPrayerProvider(
-      sequence: [maghrib, isha],
-    );
+    final provider = StaticNextPrayerProvider(sequence: [maghrib, isha]);
     final next = await provider.next(after: t0, preferCache: false);
     expect(next.name, 'maghrib');
-    final afterMaghrib =
-        await provider.next(after: maghrib.scheduledAt, preferCache: false);
+    final afterMaghrib = await provider.next(
+      after: maghrib.scheduledAt,
+      preferCache: false,
+    );
     expect(afterMaghrib.name, 'isha');
   });
 
-  test('cast mode still calls orchestrator (away suppression stays there)',
-      () async {
-    final local = _FakeLocalPlayer();
-    final deliveryDone = Completer<void>();
-    final coordinator = PrayerDeliveryCoordinator(
-      exactAlarm: alarm,
-      nextPrayer: _FakeNextPrayer([maghrib, isha]),
-      deviceConditions: _FakeConditions(),
-      settings: _FakeSettings(),
-      audioLoader: _FakeAudio(),
-      deliveryModes: _FakeModes(PrayerDeliveryMode.cast),
-      localPlayer: local,
-      runDelivery: (request) async {
-        deliveries.add(request);
-        deliveryDone.complete();
-        return const DeliveryAttemptResult(
-          sessionId: 'sess',
-          outcome: Outcome.suppressedAway,
-          role: null,
-        );
-      },
-      clock: clock,
-    );
-    await coordinator.start();
-    final wakeMs = alarm.scheduled.single.epochMs;
-    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
-    alarm.emit(
-      AlarmFiredEvent(
-        prayer: 'maghrib',
-        scheduledEpochMs: wakeMs,
-        firedAtMs: wakeMs,
-        voiceId: 'makkah',
-      ),
-    );
-    await deliveryDone.future;
-    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
+  test(
+    'cast mode still calls orchestrator (away suppression stays there)',
+    () async {
+      final local = _FakeLocalPlayer();
+      final deliveryDone = Completer<void>();
+      final coordinator = PrayerDeliveryCoordinator(
+        exactAlarm: alarm,
+        nextPrayer: _FakeNextPrayer([maghrib, isha]),
+        deviceConditions: _FakeConditions(),
+        settings: _FakeSettings(),
+        audioLoader: _FakeAudio(),
+        deliveryModes: _FakeModes(PrayerDeliveryMode.cast),
+        localPlayer: local,
+        runDelivery: (request) async {
+          deliveries.add(request);
+          deliveryDone.complete();
+          return const DeliveryAttemptResult(
+            sessionId: 'sess',
+            outcome: Outcome.suppressedAway,
+            role: null,
+          );
+        },
+        clock: clock,
+      );
+      await coordinator.start();
+      final wakeMs = alarm.scheduled.single.epochMs;
+      clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib',
+          scheduledEpochMs: wakeMs,
+          firedAtMs: wakeMs,
+          voiceId: 'makkah',
+        ),
+      );
+      await deliveryDone.future;
+      for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
 
-    expect(deliveries, hasLength(1));
-    expect(local.calls, isEmpty);
-  });
+      expect(deliveries, hasLength(1));
+      expect(local.calls, isEmpty);
+    },
+  );
 
   test('beep mode waits until azan then plays locally', () async {
     final local = _FakeLocalPlayer();
@@ -832,8 +953,10 @@ void main() {
     );
     await coordinator.start();
     final wakeMs = alarm.scheduled.single.epochMs;
-    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
-        .subtract(PresenceSchedule.scanOffset);
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(
+      wakeMs,
+      isUtc: true,
+    ).subtract(PresenceSchedule.scanOffset);
     clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
     alarm.emit(
       AlarmFiredEvent(
@@ -880,8 +1003,10 @@ void main() {
     );
     await coordinator.start();
     final wakeMs = alarm.scheduled.single.epochMs;
-    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
-        .subtract(PresenceSchedule.scanOffset);
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(
+      wakeMs,
+      isUtc: true,
+    ).subtract(PresenceSchedule.scanOffset);
     clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
     alarm.emit(
       AlarmFiredEvent(
@@ -926,8 +1051,10 @@ void main() {
     );
     await coordinator.start();
     final wakeMs = alarm.scheduled.single.epochMs;
-    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
-        .subtract(PresenceSchedule.scanOffset);
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(
+      wakeMs,
+      isUtc: true,
+    ).subtract(PresenceSchedule.scanOffset);
     clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
     alarm.emit(
       AlarmFiredEvent(
@@ -953,53 +1080,58 @@ void main() {
     expect(alarm.stopForegroundCalls, 1);
   });
 
-  test('adhanPhone begins and clears active delivery hero around play', () async {
-    final hero = ActiveDeliveryHero();
-    addTearDown(hero.dispose);
-    final started = Completer<void>();
-    final finished = Completer<void>();
-    final local = _HangingLocalPlayer(started: started, finished: finished);
-    final coordinator = PrayerDeliveryCoordinator(
-      exactAlarm: alarm,
-      nextPrayer: _FakeNextPrayer([maghrib, isha]),
-      deviceConditions: _FakeConditions(),
-      settings: _FakeSettings(),
-      audioLoader: _FakeAudio(),
-      deliveryModes: _FakeModes(PrayerDeliveryMode.adhanPhone),
-      localPlayer: local,
-      activeHero: hero,
-      runDelivery: (_) async => const DeliveryAttemptResult(
-        sessionId: 'sess',
-        outcome: Outcome.played,
-        role: 'SOLO',
-      ),
-      clock: clock,
-    );
-    await coordinator.start();
-    final wakeMs = alarm.scheduled.single.epochMs;
-    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
-        .subtract(PresenceSchedule.scanOffset);
-    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
-    alarm.emit(
-      AlarmFiredEvent(
-        prayer: 'maghrib',
-        scheduledEpochMs: wakeMs,
-        firedAtMs: wakeMs,
-        voiceId: 'makkah',
-      ),
-    );
-    clock.advanceTo(azanAt);
-    await started.future.timeout(const Duration(seconds: 2));
-    expect(hero.current?.name, 'maghrib');
-    expect(hero.current?.scheduledAt, azanAt.toLocal());
+  test(
+    'adhanPhone begins and clears active delivery hero around play',
+    () async {
+      final hero = ActiveDeliveryHero();
+      addTearDown(hero.dispose);
+      final started = Completer<void>();
+      final finished = Completer<void>();
+      final local = _HangingLocalPlayer(started: started, finished: finished);
+      final coordinator = PrayerDeliveryCoordinator(
+        exactAlarm: alarm,
+        nextPrayer: _FakeNextPrayer([maghrib, isha]),
+        deviceConditions: _FakeConditions(),
+        settings: _FakeSettings(),
+        audioLoader: _FakeAudio(),
+        deliveryModes: _FakeModes(PrayerDeliveryMode.adhanPhone),
+        localPlayer: local,
+        activeHero: hero,
+        runDelivery: (_) async => const DeliveryAttemptResult(
+          sessionId: 'sess',
+          outcome: Outcome.played,
+          role: 'SOLO',
+        ),
+        clock: clock,
+      );
+      await coordinator.start();
+      final wakeMs = alarm.scheduled.single.epochMs;
+      final azanAt = DateTime.fromMillisecondsSinceEpoch(
+        wakeMs,
+        isUtc: true,
+      ).subtract(PresenceSchedule.scanOffset);
+      clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib',
+          scheduledEpochMs: wakeMs,
+          firedAtMs: wakeMs,
+          voiceId: 'makkah',
+        ),
+      );
+      clock.advanceTo(azanAt);
+      await started.future.timeout(const Duration(seconds: 2));
+      expect(hero.current?.name, 'maghrib');
+      expect(hero.current?.scheduledAt, azanAt.toLocal());
 
-    await local.stop();
-    await finished.future.timeout(const Duration(seconds: 2));
-    for (var i = 0; i < 50 && hero.current != null; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
-    expect(hero.current, isNull);
-  });
+      await local.stop();
+      await finished.future.timeout(const Duration(seconds: 2));
+      for (var i = 0; i < 50 && hero.current != null; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(hero.current, isNull);
+    },
+  );
 
   test('beep mode never begins active delivery hero', () async {
     final hero = ActiveDeliveryHero();
@@ -1023,8 +1155,10 @@ void main() {
     );
     await coordinator.start();
     final wakeMs = alarm.scheduled.single.epochMs;
-    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
-        .subtract(PresenceSchedule.scanOffset);
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(
+      wakeMs,
+      isUtc: true,
+    ).subtract(PresenceSchedule.scanOffset);
     clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
     alarm.emit(
       AlarmFiredEvent(
@@ -1042,71 +1176,79 @@ void main() {
     expect(hero.current, isNull);
   });
 
-  test('cast fail HOME falls back to phone Adhan; one fallback log row', () async {
-    final db = DeliveryDatabase.memory();
-    addTearDown(db.close);
-    final dao = DeliveryLogDao(db);
-    final local = _FakeLocalPlayer();
-    final prefs = MemoryPrayerPrefsStore(
-      PrayerPrefs.defaults.copyWith(configured: true, castFallbackToPhone: true),
-    );
-    final coordinator = PrayerDeliveryCoordinator(
-      exactAlarm: alarm,
-      nextPrayer: _FakeNextPrayer([maghrib, isha]),
-      deviceConditions: _FakeConditions(),
-      settings: _FakeSettings(),
-      audioLoader: _FakeAudio(),
-      deliveryModes: _FakeModes(PrayerDeliveryMode.cast),
-      localPlayer: local,
-      logDao: dao,
-      prayerPrefs: prefs,
-      readLocaleCode: () async => 'en',
-      clock: clock,
-      runDelivery: (request) async {
-        deliveries.add(request);
-        await dao.insertAttempt(
-          sessionId: 'cast-sess',
-          prayer: request.prayerName,
-          scheduledAtMs: request.scheduledAzan.millisecondsSinceEpoch,
-          outcome: Outcome.failedCastConnect,
-          presenceState: 'HOME',
-        );
-        return const DeliveryAttemptResult(
-          sessionId: 'cast-sess',
-          outcome: Outcome.failedCastConnect,
-          role: 'SOLO',
-          presenceState: 'HOME',
-        );
-      },
-    );
-    await coordinator.start();
-    final wakeMs = alarm.scheduled.single.epochMs;
-    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
-        .subtract(PresenceSchedule.scanOffset);
-    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
-    alarm.emit(
-      AlarmFiredEvent(
-        prayer: 'maghrib',
-        scheduledEpochMs: wakeMs,
-        firedAtMs: wakeMs,
-        voiceId: 'makkah',
-      ),
-    );
-    clock.advanceTo(azanAt);
-    for (var i = 0; i < 80 && local.calls.isEmpty; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
-    expect(local.calls, ['adhan:makkah']);
-    final rows = await dao.latest();
-    expect(rows, hasLength(1));
-    expect(rows.single.outcome, Outcome.playedPhoneFallback.code);
-    expect(rows.single.detail, contains('full_adhan'));
-    expect(alarm.failureNotifications, isNotEmpty);
-    expect(
-      alarm.failureNotifications.single.title,
-      contains('played on phone'),
-    );
-  });
+  test(
+    'cast fail HOME falls back to phone Adhan; one fallback log row',
+    () async {
+      final db = DeliveryDatabase.memory();
+      addTearDown(db.close);
+      final dao = DeliveryLogDao(db);
+      final local = _FakeLocalPlayer();
+      final prefs = MemoryPrayerPrefsStore(
+        PrayerPrefs.defaults.copyWith(
+          configured: true,
+          castFallbackToPhone: true,
+        ),
+      );
+      final coordinator = PrayerDeliveryCoordinator(
+        exactAlarm: alarm,
+        nextPrayer: _FakeNextPrayer([maghrib, isha]),
+        deviceConditions: _FakeConditions(),
+        settings: _FakeSettings(),
+        audioLoader: _FakeAudio(),
+        deliveryModes: _FakeModes(PrayerDeliveryMode.cast),
+        localPlayer: local,
+        logDao: dao,
+        prayerPrefs: prefs,
+        readLocaleCode: () async => 'en',
+        clock: clock,
+        runDelivery: (request) async {
+          deliveries.add(request);
+          await dao.insertAttempt(
+            sessionId: 'cast-sess',
+            prayer: request.prayerName,
+            scheduledAtMs: request.scheduledAzan.millisecondsSinceEpoch,
+            outcome: Outcome.failedCastConnect,
+            presenceState: 'HOME',
+          );
+          return const DeliveryAttemptResult(
+            sessionId: 'cast-sess',
+            outcome: Outcome.failedCastConnect,
+            role: 'SOLO',
+            presenceState: 'HOME',
+          );
+        },
+      );
+      await coordinator.start();
+      final wakeMs = alarm.scheduled.single.epochMs;
+      final azanAt = DateTime.fromMillisecondsSinceEpoch(
+        wakeMs,
+        isUtc: true,
+      ).subtract(PresenceSchedule.scanOffset);
+      clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib',
+          scheduledEpochMs: wakeMs,
+          firedAtMs: wakeMs,
+          voiceId: 'makkah',
+        ),
+      );
+      clock.advanceTo(azanAt);
+      for (var i = 0; i < 80 && local.calls.isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(local.calls, ['adhan:makkah']);
+      final rows = await dao.latest();
+      expect(rows, hasLength(1));
+      expect(rows.single.outcome, Outcome.playedPhoneFallback.code);
+      expect(rows.single.detail, contains('full_adhan'));
+      expect(alarm.failureNotifications, isNotEmpty);
+      expect(
+        alarm.failureNotifications.single.title,
+        contains('played on phone'),
+      );
+    },
+  );
 
   test('no saved speaker plays phone Adhan without fallback spam', () async {
     final db = DeliveryDatabase.memory();
@@ -1139,8 +1281,10 @@ void main() {
     );
     await coordinator.start();
     final wakeMs = alarm.scheduled.single.epochMs;
-    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
-        .subtract(PresenceSchedule.scanOffset);
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(
+      wakeMs,
+      isUtc: true,
+    ).subtract(PresenceSchedule.scanOffset);
     clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
     alarm.emit(
       AlarmFiredEvent(
@@ -1163,67 +1307,72 @@ void main() {
     expect(alarm.failureNotifications, isEmpty);
   });
 
-  test('castFallbackToPhone off does not play on phone after Cast fail', () async {
-    final db = DeliveryDatabase.memory();
-    addTearDown(db.close);
-    final dao = DeliveryLogDao(db);
-    final local = _FakeLocalPlayer();
-    final prefs = MemoryPrayerPrefsStore(
-      PrayerPrefs.defaults.copyWith(
-        configured: true,
-        castFallbackToPhone: false,
-      ),
-    );
-    final coordinator = PrayerDeliveryCoordinator(
-      exactAlarm: alarm,
-      nextPrayer: _FakeNextPrayer([maghrib, isha]),
-      deviceConditions: _FakeConditions(),
-      settings: _FakeSettings(),
-      audioLoader: _FakeAudio(),
-      deliveryModes: _FakeModes(PrayerDeliveryMode.cast),
-      localPlayer: local,
-      logDao: dao,
-      prayerPrefs: prefs,
-      readLocaleCode: () async => 'en',
-      clock: clock,
-      runDelivery: (request) async {
-        await dao.insertAttempt(
-          sessionId: 'cast-no-fb',
-          prayer: request.prayerName,
-          scheduledAtMs: request.scheduledAzan.millisecondsSinceEpoch,
-          outcome: Outcome.failedCastConnect,
-          presenceState: 'HOME',
-        );
-        return const DeliveryAttemptResult(
-          sessionId: 'cast-no-fb',
-          outcome: Outcome.failedCastConnect,
-          role: 'SOLO',
-          presenceState: 'HOME',
-        );
-      },
-    );
-    await coordinator.start();
-    final wakeMs = alarm.scheduled.single.epochMs;
-    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
-        .subtract(PresenceSchedule.scanOffset);
-    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
-    alarm.emit(
-      AlarmFiredEvent(
-        prayer: 'maghrib',
-        scheduledEpochMs: wakeMs,
-        firedAtMs: wakeMs,
-        voiceId: 'makkah',
-      ),
-    );
-    clock.advanceTo(azanAt);
-    for (var i = 0; i < 80 && alarm.failureNotifications.isEmpty; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
-    expect(local.calls, isEmpty);
-    final rows = await dao.latest();
-    expect(rows.single.outcome, Outcome.failedCastConnect.code);
-    expect(alarm.failureNotifications, isNotEmpty);
-  });
+  test(
+    'castFallbackToPhone off does not play on phone after Cast fail',
+    () async {
+      final db = DeliveryDatabase.memory();
+      addTearDown(db.close);
+      final dao = DeliveryLogDao(db);
+      final local = _FakeLocalPlayer();
+      final prefs = MemoryPrayerPrefsStore(
+        PrayerPrefs.defaults.copyWith(
+          configured: true,
+          castFallbackToPhone: false,
+        ),
+      );
+      final coordinator = PrayerDeliveryCoordinator(
+        exactAlarm: alarm,
+        nextPrayer: _FakeNextPrayer([maghrib, isha]),
+        deviceConditions: _FakeConditions(),
+        settings: _FakeSettings(),
+        audioLoader: _FakeAudio(),
+        deliveryModes: _FakeModes(PrayerDeliveryMode.cast),
+        localPlayer: local,
+        logDao: dao,
+        prayerPrefs: prefs,
+        readLocaleCode: () async => 'en',
+        clock: clock,
+        runDelivery: (request) async {
+          await dao.insertAttempt(
+            sessionId: 'cast-no-fb',
+            prayer: request.prayerName,
+            scheduledAtMs: request.scheduledAzan.millisecondsSinceEpoch,
+            outcome: Outcome.failedCastConnect,
+            presenceState: 'HOME',
+          );
+          return const DeliveryAttemptResult(
+            sessionId: 'cast-no-fb',
+            outcome: Outcome.failedCastConnect,
+            role: 'SOLO',
+            presenceState: 'HOME',
+          );
+        },
+      );
+      await coordinator.start();
+      final wakeMs = alarm.scheduled.single.epochMs;
+      final azanAt = DateTime.fromMillisecondsSinceEpoch(
+        wakeMs,
+        isUtc: true,
+      ).subtract(PresenceSchedule.scanOffset);
+      clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib',
+          scheduledEpochMs: wakeMs,
+          firedAtMs: wakeMs,
+          voiceId: 'makkah',
+        ),
+      );
+      clock.advanceTo(azanAt);
+      for (var i = 0; i < 80 && alarm.failureNotifications.isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(local.calls, isEmpty);
+      final rows = await dao.latest();
+      expect(rows.single.outcome, Outcome.failedCastConnect.code);
+      expect(alarm.failureNotifications, isNotEmpty);
+    },
+  );
 
   test('cast fail UNKNOWN uses chime fallback', () async {
     final db = DeliveryDatabase.memory();
@@ -1263,8 +1412,10 @@ void main() {
     );
     await coordinator.start();
     final wakeMs = alarm.scheduled.single.epochMs;
-    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
-        .subtract(PresenceSchedule.scanOffset);
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(
+      wakeMs,
+      isUtc: true,
+    ).subtract(PresenceSchedule.scanOffset);
     clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
     alarm.emit(
       AlarmFiredEvent(
@@ -1283,10 +1434,7 @@ void main() {
     expect(rows.single.outcome, Outcome.playedPhoneFallback.code);
     expect(rows.single.detail, contains('chime'));
     expect(alarm.failureNotifications, isNotEmpty);
-    expect(
-      alarm.failureNotifications.single.title,
-      contains('short chime'),
-    );
+    expect(alarm.failureNotifications.single.title, contains('short chime'));
   });
 
   test('start drains pending iqamah chime logs into delivery_log', () async {
@@ -1341,8 +1489,10 @@ void main() {
     );
     await coordinator.start();
     final wakeMs = alarm.scheduled.single.epochMs;
-    final azanAt = DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true)
-        .subtract(PresenceSchedule.scanOffset);
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(
+      wakeMs,
+      isUtc: true,
+    ).subtract(PresenceSchedule.scanOffset);
     clock.advanceTo(azanAt);
     alarm.emit(
       AlarmFiredEvent(
@@ -1419,90 +1569,91 @@ void main() {
     expect(alarm.scheduled.single.prayer, 'maghrib-dryrun');
   });
 
-  test('dry-run fire uses canonical prayer mode then reschedules real next',
-      () async {
-    final modes = _FakeModes(PrayerDeliveryMode.cast);
-    final deliveryDone = Completer<void>();
-    final coordinator = PrayerDeliveryCoordinator(
-      exactAlarm: alarm,
-      nextPrayer: _FakeNextPrayer([maghrib, isha]),
-      deviceConditions: _FakeConditions(),
-      settings: _FakeSettings(),
-      audioLoader: _FakeAudio(),
-      deliveryModes: modes,
-      runDelivery: (request) async {
-        deliveries.add(request);
-        deliveryDone.complete();
-        return const DeliveryAttemptResult(
-          sessionId: 'sess',
-          outcome: Outcome.played,
-          role: 'SOLO',
-        );
-      },
-      clock: clock,
-    );
-    await coordinator.start();
-    final azanAt = await coordinator.scheduleDryRun(
-      untilAzan: PrayerDeliveryCoordinator.dryRunIn1Minute,
-    );
-    final wakeMs = alarm.scheduled.single.epochMs;
+  test(
+    'dry-run fire uses canonical prayer mode then reschedules real next',
+    () async {
+      final modes = _FakeModes(PrayerDeliveryMode.cast);
+      final deliveryDone = Completer<void>();
+      final coordinator = PrayerDeliveryCoordinator(
+        exactAlarm: alarm,
+        nextPrayer: _FakeNextPrayer([maghrib, isha]),
+        deviceConditions: _FakeConditions(),
+        settings: _FakeSettings(),
+        audioLoader: _FakeAudio(),
+        deliveryModes: modes,
+        runDelivery: (request) async {
+          deliveries.add(request);
+          deliveryDone.complete();
+          return const DeliveryAttemptResult(
+            sessionId: 'sess',
+            outcome: Outcome.played,
+            role: 'SOLO',
+          );
+        },
+        clock: clock,
+      );
+      await coordinator.start();
+      final azanAt = await coordinator.scheduleDryRun(
+        untilAzan: PrayerDeliveryCoordinator.dryRunIn1Minute,
+      );
+      final wakeMs = alarm.scheduled.single.epochMs;
 
-    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
-    alarm.emit(
-      AlarmFiredEvent(
-        prayer: 'maghrib-dryrun',
-        scheduledEpochMs: wakeMs,
-        firedAtMs: wakeMs,
-        voiceId: 'makkah',
-      ),
-    );
-    await deliveryDone.future;
-    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
+      clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib-dryrun',
+          scheduledEpochMs: wakeMs,
+          firedAtMs: wakeMs,
+          voiceId: 'makkah',
+        ),
+      );
+      await deliveryDone.future;
+      for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
 
-    expect(modes.lastPrayerName, 'maghrib');
-    expect(deliveries, hasLength(1));
-    expect(deliveries.single.prayerName, 'maghrib-dryrun');
-    expect(deliveries.single.scheduledAzan, azanAt);
-    expect(deliveries.single.voiceId, 'makkah');
-    expect(alarm.stopForegroundCalls, 1);
-    expect(alarm.scheduled.single.prayer, 'maghrib');
-    expect(alarm.scheduled.single.voiceId, 'makkah');
-  });
+      expect(modes.lastPrayerName, 'maghrib');
+      expect(deliveries, hasLength(1));
+      expect(deliveries.single.prayerName, 'maghrib-dryrun');
+      expect(deliveries.single.scheduledAzan, azanAt);
+      expect(deliveries.single.voiceId, 'makkah');
+      expect(alarm.stopForegroundCalls, 1);
+      expect(alarm.scheduled.single.prayer, 'maghrib');
+      expect(alarm.scheduled.single.voiceId, 'makkah');
+    },
+  );
 
-  test('start keeps a future dry-run instead of replacing with next prayer',
-      () async {
-    final coordinator = buildCoordinator();
-    await coordinator.start();
-    final azanAt = await coordinator.scheduleDryRun(
-      untilAzan: PrayerDeliveryCoordinator.dryRunIn1Minute,
-    );
-    final dryWake = azanAt
-        .add(PresenceSchedule.scanOffset)
-        .millisecondsSinceEpoch;
-    expect(alarm.scheduled.single.prayer, 'maghrib-dryrun');
+  test(
+    'start keeps a future dry-run instead of replacing with next prayer',
+    () async {
+      final coordinator = buildCoordinator();
+      await coordinator.start();
+      final azanAt = await coordinator.scheduleDryRun(
+        untilAzan: PrayerDeliveryCoordinator.dryRunIn1Minute,
+      );
+      final dryWake = azanAt
+          .add(PresenceSchedule.scanOffset)
+          .millisecondsSinceEpoch;
+      expect(alarm.scheduled.single.prayer, 'maghrib-dryrun');
 
-    final restarted = buildCoordinator();
-    await restarted.start();
+      final restarted = buildCoordinator();
+      await restarted.start();
 
-    expect(alarm.scheduled, hasLength(1));
-    expect(alarm.scheduled.single.prayer, 'maghrib-dryrun');
-    expect(alarm.scheduled.single.epochMs, dryWake);
-    expect(restarted.scheduledWakeEpochMs, dryWake);
-  });
+      expect(alarm.scheduled, hasLength(1));
+      expect(alarm.scheduled.single.prayer, 'maghrib-dryrun');
+      expect(alarm.scheduled.single.epochMs, dryWake);
+      expect(restarted.scheduledWakeEpochMs, dryWake);
+    },
+  );
 
   test('start clears dry-run past stale grace and arms real next', () async {
-    final staleWake = clock.now()
+    final staleWake = clock
+        .now()
         .subtract(const Duration(minutes: 10))
         .millisecondsSinceEpoch;
     alarm.scheduled
       ..clear()
-      ..add((
-        epochMs: staleWake,
-        prayer: 'maghrib-dryrun',
-        voiceId: 'makkah',
-      ));
+      ..add((epochMs: staleWake, prayer: 'maghrib-dryrun', voiceId: 'makkah'));
     final coordinator = buildCoordinator();
     await coordinator.start();
     expect(alarm.scheduled, isNotEmpty);
@@ -1512,82 +1663,85 @@ void main() {
     );
   });
 
-  test('reschedule failure arms reschedule-retry and skips delivery on that fire',
-      () async {
-    var nextCalls = 0;
-    final coordinator = PrayerDeliveryCoordinator(
-      exactAlarm: alarm,
-      nextPrayer: _CountingNextPrayer(
-        first: maghrib,
-        afterFirst: () => throw StateError('offline'),
-        onCall: () => nextCalls += 1,
-      ),
-      deviceConditions: _FakeConditions(),
-      settings: _FakeSettings(),
-      audioLoader: _FakeAudio(),
-      runDelivery: (request) async {
-        deliveries.add(request);
-        return const DeliveryAttemptResult(
-          sessionId: 'sess',
-          outcome: Outcome.played,
-          role: 'SOLO',
-        );
-      },
-      clock: clock,
-    );
-    await coordinator.start();
-    expect(nextCalls, 1);
-    final wakeMs = alarm.scheduled.single.epochMs;
-    alarm.callOrder.clear();
+  test(
+    'reschedule failure arms reschedule-retry and skips delivery on that fire',
+    () async {
+      var nextCalls = 0;
+      final coordinator = PrayerDeliveryCoordinator(
+        exactAlarm: alarm,
+        nextPrayer: _CountingNextPrayer(
+          first: maghrib,
+          afterFirst: () => throw StateError('offline'),
+          onCall: () => nextCalls += 1,
+        ),
+        deviceConditions: _FakeConditions(),
+        settings: _FakeSettings(),
+        audioLoader: _FakeAudio(),
+        runDelivery: (request) async {
+          deliveries.add(request);
+          return const DeliveryAttemptResult(
+            sessionId: 'sess',
+            outcome: Outcome.played,
+            role: 'SOLO',
+          );
+        },
+        clock: clock,
+      );
+      await coordinator.start();
+      expect(nextCalls, 1);
+      final wakeMs = alarm.scheduled.single.epochMs;
+      alarm.callOrder.clear();
 
-    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
-    alarm.emit(
-      AlarmFiredEvent(
-        prayer: 'maghrib',
-        scheduledEpochMs: wakeMs,
-        firedAtMs: wakeMs + 50,
-        voiceId: 'makkah',
-      ),
-    );
-    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
+      clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib',
+          scheduledEpochMs: wakeMs,
+          firedAtMs: wakeMs + 50,
+          voiceId: 'makkah',
+        ),
+      );
+      for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
 
-    expect(deliveries, hasLength(1));
-    expect(alarm.scheduled, hasLength(1));
-    expect(
-      alarm.scheduled.single.prayer,
-      PrayerDeliveryCoordinator.rescheduleRetryPrayer,
-    );
-    final retryWake = clock.now()
-        .add(PrayerDeliveryCoordinator.rescheduleRetryDelay)
-        .millisecondsSinceEpoch;
-    expect(alarm.scheduled.single.epochMs, retryWake);
-    expect(alarm.stopForegroundCalls, 1);
+      expect(deliveries, hasLength(1));
+      expect(alarm.scheduled, hasLength(1));
+      expect(
+        alarm.scheduled.single.prayer,
+        PrayerDeliveryCoordinator.rescheduleRetryPrayer,
+      );
+      final retryWake = clock
+          .now()
+          .add(PrayerDeliveryCoordinator.rescheduleRetryDelay)
+          .millisecondsSinceEpoch;
+      expect(alarm.scheduled.single.epochMs, retryWake);
+      expect(alarm.stopForegroundCalls, 1);
 
-    alarm.stopForegroundCalls = 0;
-    final retryEpoch = alarm.scheduled.single.epochMs;
-    clock.advanceTo(
-      DateTime.fromMillisecondsSinceEpoch(retryEpoch, isUtc: true),
-    );
-    alarm.emit(
-      AlarmFiredEvent(
-        prayer: PrayerDeliveryCoordinator.rescheduleRetryPrayer,
-        scheduledEpochMs: retryEpoch,
-        firedAtMs: retryEpoch,
-        voiceId: PrayerDeliveryCoordinator.defaultVoiceId,
-      ),
-    );
-    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
+      alarm.stopForegroundCalls = 0;
+      final retryEpoch = alarm.scheduled.single.epochMs;
+      clock.advanceTo(
+        DateTime.fromMillisecondsSinceEpoch(retryEpoch, isUtc: true),
+      );
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: PrayerDeliveryCoordinator.rescheduleRetryPrayer,
+          scheduledEpochMs: retryEpoch,
+          firedAtMs: retryEpoch,
+          voiceId: PrayerDeliveryCoordinator.defaultVoiceId,
+        ),
+      );
+      for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
 
-    expect(deliveries, hasLength(1));
-    expect(
-      alarm.scheduled.single.prayer,
-      PrayerDeliveryCoordinator.rescheduleRetryPrayer,
-    );
-  });
+      expect(deliveries, hasLength(1));
+      expect(
+        alarm.scheduled.single.prayer,
+        PrayerDeliveryCoordinator.rescheduleRetryPrayer,
+      );
+    },
+  );
 
   test(
     'start with pendingFire 50 minutes after azan does not Cast and arms next',
@@ -1640,8 +1794,25 @@ void main() {
     },
   );
 
-  test('onFired within 3 minutes after azan still delivers', () async {
-    final coordinator = buildCoordinator();
+  test('onFired within 3 minutes after azan still delivers on phone', () async {
+    final local = _FakeLocalPlayer();
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      localPlayer: local,
+      runDelivery: (request) async {
+        deliveries.add(request);
+        return const DeliveryAttemptResult(
+          sessionId: 'sess',
+          outcome: Outcome.played,
+          role: 'SOLO',
+        );
+      },
+      clock: clock,
+    );
     await coordinator.start();
     final wakeMs = maghrib.scheduledAt
         .add(PresenceSchedule.scanOffset)
@@ -1651,7 +1822,7 @@ void main() {
       AlarmFiredEvent(
         prayer: 'maghrib',
         scheduledEpochMs: wakeMs,
-        firedAtMs: wakeMs + 50,
+        firedAtMs: clock.now().millisecondsSinceEpoch,
         voiceId: 'makkah',
       ),
     );
@@ -1659,8 +1830,8 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 10));
     }
 
-    expect(deliveries, hasLength(1));
-    expect(deliveries.single.prayerName, 'maghrib');
+    expect(deliveries, isEmpty);
+    expect(local.calls, ['adhan:makkah']);
     expect(alarm.scheduled.single.prayer, 'isha');
   });
 
@@ -1725,10 +1896,7 @@ void main() {
     );
     final nextWake = azan.add(const Duration(minutes: 2));
     expect(
-      DeliveryTiming.deadline(
-        scheduledAzan: azan,
-        nextPrayerWake: nextWake,
-      ),
+      DeliveryTiming.deadline(scheduledAzan: azan, nextPrayerWake: nextWake),
       nextWake,
     );
   });
@@ -1787,59 +1955,76 @@ void main() {
 
     // Should have logged FAILED_RESCHEDULE for the reschedule attempt
     final rows = await dao.latest();
-    final failureRows = rows.where((r) => r.outcome == Outcome.failedReschedule.code);
+    final failureRows = rows.where(
+      (r) => r.outcome == Outcome.failedReschedule.code,
+    );
     expect(failureRows, isNotEmpty);
     expect(failureRows.any((r) => r.prayer == 'maghrib'), isTrue);
-    expect(failureRows.any((r) => r.detail != null && r.detail!.contains('scheduleNext failed')), isTrue);
-  });
-
-  test('reschedule retry failure writes FAILED_RESCHEDULE to delivery log', () async {
-    final db = DeliveryDatabase.memory();
-    addTearDown(db.close);
-    final dao = DeliveryLogDao(db);
-    final alarm2 = _FakeExactAlarm();
-    final coordinator = PrayerDeliveryCoordinator(
-      exactAlarm: alarm2,
-      nextPrayer: _FakeNextPrayer([maghrib, isha]),
-      deviceConditions: _FakeConditions(),
-      settings: _FakeSettings(),
-      audioLoader: _FakeAudio(),
-      runDelivery: (request) async {
-        deliveries.add(request);
-        return const DeliveryAttemptResult(
-          sessionId: 'sess',
-          outcome: Outcome.played,
-          role: 'SOLO',
-        );
-      },
-      clock: clock,
-      logDao: dao,
-    );
-    await coordinator.start();
-    final wakeMs = alarm2.scheduled.single.epochMs;
-
-    // Make reschedule throw to trigger retry path
-    alarm2.throwOnSchedule = true;
-    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
-    alarm2.emit(
-      AlarmFiredEvent(
-        prayer: 'maghrib',
-        scheduledEpochMs: wakeMs,
-        firedAtMs: wakeMs + 50,
-        voiceId: 'makkah',
+    expect(
+      failureRows.any(
+        (r) => r.detail != null && r.detail!.contains('scheduleNext failed'),
       ),
+      isTrue,
     );
-    for (var i = 0; i < 50 && alarm2.stopForegroundCalls == 0; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
-
-    // Should have logged both the reschedule failure and the retry failure
-    final rows = await dao.latest();
-    final failureRows = rows.where((r) => r.outcome == Outcome.failedReschedule.code);
-    expect(failureRows, isNotEmpty);
-    // One for the main reschedule (maghrib), one for the retry arm (reschedule-retry)
-    expect(failureRows.any((r) => r.prayer == 'maghrib'), isTrue);
-    expect(failureRows.any((r) => r.prayer == 'reschedule-retry'), isTrue);
-    expect(failureRows.any((r) => r.detail != null && r.detail!.contains('Failed to arm retry')), isTrue);
   });
+
+  test(
+    'reschedule retry failure writes FAILED_RESCHEDULE to delivery log',
+    () async {
+      final db = DeliveryDatabase.memory();
+      addTearDown(db.close);
+      final dao = DeliveryLogDao(db);
+      final alarm2 = _FakeExactAlarm();
+      final coordinator = PrayerDeliveryCoordinator(
+        exactAlarm: alarm2,
+        nextPrayer: _FakeNextPrayer([maghrib, isha]),
+        deviceConditions: _FakeConditions(),
+        settings: _FakeSettings(),
+        audioLoader: _FakeAudio(),
+        runDelivery: (request) async {
+          deliveries.add(request);
+          return const DeliveryAttemptResult(
+            sessionId: 'sess',
+            outcome: Outcome.played,
+            role: 'SOLO',
+          );
+        },
+        clock: clock,
+        logDao: dao,
+      );
+      await coordinator.start();
+      final wakeMs = alarm2.scheduled.single.epochMs;
+
+      // Make reschedule throw to trigger retry path
+      alarm2.throwOnSchedule = true;
+      clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+      alarm2.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib',
+          scheduledEpochMs: wakeMs,
+          firedAtMs: wakeMs + 50,
+          voiceId: 'makkah',
+        ),
+      );
+      for (var i = 0; i < 50 && alarm2.stopForegroundCalls == 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+
+      // Should have logged both the reschedule failure and the retry failure
+      final rows = await dao.latest();
+      final failureRows = rows.where(
+        (r) => r.outcome == Outcome.failedReschedule.code,
+      );
+      expect(failureRows, isNotEmpty);
+      // One for the main reschedule (maghrib), one for the retry arm (reschedule-retry)
+      expect(failureRows.any((r) => r.prayer == 'maghrib'), isTrue);
+      expect(failureRows.any((r) => r.prayer == 'reschedule-retry'), isTrue);
+      expect(
+        failureRows.any(
+          (r) => r.detail != null && r.detail!.contains('Failed to arm retry'),
+        ),
+        isTrue,
+      );
+    },
+  );
 }

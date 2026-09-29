@@ -42,12 +42,23 @@ void main() {
       );
     });
 
-    test('past wake within azan grace fires overdue prefs', () {
-      // Wake at 0; azan at 120_000; now at wake+90s (azan still 30s away).
+    test('zero epoch matches native and is not overdue-eligible', () {
       expect(
-        persistedWakeHealAction(
+        isOverdueWakeStillEligible(
           storedEpochMs: 0,
           nowMs: 90_000,
+          prayer: 'maghrib',
+        ),
+        isFalse,
+      );
+    });
+
+    test('past wake within azan grace fires overdue prefs', () {
+      const wake = 1_700_000_000_000;
+      expect(
+        persistedWakeHealAction(
+          storedEpochMs: wake,
+          nowMs: wake + 90_000,
           storedPrayer: 'maghrib',
         ),
         PersistedWakeHealAction.fireOverduePrefs,
@@ -55,11 +66,12 @@ void main() {
     });
 
     test('past epoch beyond azan grace uses armRescheduleRetry', () {
-      // Wake at 0; azan at 120_000; grace ends at 120_000+5min.
-      final pastGrace = 120_000 + kOverdueDeliveryGrace.inMilliseconds + 1;
+      const wake = 1_700_000_000_000;
+      final pastGrace =
+          wake + 120_000 + kOverdueDeliveryGrace.inMilliseconds + 1;
       expect(
         persistedWakeHealAction(
-          storedEpochMs: 0,
+          storedEpochMs: wake,
           nowMs: pastGrace,
           storedPrayer: 'maghrib',
         ),
