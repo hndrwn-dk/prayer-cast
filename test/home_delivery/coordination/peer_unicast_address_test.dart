@@ -99,5 +99,17 @@ void main() {
         same(advertised),
       );
     });
+
+    test('takes advertised when IPv4 matches so the UDP port can change', () {
+      final learned = InternetAddress('192.168.1.42');
+      final advertised = InternetAddress('192.168.1.42');
+      expect(
+        PeerUnicastAddress.keepWorkingUnicast(
+          learned: learned,
+          advertised: advertised,
+        ),
+        same(advertised),
+      );
+    });
   });
 }

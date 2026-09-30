@@ -211,7 +211,10 @@ final class Election {
           learned: learned.host,
           advertised: peer.endpoint.host,
         );
-        if (kept.address == learned.host.address) {
+        // Identity, not address string: same IPv4 with a new UDP port
+        // must replace the endpoint. keepWorkingUnicast returns [learned]
+        // only when advertised is IPv6 or loopback.
+        if (identical(kept, learned.host)) {
           continue;
         }
       }
