@@ -51,5 +51,53 @@ void main() {
       );
       expect(resolved.address, '192.168.0.10');
     });
+
+    test('falls back to non-loopback IPv6 instead of loopback IPv4', () {
+      final loop = InternetAddress.loopbackIPv4;
+      final v6 = InternetAddress('2001:db8::1');
+      final resolved = PeerUnicastAddress.resolve(
+        addresses: [loop, v6],
+        host: 'ignored.local',
+      );
+      expect(resolved, same(v6));
+    });
+  });
+
+  group('PeerUnicastAddress.keepWorkingUnicast', () {
+    test('keeps learned LAN IPv4 when advertised address is loopback', () {
+      final learned = InternetAddress('192.168.1.42');
+      final advertised = InternetAddress.loopbackIPv4;
+      expect(
+        PeerUnicastAddress.keepWorkingUnicast(
+          learned: learned,
+          advertised: advertised,
+        ),
+        same(learned),
+      );
+    });
+
+    test('keeps learned LAN IPv4 when advertised address is IPv6', () {
+      final learned = InternetAddress('10.0.0.8');
+      final advertised = InternetAddress('fe80::1');
+      expect(
+        PeerUnicastAddress.keepWorkingUnicast(
+          learned: learned,
+          advertised: advertised,
+        ),
+        same(learned),
+      );
+    });
+
+    test('takes advertised LAN IPv4 when the peer moved', () {
+      final learned = InternetAddress('192.168.1.42');
+      final advertised = InternetAddress('192.168.1.99');
+      expect(
+        PeerUnicastAddress.keepWorkingUnicast(
+          learned: learned,
+          advertised: advertised,
+        ),
+        same(advertised),
+      );
+    });
   });
 }
