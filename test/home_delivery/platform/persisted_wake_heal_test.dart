@@ -28,8 +28,10 @@ void main() {
           storedEpochMs: 500,
           nowMs: 1_000,
           pendingPrayer: kRescheduleRetryPrayer,
+          storedPrayer: 'maghrib',
         ),
-        PersistedWakeHealAction.armRescheduleRetry,
+        // Past maghrib wake still within grace → fire overdue, not retry.
+        PersistedWakeHealAction.fireOverduePrefs,
       );
     });
 
@@ -40,9 +42,39 @@ void main() {
       );
     });
 
-    test('past epoch uses armRescheduleRetry, not a second path', () {
+    test('zero epoch matches native and is not overdue-eligible', () {
       expect(
-        persistedWakeHealAction(storedEpochMs: 500, nowMs: 1_000),
+        isOverdueWakeStillEligible(
+          storedEpochMs: 0,
+          nowMs: 90_000,
+          prayer: 'maghrib',
+        ),
+        isFalse,
+      );
+    });
+
+    test('past wake within azan grace fires overdue prefs', () {
+      const wake = 1_700_000_000_000;
+      expect(
+        persistedWakeHealAction(
+          storedEpochMs: wake,
+          nowMs: wake + 90_000,
+          storedPrayer: 'maghrib',
+        ),
+        PersistedWakeHealAction.fireOverduePrefs,
+      );
+    });
+
+    test('past epoch beyond azan grace uses armRescheduleRetry', () {
+      const wake = 1_700_000_000_000;
+      final pastGrace =
+          wake + 120_000 + kOverdueDeliveryGrace.inMilliseconds + 1;
+      expect(
+        persistedWakeHealAction(
+          storedEpochMs: wake,
+          nowMs: pastGrace,
+          storedPrayer: 'maghrib',
+        ),
         PersistedWakeHealAction.armRescheduleRetry,
       );
     });
@@ -62,28 +94,34 @@ void main() {
     expect(isRealPendingPrayer('fajr'), isTrue);
   });
 
-  test('heal prefers replay, then rearm, then retry', () {
+  test('heal prefers replay, then rearm, then overdue, then retry', () {
     var replay = 0;
     var rearm = 0;
+    var overdue = 0;
     var retry = 0;
     void replayPendingFire() => replay++;
     void rearmFromPrefs() => rearm++;
+    void fireOverduePrefs() => overdue++;
     void armRescheduleRetry() => retry++;
 
     runPersistedWakeHeal(
       storedEpochMs: 100,
       nowMs: 200,
       pendingPrayer: 'asr',
+      storedPrayer: 'asr',
       replayPendingFire: replayPendingFire,
       rearmFromPrefs: rearmFromPrefs,
+      fireOverduePrefs: fireOverduePrefs,
       armRescheduleRetry: armRescheduleRetry,
     );
     runPersistedWakeHeal(
       storedEpochMs: 100,
       nowMs: 200,
       pendingPrayer: null,
+      storedPrayer: 'maghrib',
       replayPendingFire: replayPendingFire,
       rearmFromPrefs: rearmFromPrefs,
+      fireOverduePrefs: fireOverduePrefs,
       armRescheduleRetry: armRescheduleRetry,
     );
     runPersistedWakeHeal(
@@ -91,6 +129,7 @@ void main() {
       nowMs: 200,
       replayPendingFire: replayPendingFire,
       rearmFromPrefs: rearmFromPrefs,
+      fireOverduePrefs: fireOverduePrefs,
       armRescheduleRetry: armRescheduleRetry,
     );
     runPersistedWakeHeal(
@@ -98,10 +137,22 @@ void main() {
       nowMs: 200,
       replayPendingFire: replayPendingFire,
       rearmFromPrefs: rearmFromPrefs,
+      fireOverduePrefs: fireOverduePrefs,
+      armRescheduleRetry: armRescheduleRetry,
+    );
+    final pastGrace = 120_000 + kOverdueDeliveryGrace.inMilliseconds + 1;
+    runPersistedWakeHeal(
+      storedEpochMs: 0,
+      nowMs: pastGrace,
+      storedPrayer: 'maghrib',
+      replayPendingFire: replayPendingFire,
+      rearmFromPrefs: rearmFromPrefs,
+      fireOverduePrefs: fireOverduePrefs,
       armRescheduleRetry: armRescheduleRetry,
     );
 
     expect(replay, 1);
+    expect(overdue, 1);
     expect(retry, 2);
     expect(rearm, 1);
   });

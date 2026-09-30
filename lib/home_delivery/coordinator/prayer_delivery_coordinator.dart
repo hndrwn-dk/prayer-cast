@@ -57,7 +57,7 @@ final class PrayerDeliveryCoordinator {
     required DeliverySettings settings,
     required AdzanAudioLoader audioLoader,
     required Future<DeliveryAttemptResult> Function(DeliveryRequest request)
-        runDelivery,
+    runDelivery,
     required Clock clock,
     PrayerDeliveryModeSource? deliveryModes,
     LocalPrayerPlayer? localPlayer,
@@ -69,23 +69,23 @@ final class PrayerDeliveryCoordinator {
     void Function(bool granted)? onPermissionChanged,
     ActiveDeliveryHero? activeHero,
     HomeDeliveryLogger logger = const SilentLogger(),
-  })  : _exactAlarm = exactAlarm,
-        _nextPrayer = nextPrayer,
-        _deviceConditions = deviceConditions,
-        _settings = settings,
-        _audioLoader = audioLoader,
-        _runDelivery = runDelivery,
-        _clock = clock,
-        _deliveryModes = deliveryModes ?? const AlwaysCastDeliveryModeSource(),
-        _localPlayer = localPlayer ?? const SilentLocalPrayerPlayer(),
-        _logDao = logDao,
-        _prePrayerAlerts = prePrayerAlerts,
-        _iqamahReminders = iqamahReminders,
-        _prayerPrefs = prayerPrefs,
-        _readLocaleCode = readLocaleCode ?? (() async => null),
-        _onPermissionChanged = onPermissionChanged,
-        _activeHero = activeHero,
-        _logger = logger;
+  }) : _exactAlarm = exactAlarm,
+       _nextPrayer = nextPrayer,
+       _deviceConditions = deviceConditions,
+       _settings = settings,
+       _audioLoader = audioLoader,
+       _runDelivery = runDelivery,
+       _clock = clock,
+       _deliveryModes = deliveryModes ?? const AlwaysCastDeliveryModeSource(),
+       _localPlayer = localPlayer ?? const SilentLocalPrayerPlayer(),
+       _logDao = logDao,
+       _prePrayerAlerts = prePrayerAlerts,
+       _iqamahReminders = iqamahReminders,
+       _prayerPrefs = prayerPrefs,
+       _readLocaleCode = readLocaleCode ?? (() async => null),
+       _onPermissionChanged = onPermissionChanged,
+       _activeHero = activeHero,
+       _logger = logger;
 
   /// Fallback when a fired event has no voiceId (legacy prefs / corruption).
   static const String defaultVoiceId = 'standard_adhan';
@@ -130,7 +130,7 @@ final class PrayerDeliveryCoordinator {
   final DeliverySettings _settings;
   final AdzanAudioLoader _audioLoader;
   final Future<DeliveryAttemptResult> Function(DeliveryRequest request)
-      _runDelivery;
+  _runDelivery;
   final Clock _clock;
   final PrayerDeliveryModeSource _deliveryModes;
   final LocalPrayerPlayer _localPlayer;
@@ -324,11 +324,7 @@ final class PrayerDeliveryCoordinator {
 
     final now = _clock.now();
     if (untilAzan <= Duration.zero) {
-      throw ArgumentError.value(
-        untilAzan,
-        'untilAzan',
-        'must be after now',
-      );
+      throw ArgumentError.value(untilAzan, 'untilAzan', 'must be after now');
     }
     final requestedAzan = now.add(untilAzan);
     final computedWake = requestedAzan.add(PresenceSchedule.scanOffset);
@@ -392,8 +388,9 @@ final class PrayerDeliveryCoordinator {
     }
     if (_handling) return false;
 
-    final wakeEpochMs =
-        azanEpoch.add(PresenceSchedule.scanOffset).millisecondsSinceEpoch;
+    final wakeEpochMs = azanEpoch
+        .add(PresenceSchedule.scanOffset)
+        .millisecondsSinceEpoch;
     final event = AlarmFiredEvent(
       prayer: canonicalPrayerName(prayer),
       scheduledEpochMs: wakeEpochMs,
@@ -416,6 +413,7 @@ final class PrayerDeliveryCoordinator {
         'Ignoring duplicate onFired for wake ${event.scheduledEpochMs}',
         tag: 'PrayerDeliveryCoordinator',
       );
+      await _exactAlarm.acknowledgeAlarmFire();
       return;
     }
     if (_handling) {
@@ -423,6 +421,7 @@ final class PrayerDeliveryCoordinator {
         'Delivery already in progress — ignoring concurrent onFired',
         tag: 'PrayerDeliveryCoordinator',
       );
+      await _exactAlarm.acknowledgeAlarmFire();
       return;
     }
     _handling = true;
@@ -463,8 +462,8 @@ final class PrayerDeliveryCoordinator {
           final after = isRescheduleRetry(event.prayer)
               ? _clock.now()
               : azanEpoch;
-          final delivered = isRescheduleRetry(event.prayer) ||
-                  isDryRunPrayer(event.prayer)
+          final delivered =
+              isRescheduleRetry(event.prayer) || isDryRunPrayer(event.prayer)
               ? null
               : NextPrayer(
                   name: event.prayer,
@@ -529,7 +528,10 @@ final class PrayerDeliveryCoordinator {
         tag: 'PrayerDeliveryCoordinator',
       );
       await _waitUntilAzan(azanEpoch);
-      if (DeliveryTiming.isTooLate(scheduledAzan: azanEpoch, now: _clock.now())) {
+      if (DeliveryTiming.isTooLate(
+        scheduledAzan: azanEpoch,
+        now: _clock.now(),
+      )) {
         return;
       }
       await _localPlayer.playBeep();
@@ -546,7 +548,10 @@ final class PrayerDeliveryCoordinator {
         tag: 'PrayerDeliveryCoordinator',
       );
       await _waitUntilAzan(azanEpoch);
-      if (DeliveryTiming.isTooLate(scheduledAzan: azanEpoch, now: _clock.now())) {
+      if (DeliveryTiming.isTooLate(
+        scheduledAzan: azanEpoch,
+        now: _clock.now(),
+      )) {
         return;
       }
       await _localPlayer.playTakbir();
@@ -597,6 +602,29 @@ final class PrayerDeliveryCoordinator {
     final prefs = await _prayerPrefs?.read();
     final volume = prefs?.volumeFor(event.prayer);
     final voiceId = _resolveVoiceId(event.voiceId);
+    final wakeAt = PresenceSchedule.at(azanEpoch, PresenceSchedule.scanOffset);
+    final wakeLateness = firedAt.difference(wakeAt);
+    if (wakeLateness > DeliveryOrchestrator.alarmMissedThreshold) {
+      // Past the 60s election window. Running Cast now skips CLAIM/LEAD and
+      // can dual-loadMedia if another phone already started. Phone Adhan
+      // keeps the prayer audible while azan is still in grace.
+      _logger.info(
+        'Wake ${wakeLateness.inSeconds}s past T-120; skip Cast election '
+        'for ${event.prayer} — phone Adhan',
+        tag: 'PrayerDeliveryCoordinator',
+      );
+      await _playPhoneAdhan(
+        event: event,
+        azanEpoch: azanEpoch,
+        voiceId: voiceId,
+        outcome: Outcome.playedOnPhone,
+        detail:
+            'overdue_wake; skip_cast_election; '
+            'late_${wakeLateness.inSeconds}s',
+      );
+      return;
+    }
+
     final audio = await _audioLoader.load(voiceId);
     final conditions = await _deviceConditions.current();
 
@@ -620,10 +648,7 @@ final class PrayerDeliveryCoordinator {
       voiceId: voiceId,
     );
     if (!handled) {
-      await _maybeNotifyCastFailure(
-        result: result,
-        prayerName: event.prayer,
-      );
+      await _maybeNotifyCastFailure(result: result, prayerName: event.prayer);
     }
   }
 
@@ -681,10 +706,7 @@ final class PrayerDeliveryCoordinator {
     final confidentHome = result.presenceState == 'HOME';
     final castDetail =
         '${result.outcome.code}${result.detail == null ? '' : ': ${result.detail}'}';
-    if (DeliveryTiming.isTooLate(
-      scheduledAzan: azanEpoch,
-      now: _clock.now(),
-    )) {
+    if (DeliveryTiming.isTooLate(scheduledAzan: azanEpoch, now: _clock.now())) {
       return false;
     }
 
@@ -856,7 +878,8 @@ final class PrayerDeliveryCoordinator {
         scheduledAtMs: azanEpoch.millisecondsSinceEpoch,
         firedAtMs: now.millisecondsSinceEpoch,
         outcome: Outcome.failedAlarmMissed,
-        detail: 'dart started ${late.inSeconds}s after azan '
+        detail:
+            'dart started ${late.inSeconds}s after azan '
             '(grace ${DeliveryTiming.graceAfterAzan.inMinutes}m)',
       );
     } catch (e, st) {
@@ -963,16 +986,21 @@ final class PrayerDeliveryCoordinator {
       final nowMs = now.millisecondsSinceEpoch;
 
       // Wake already past: still arm it when AlarmManager will fire
-      // immediately and delivery is still eligible (package replace /
-      // late open inside T−120..T, within the 60s OEM window).
+      // immediately and azan is still within [DeliveryTiming] grace
+      // (package replace / reboot / late open inside T−120..T+grace).
+      // Cast election stays gated at 60s-after-wake in [_deliver]; catch-up
+      // here only arms the alarm so beep/phone/overdue-phone can still play.
       // Otherwise skip — opening after Isha+5 must not blast the speaker.
       if (wakeEpochMs <= nowMs) {
+        if (wakeEpochMs == _lastHandledWakeEpochMs) {
+          cursor = prayer.scheduledAt;
+          continue;
+        }
         final wakeLate = Duration(milliseconds: nowMs - wakeEpochMs);
         final stillEligible = !DeliveryTiming.isTooLate(
-              scheduledAzan: prayer.scheduledAt,
-              now: now,
-            ) &&
-            wakeLate <= DeliveryOrchestrator.alarmMissedThreshold;
+          scheduledAzan: prayer.scheduledAt,
+          now: now,
+        );
         if (stillEligible) {
           _logger.warn(
             'Next wake $wakeEpochMs already past by ${wakeLate.inSeconds}s '

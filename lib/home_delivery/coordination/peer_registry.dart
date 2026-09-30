@@ -9,6 +9,49 @@ import '../common/logger.dart';
 import 'election_message.dart';
 import 'unicast_transport.dart';
 
+/// Picks the unicast address for an `_adzan._tcp` peer.
+///
+/// Election UDP is bound IPv4-only ([UdpUnicastTransport]). NSD often lists
+/// IPv6 first on dual-stack LANs; using [List.first] makes every CLAIM/LEAD/
+/// PLAYING send fail, both phones take the solo path, and the speaker gets
+/// dual loadMedia. Prefer non-loopback IPv4 — same policy as Cast/mDNS hosts.
+abstract final class PeerUnicastAddress {
+  static InternetAddress resolve({
+    required List<InternetAddress>? addresses,
+    required String host,
+  }) {
+    if (addresses != null && addresses.isNotEmpty) {
+      for (final a in addresses) {
+        if (a.type == InternetAddressType.IPv4 && !a.isLoopback) {
+          return a;
+        }
+      }
+      for (final a in addresses) {
+        if (!a.isLoopback) return a;
+      }
+      return addresses.first;
+    }
+    return InternetAddress(host);
+  }
+
+  /// After a verified datagram, keep a working LAN IPv4 instead of
+  /// replacing it with an IPv6 or loopback mDNS hint. The election
+  /// socket is IPv4-only; loopback never leaves this device.
+  static InternetAddress keepWorkingUnicast({
+    required InternetAddress learned,
+    required InternetAddress advertised,
+  }) {
+    if (_isWorkingElectionIpv4(learned) &&
+        !_isWorkingElectionIpv4(advertised)) {
+      return learned;
+    }
+    return advertised;
+  }
+
+  static bool _isWorkingElectionIpv4(InternetAddress address) =>
+      address.type == InternetAddressType.IPv4 && !address.isLoopback;
+}
+
 /// A peer discovered via `_adzan._tcp` (spec §4.3).
 final class DiscoveredPeer {
   const DiscoveredPeer({
@@ -53,12 +96,12 @@ final class LocalPeerAdvertisement {
   }
 
   Map<String, Uint8List?> toTxt() => {
-        'v': Uint8List.fromList(utf8.encode('1')),
-        'id': Uint8List.fromList(utf8.encode(deviceId)),
-        'pri': Uint8List.fromList(utf8.encode('$priority')),
-        'st': Uint8List.fromList(utf8.encode(state.wire)),
-        'fp': Uint8List.fromList(utf8.encode(fingerprintShort)),
-      };
+    'v': Uint8List.fromList(utf8.encode('1')),
+    'id': Uint8List.fromList(utf8.encode(deviceId)),
+    'pri': Uint8List.fromList(utf8.encode('$priority')),
+    'st': Uint8List.fromList(utf8.encode(state.wire)),
+    'fp': Uint8List.fromList(utf8.encode(fingerprintShort)),
+  };
 }
 
 /// Port for advertising/browsing `_adzan._tcp` without binding tests to NSD.
@@ -88,8 +131,8 @@ final class PeerRegistry {
     required AdzanDiscovery discovery,
     required this.homeFingerprintShort,
     HomeDeliveryLogger logger = const SilentLogger(),
-  })  : _discovery = discovery,
-        _logger = logger;
+  }) : _discovery = discovery,
+       _logger = logger;
 
   static const String serviceType = '_adzan._tcp';
   static const int protocolVersion = 1;
@@ -156,7 +199,7 @@ final class PeerRegistry {
 /// Production discovery via package `nsd`.
 final class NsdAdzanDiscovery implements AdzanDiscovery {
   NsdAdzanDiscovery({HomeDeliveryLogger logger = const SilentLogger()})
-      : _logger = logger;
+    : _logger = logger;
 
   final HomeDeliveryLogger _logger;
   nsd.Registration? _registration;
@@ -288,10 +331,10 @@ final class NsdAdzanDiscovery implements AdzanDiscovery {
     final fp = txt['fp'];
     final v = int.tryParse(txt['v'] ?? '1') ?? 1;
     if (id == null || pri == null || st == null || fp == null) return null;
-    final addresses = service.addresses;
-    final address = (addresses != null && addresses.isNotEmpty)
-        ? addresses.first
-        : InternetAddress(host);
+    final address = PeerUnicastAddress.resolve(
+      addresses: service.addresses,
+      host: host,
+    );
     try {
       return DiscoveredPeer(
         deviceId: id,

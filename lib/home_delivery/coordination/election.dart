@@ -32,11 +32,11 @@ final class Election {
     required Scheduler scheduler,
     this.clockOffset = Duration.zero,
     HomeDeliveryLogger logger = const SilentLogger(),
-  })  : _auth = ElectionAuth(sharedSecret),
-        _registry = registry,
-        _transport = transport,
-        _scheduler = scheduler,
-        _logger = logger;
+  }) : _auth = ElectionAuth(sharedSecret),
+       _registry = registry,
+       _transport = transport,
+       _scheduler = scheduler,
+       _logger = logger;
 
   final String sessionId;
   final String deviceId;
@@ -54,6 +54,7 @@ final class Election {
 
   final Map<String, ClaimMessage> _claims = {};
   final Map<String, PeerEndpoint> _endpointsById = {};
+
   /// Device ids present in the claim-time ranking (self ∪ valid claimants).
   final Set<String> _claimRankedIds = {};
 
@@ -204,6 +205,19 @@ final class Election {
 
   void _refreshEndpoints() {
     for (final peer in _registry.homePeers) {
+      final learned = _endpointsById[peer.deviceId];
+      if (learned != null) {
+        final kept = PeerUnicastAddress.keepWorkingUnicast(
+          learned: learned.host,
+          advertised: peer.endpoint.host,
+        );
+        // Identity, not address string: same IPv4 with a new UDP port
+        // must replace the endpoint. keepWorkingUnicast returns [learned]
+        // only when advertised is IPv6 or loopback.
+        if (identical(kept, learned.host)) {
+          continue;
+        }
+      }
       _endpointsById[peer.deviceId] = peer.endpoint;
     }
   }
@@ -230,8 +244,7 @@ final class Election {
       return advertised;
     }
 
-    _effectivePriority =
-        _clampedPriority(priorityFor(deviceId, basePriority));
+    _effectivePriority = _clampedPriority(priorityFor(deviceId, basePriority));
 
     // Solo fast path (§4.9): zero peer CLAIMs by T−22.
     if (peerClaims.isEmpty) {
@@ -297,8 +310,9 @@ final class Election {
       await _sendToKnownPeers(
         LeadMessage(sessionId: sessionId, deviceId: deviceId),
       );
-      final repeatAt =
-          _scheduler.now().add(ElectionSchedule.promotedLeadRepeat);
+      final repeatAt = _scheduler.now().add(
+        ElectionSchedule.promotedLeadRepeat,
+      );
       if (!await _waitOrCancelOrYield(repeatAt)) {
         return _cancelledOrYielded(peerCount);
       }
@@ -325,8 +339,9 @@ final class Election {
         stackTrace: st,
       );
       await _broadcastYield('onPrepare failed: $e');
-      final outcome =
-          e is OutcomeException ? e.outcome : Outcome.failedCastConnect;
+      final outcome = e is OutcomeException
+          ? e.outcome
+          : Outcome.failedCastConnect;
       return ElectionResult(
         role: ElectionRole.yielded,
         outcome: outcome,
@@ -416,7 +431,8 @@ final class Election {
 
     final myRank = _ranking.indexWhere((r) => r.deviceId == deviceId);
     final failoverIndex = myRank - 1;
-    final hasFailoverSlot = failoverIndex >= 0 &&
+    final hasFailoverSlot =
+        failoverIndex >= 0 &&
         failoverIndex < ElectionSchedule.failoverOffsets.length;
     DateTime? failoverAt = hasFailoverSlot
         ? ElectionSchedule.at(
@@ -496,7 +512,8 @@ final class Election {
           ranking: _ranking,
           clockSkewDetected: _clockSkewLogged,
           leaderId: _currentLeaderId,
-          detail: 'follower give-up after ${ElectionSchedule.followerGiveUp.inSeconds}s',
+          detail:
+              'follower give-up after ${ElectionSchedule.followerGiveUp.inSeconds}s',
         );
       }
 
@@ -569,23 +586,23 @@ final class Election {
 
     switch (message) {
       case ClaimMessage():
-        _endpointsById.putIfAbsent(message.deviceId, () => packet.from);
+        // Always learn the UDP source — mDNS may have stored IPv6 first.
+        _endpointsById[message.deviceId] = packet.from;
         _claims[message.deviceId] = message;
       case LeadMessage():
         if (!_acceptFromClaimRanked(message)) return;
-        _endpointsById.putIfAbsent(message.deviceId, () => packet.from);
+        _endpointsById[message.deviceId] = packet.from;
         _onLeadMessage(message);
       case PlayingMessage():
         if (!_acceptFromClaimRanked(message)) return;
-        _endpointsById.putIfAbsent(message.deviceId, () => packet.from);
+        _endpointsById[message.deviceId] = packet.from;
         _currentLeaderId = message.deviceId;
         final c = _playingHeard;
         if (c != null && !c.isCompleted) c.complete();
       case YieldMessage():
         if (!_acceptFromClaimRanked(message)) return;
-        _endpointsById.putIfAbsent(message.deviceId, () => packet.from);
-        if (_currentLeaderId == null ||
-            message.deviceId == _currentLeaderId) {
+        _endpointsById[message.deviceId] = packet.from;
+        if (_currentLeaderId == null || message.deviceId == _currentLeaderId) {
           _currentLeaderId = message.deviceId;
           final c = _leaderYielded;
           if (c != null && !c.isCompleted) c.complete();
@@ -671,10 +688,7 @@ final class Election {
   }
 
   Future<bool> _waitOrCancel(DateTime deadline) async {
-    await Future.any([
-      _scheduler.waitUntil(deadline),
-      _cancelled.future,
-    ]);
+    await Future.any([_scheduler.waitUntil(deadline), _cancelled.future]);
     return !_cancelled.isCompleted;
   }
 
@@ -697,13 +711,7 @@ final class Election {
 enum _Role { solo, leader, follower }
 
 /// Role this device took in the election (§6.1 `role` column).
-enum ElectionRole {
-  solo,
-  leader,
-  follower,
-  promoted,
-  yielded,
-}
+enum ElectionRole { solo, leader, follower, promoted, yielded }
 
 /// Final coordination result for one device, ready to log (§6.1 / §6.2).
 final class ElectionResult {
@@ -726,10 +734,10 @@ final class ElectionResult {
   final String? detail;
 
   String get roleWire => switch (role) {
-        ElectionRole.solo => 'SOLO',
-        ElectionRole.leader => 'LEADER',
-        ElectionRole.follower => 'FOLLOWER',
-        ElectionRole.promoted => 'PROMOTED',
-        ElectionRole.yielded => 'FOLLOWER',
-      };
+    ElectionRole.solo => 'SOLO',
+    ElectionRole.leader => 'LEADER',
+    ElectionRole.follower => 'FOLLOWER',
+    ElectionRole.promoted => 'PROMOTED',
+    ElectionRole.yielded => 'FOLLOWER',
+  };
 }
