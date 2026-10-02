@@ -5,6 +5,7 @@ import 'package:prayer_cast/l10n/locale_controller.dart';
 import 'package:prayer_cast/support/app_links.dart';
 import 'package:prayer_cast/support/open_support_url.dart';
 import 'package:prayer_cast/support/share_plain_text.dart';
+import 'package:prayer_cast/theme/app_theme_store.dart';
 
 import '../coordinator/prayer_delivery_coordinator.dart';
 import 'delivery_log_page.dart';
@@ -14,7 +15,7 @@ import 'theme/prayer_cast_theme.dart';
 import 'theme/prayer_cast_tokens.dart';
 import 'widgets/editorial_chrome.dart';
 
-/// Language, adhan history, about, and legal — off the home screen.
+/// Language, theme, adhan history, about, and legal — off the home screen.
 class AppSettingsPage extends ConsumerWidget {
   const AppSettingsPage({super.key, required this.version, this.coordinator});
 
@@ -27,6 +28,15 @@ class AppSettingsPage extends ConsumerWidget {
   );
   static const ValueKey<String> languageEnKey = ValueKey<String>(
     'settings_language_en',
+  );
+  static const ValueKey<String> themeSystemKey = ValueKey<String>(
+    'settings_theme_system',
+  );
+  static const ValueKey<String> themeForestKey = ValueKey<String>(
+    'settings_theme_forest',
+  );
+  static const ValueKey<String> themeLightKey = ValueKey<String>(
+    'settings_theme_light',
   );
   static const ValueKey<String> deliveryLogKey = ValueKey<String>(
     'settings_delivery_log',
@@ -45,6 +55,7 @@ class AppSettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final localeOverride = ref.watch(appLocaleProvider);
+    final themeChoice = ref.watch(appThemeProvider);
     final activeLang =
         localeOverride?.languageCode ??
         Localizations.localeOf(context).languageCode;
@@ -88,6 +99,43 @@ class AppSettingsPage extends ConsumerWidget {
               onTap: () => ref
                   .read(appLocaleProvider.notifier)
                   .setLocale(const Locale('en')),
+            ),
+            const SizedBox(height: 28),
+            EditorialEyebrow(l10n.themeEyebrow, color: PrayerCastColors.dawn),
+            const SizedBox(height: 6),
+            Text(
+              l10n.themeHint,
+              style: TextStyle(
+                fontFamily: PrayerCastTheme.bodyFont,
+                fontSize: 13,
+                height: 1.35,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _LanguageChoice(
+              rowKey: themeSystemKey,
+              label: l10n.themeSystem,
+              selected: themeChoice == AppThemeChoice.system,
+              onTap: () => ref
+                  .read(appThemeProvider.notifier)
+                  .setChoice(AppThemeChoice.system),
+            ),
+            _LanguageChoice(
+              rowKey: themeForestKey,
+              label: l10n.themeForest,
+              selected: themeChoice == AppThemeChoice.forest,
+              onTap: () => ref
+                  .read(appThemeProvider.notifier)
+                  .setChoice(AppThemeChoice.forest),
+            ),
+            _LanguageChoice(
+              rowKey: themeLightKey,
+              label: l10n.themeLight,
+              selected: themeChoice == AppThemeChoice.light,
+              onTap: () => ref
+                  .read(appThemeProvider.notifier)
+                  .setChoice(AppThemeChoice.light),
             ),
             const SizedBox(height: 28),
             _SettingsLink(

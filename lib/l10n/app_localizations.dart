@@ -476,6 +476,36 @@ abstract class AppLocalizations {
   /// **'English'**
   String get languageEnglish;
 
+  /// No description provided for @themeEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get themeEyebrow;
+
+  /// No description provided for @themeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Forest is the current dark look'**
+  String get themeHint;
+
+  /// No description provided for @themeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System default'**
+  String get themeSystem;
+
+  /// No description provided for @themeForest.
+  ///
+  /// In en, this message translates to:
+  /// **'Forest'**
+  String get themeForest;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get themeLight;
+
   /// No description provided for @back.
   ///
   /// In en, this message translates to:

@@ -220,6 +220,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageEnglish => 'English';
 
   @override
+  String get themeEyebrow => 'Theme';
+
+  @override
+  String get themeHint => 'Forest is the current dark look';
+
+  @override
+  String get themeSystem => 'System default';
+
+  @override
+  String get themeForest => 'Forest';
+
+  @override
+  String get themeLight => 'Light';
+
+  @override
   String get back => 'Back';
 
   @override

@@ -221,6 +221,21 @@ class AppLocalizationsId extends AppLocalizations {
   String get languageEnglish => 'English';
 
   @override
+  String get themeEyebrow => 'Tema';
+
+  @override
+  String get themeHint => 'Forest adalah tampilan gelap saat ini';
+
+  @override
+  String get themeSystem => 'Ikuti sistem';
+
+  @override
+  String get themeForest => 'Forest';
+
+  @override
+  String get themeLight => 'Terang';
+
+  @override
   String get back => 'Kembali';
 
   @override
