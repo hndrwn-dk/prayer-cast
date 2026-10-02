@@ -542,6 +542,79 @@ void main() {
     expect(deliveries, hasLength(1));
   });
 
+  test(
+    'concurrent onFired mid-delivery does not acknowledge until first finishes',
+    () async {
+      final holdDelivery = Completer<void>();
+      final enteredDelivery = Completer<void>();
+      final coordinator = PrayerDeliveryCoordinator(
+        exactAlarm: alarm,
+        nextPrayer: _FakeNextPrayer([maghrib, isha]),
+        deviceConditions: _FakeConditions(),
+        settings: _FakeSettings(),
+        audioLoader: _FakeAudio(),
+        runDelivery: (request) async {
+          deliveries.add(request);
+          if (!enteredDelivery.isCompleted) enteredDelivery.complete();
+          await holdDelivery.future;
+          return const DeliveryAttemptResult(
+            sessionId: 'sess',
+            outcome: Outcome.played,
+            role: 'SOLO',
+          );
+        },
+        clock: clock,
+      );
+      await coordinator.start();
+      final wakeMs = alarm.scheduled.single.epochMs;
+      alarm.callOrder.clear();
+
+      clock.advanceTo(
+        DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true),
+      );
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib',
+          scheduledEpochMs: wakeMs,
+          firedAtMs: wakeMs,
+          voiceId: 'makkah',
+        ),
+      );
+      await enteredDelivery.future;
+
+      // Same-wake redelivery while the first attempt still holds FGS /
+      // disk pending (START_REDELIVER_INTENT or start() re-arm race).
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib',
+          scheduledEpochMs: wakeMs,
+          firedAtMs: wakeMs + 50,
+          voiceId: 'makkah',
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+
+      expect(
+        alarm.callOrder.where((c) => c == 'acknowledgeAlarmFire'),
+        isEmpty,
+        reason: 'mid-flight ack would wipe the only reboot recovery token',
+      );
+      expect(deliveries, hasLength(1));
+
+      holdDelivery.complete();
+      for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+
+      expect(
+        alarm.callOrder.where((c) => c == 'acknowledgeAlarmFire').length,
+        1,
+      );
+      expect(alarm.stopForegroundCalls, 1);
+      expect(deliveries, hasLength(1));
+    },
+  );
+
   test('start after azan+5 skips that prayer and arms the next', () async {
     clock.advanceTo(maghrib.scheduledAt.add(const Duration(minutes: 6)));
     final coordinator = buildCoordinator();

@@ -229,6 +229,10 @@ final class PrayerDeliveryCoordinator {
   }
 
   Future<void> _tryScheduleIfPermitted() async {
+    // Do not re-arm while a fire is mid-delivery — arming a past-eligible
+    // wake fires AlarmManager immediately and can race the in-flight ack.
+    if (_handling) return;
+
     final canSchedule = await _exactAlarm.canScheduleExactAlarms();
     _onPermissionChanged?.call(canSchedule);
     if (!canSchedule) {
@@ -407,18 +411,23 @@ final class PrayerDeliveryCoordinator {
   }
 
   Future<void> _onFired(AlarmFiredEvent event) async {
-    // Idempotency: native buffering + stream replay can double-deliver.
-    if (_lastHandledWakeEpochMs == event.scheduledEpochMs) {
-      _logger.info(
-        'Ignoring duplicate onFired for wake ${event.scheduledEpochMs}',
-        tag: 'PrayerDeliveryCoordinator',
-      );
-      await _exactAlarm.acknowledgeAlarmFire();
-      return;
-    }
+    // In-flight delivery owns the disk pending token until its finally
+    // block acks. A concurrent emit (START_REDELIVER_INTENT, start()
+    // re-arming a past-but-eligible wake, stream replay) must not clear
+    // that token — OEM kill mid-adhan would then find nothing to replay.
     if (_handling) {
       _logger.warn(
         'Delivery already in progress — ignoring concurrent onFired',
+        tag: 'PrayerDeliveryCoordinator',
+      );
+      return;
+    }
+    // Idempotency: native buffering + stream replay can double-deliver
+    // after the first attempt finished. Ack only then so a re-persisted
+    // pending from the duplicate emit does not survive forever.
+    if (_lastHandledWakeEpochMs == event.scheduledEpochMs) {
+      _logger.info(
+        'Ignoring duplicate onFired for wake ${event.scheduledEpochMs}',
         tag: 'PrayerDeliveryCoordinator',
       );
       await _exactAlarm.acknowledgeAlarmFire();
