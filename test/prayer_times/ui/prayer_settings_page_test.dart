@@ -73,6 +73,44 @@ void main() {
     expect(find.byKey(const ValueKey('voice-fajr-fajr_adhan')), findsNothing);
   });
 
+  testWidgets('phone viewport scrolls to delivery and reminders', (
+    tester,
+  ) async {
+    const viewport = Size(390, 844);
+    tester.view.physicalSize = viewport;
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.padding = FakeViewPadding.zero;
+    tester.view.viewPadding = FakeViewPadding.zero;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPadding);
+    addTearDown(tester.view.resetViewPadding);
+
+    Future<void> expectScrolledTo(PrayerSettingsFocus focus, Key key) async {
+      // A new page key matches a fresh route. Reusing State would keep the
+      // previous focus scroll and skip the next section.
+      await _pumpSettings(tester, focus: focus, pageKey: ValueKey(focus));
+      await tester.pump();
+      final section = find.byKey(key);
+      expect(section, findsOneWidget);
+      final top = tester.getTopLeft(section).dy;
+      final scrollRect = tester.getRect(_settingsScrollable());
+      expect(top, greaterThanOrEqualTo(scrollRect.top - 1));
+      expect(top, lessThan(scrollRect.bottom));
+      final position = tester.state<ScrollableState>(_settingsScrollable());
+      expect(position.position.pixels, greaterThan(0));
+    }
+
+    await expectScrolledTo(
+      PrayerSettingsFocus.delivery,
+      PrayerSettingsPage.deliverySectionKey,
+    );
+    await expectScrolledTo(
+      PrayerSettingsFocus.reminders,
+      PrayerSettingsPage.remindersSectionKey,
+    );
+  });
+
   testWidgets('page has no Default delivery control', (tester) async {
     await _pumpSettings(tester);
     expect(find.text('Default delivery'), findsNothing);
@@ -645,6 +683,8 @@ Future<void> _pumpSettings(
   PrayerPrefs? prefs,
   LocationResolving locationResolver = const LocationResolver(),
   Locale locale = const Locale('en'),
+  PrayerSettingsFocus focus = PrayerSettingsFocus.none,
+  Key? pageKey,
 }) async {
   final store = MemoryPrayerPrefsStore(prefs ?? PrayerPrefs.defaults);
   final engine = AdhanNextPrayerProvider(
@@ -668,7 +708,9 @@ Future<void> _pumpSettings(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         theme: PrayerCastTheme.light(),
         home: PrayerSettingsPage(
+          key: pageKey,
           locationResolver: locationResolver,
+          focus: focus,
         ),
       ),
     ),

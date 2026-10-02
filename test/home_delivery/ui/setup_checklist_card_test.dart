@@ -151,4 +151,38 @@ void main() {
     expect(find.byKey(SetupChecklistCard.deliveryKey), findsNothing);
     expect(find.text('Adhan on this phone'), findsNothing);
   });
+
+  testWidgets('delivery row ticks for saved phone adhan, beep, or takbir', (
+    tester,
+  ) async {
+    final tick = find.descendant(
+      of: find.byKey(SetupChecklistCard.deliveryKey),
+      matching: find.byType(CustomPaint),
+    );
+
+    Future<void> pumpMode(PrayerDeliveryMode mode) {
+      return _pumpCard(
+        tester,
+        setupStore: MemorySetupCardStore(
+          const SetupCardFlags(noSpeaker: true, existingUserMigrated: true),
+        ),
+        prefsStore: MemoryPrayerPrefsStore(
+          PrayerPrefs.defaults.copyWith(defaultDeliveryMode: mode),
+        ),
+      );
+    }
+
+    await pumpMode(PrayerDeliveryMode.cast);
+    expect(find.byKey(SetupChecklistCard.deliveryKey), findsOneWidget);
+    expect(tick, findsNothing);
+
+    for (final mode in const [
+      PrayerDeliveryMode.adhanPhone,
+      PrayerDeliveryMode.beep,
+      PrayerDeliveryMode.takbir,
+    ]) {
+      await pumpMode(mode);
+      expect(tick, findsOneWidget);
+    }
+  });
 }

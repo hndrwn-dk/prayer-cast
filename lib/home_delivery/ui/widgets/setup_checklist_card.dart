@@ -7,6 +7,7 @@ import 'package:prayer_cast/home_delivery/ui/icons/premium_icons.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
+import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 import 'package:prayer_cast/prayer_times/prayer_times_providers.dart';
 import 'package:prayer_cast/setup/setup_card_store.dart';
 
@@ -36,6 +37,19 @@ bool shouldShowSetupCard({
   if (flags.dismissed) return false;
   if (!flags.existingUserMigrated && prayerConfigured) return false;
   return true;
+}
+
+/// Saved phone delivery: adhan on this phone, beep, or takbir.
+///
+/// Cast stays unticked. The row reads the persisted default, so the tick
+/// appears after settings are saved.
+bool setupCardDeliveryDone(PrayerDeliveryMode mode) {
+  return switch (mode) {
+    PrayerDeliveryMode.adhanPhone ||
+    PrayerDeliveryMode.beep ||
+    PrayerDeliveryMode.takbir => true,
+    PrayerDeliveryMode.cast => false,
+  };
 }
 
 class SetupChecklistCard extends ConsumerWidget {
@@ -146,7 +160,7 @@ class SetupChecklistCard extends ConsumerWidget {
                   _SetupRow(
                     rowKey: SetupChecklistCard.deliveryKey,
                     label: l10n.setupCardDelivery,
-                    done: false,
+                    done: setupCardDeliveryDone(prefs.defaultDeliveryMode),
                     onTap: onOpenDelivery,
                   ),
                 _SetupRow(

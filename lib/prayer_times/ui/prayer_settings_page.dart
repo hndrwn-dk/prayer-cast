@@ -67,11 +67,15 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
   bool _controllersReady = false;
   int _lastAladhanMethodId = defaultAladhanMethodId;
   Timer? _saveDebounce;
+  final ScrollController _focusScroll = ScrollController();
   bool _didScrollToFocus = false;
+  bool _focusScrollPending = false;
+  int _focusScrollAttempts = 0;
 
   @override
   void dispose() {
     _saveDebounce?.cancel();
+    _focusScroll.dispose();
     _cityController.dispose();
     _countryController.dispose();
     super.dispose();
@@ -263,13 +267,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                     _scheduleError == null;
                 final draft = _draft ?? prefs;
                 _ensureControllers(draft);
-                if (!_didScrollToFocus &&
-                    widget.focus != PrayerSettingsFocus.none) {
-                  _didScrollToFocus = true;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) _scrollFocusIntoView();
-                  });
-                }
+                _scheduleFocusScroll();
                 if (needsScheduleKick) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (mounted) unawaited(_refreshSchedule(draft));
@@ -286,6 +284,16 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                     Expanded(
                       child: ListView(
                         key: const ValueKey('prayer_settings_list'),
+                        // Delivery and reminders sit past the first screen.
+                        // A lazy list leaves those keys unbuilt, so
+                        // ensureVisible has nothing to scroll. Cache the
+                        // whole form when a section was requested.
+                        controller: widget.focus == PrayerSettingsFocus.none
+                            ? null
+                            : _focusScroll,
+                        cacheExtent: widget.focus == PrayerSettingsFocus.none
+                            ? null
+                            : 1000000,
                         padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                         children: [
                           InkSurface(
@@ -896,18 +904,49 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
     });
   }
 
-  void _scrollFocusIntoView() {
-    if (!mounted || widget.focus == PrayerSettingsFocus.none) return;
+  void _scheduleFocusScroll() {
+    if (_didScrollToFocus ||
+        _focusScrollPending ||
+        widget.focus == PrayerSettingsFocus.none) {
+      return;
+    }
+    _focusScrollPending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusScrollPending = false;
+      if (!mounted || _didScrollToFocus) return;
+      if (_revealFocusTarget()) return;
+      _focusScrollAttempts++;
+      if (_focusScrollAttempts < 24) _scheduleFocusScroll();
+    });
+  }
+
+  /// Scrolls once the focus section is mounted. Returns false so the caller
+  /// can retry after another layout if the lazy list has not built it yet.
+  bool _revealFocusTarget() {
+    if (!mounted || widget.focus == PrayerSettingsFocus.none) return true;
     final key = widget.focus == PrayerSettingsFocus.delivery
         ? PrayerSettingsPage.deliverySectionKey
         : PrayerSettingsPage.remindersSectionKey;
     final target = _findKeyedElement(context as Element, key);
-    if (target == null) return;
-    Scrollable.ensureVisible(
-      target,
-      alignment: 0.08,
-      duration: Duration.zero,
-    );
+    final renderObject = target?.renderObject;
+    if (target != null && renderObject != null && renderObject.attached) {
+      _didScrollToFocus = true;
+      Scrollable.ensureVisible(
+        target,
+        alignment: 0.08,
+        duration: Duration.zero,
+      );
+      return true;
+    }
+    if (!_focusScroll.hasClients) return false;
+    final position = _focusScroll.position;
+    if (!position.hasContentDimensions) return false;
+    final step = position.pixels + position.viewportDimension;
+    final next = step < position.maxScrollExtent
+        ? step
+        : position.maxScrollExtent;
+    if (next > position.pixels + 1) position.jumpTo(next);
+    return false;
   }
 
   Element? _findKeyedElement(Element root, Key key) {
