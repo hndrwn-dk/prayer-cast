@@ -33,6 +33,33 @@ abstract final class PrayerCastTokens {
       ? PrayerCastColors.mistDeep
       : Theme.of(context).colorScheme.onSurfaceVariant;
 
+  /// Ink wash on canopy. Light uses opaque mist so [glyph] stays readable.
+  static Color inkWash(BuildContext context, double alpha) => isForest(context)
+      ? PrayerCastColors.ink.withValues(alpha: alpha)
+      : PrayerCastColors.mist;
+
+  /// Leaf wash on canopy. Light uses opaque mistDeep so [onSurface] reads.
+  static Color leafWash(BuildContext context, double alpha) => isForest(context)
+      ? PrayerCastColors.leaf.withValues(alpha: alpha)
+      : PrayerCastColors.mistDeep;
+
+  /// Selected timing chip. Forest stays solid leaf; light stays mistDeep.
+  static Color segmentFill(BuildContext context) =>
+      isForest(context) ? PrayerCastColors.leaf : PrayerCastColors.mistDeep;
+
+  /// Emphasis on a wash. Forest keeps surfaceRaised.
+  static Color washEmphasis(BuildContext context) =>
+      isForest(context) ? PrayerCastColors.surfaceRaised : onSurface(context);
+
+  /// Label on a wash. Forest keeps mist.
+  static Color washLabel(BuildContext context) =>
+      isForest(context) ? PrayerCastColors.mist : glyph(context);
+
+  /// Secondary line on a wash. Forest keeps mistDeep. Light uses [glyph]
+  /// because quiet on mist is under 4.5:1.
+  static Color washDetail(BuildContext context) =>
+      isForest(context) ? PrayerCastColors.mistDeep : glyph(context);
+
   /// Dropdown and field value. Forest keeps [PrayerCastTheme.forestDropdown].
   static TextStyle fieldValue(BuildContext context) =>
       PrayerCastTheme.forestDropdown.copyWith(color: glyph(context));

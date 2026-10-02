@@ -116,7 +116,7 @@ class _PeriodChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: selected
-          ? PrayerCastColors.leaf.withValues(alpha: 0.35)
+          ? PrayerCastTokens.leafWash(context, 0.35)
           : PrayerCastColors.inkSoft,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
@@ -131,7 +131,7 @@ class _PeriodChip extends StatelessWidget {
               fontFamily: PrayerCastTheme.bodyFont,
               fontSize: 13,
               color: selected
-                  ? PrayerCastColors.surfaceRaised
+                  ? PrayerCastTokens.washEmphasis(context)
                   : PrayerCastColors.mist,
             ),
           ),
@@ -379,7 +379,7 @@ class _RateTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
       decoration: BoxDecoration(
-        color: PrayerCastColors.ink.withValues(alpha: 0.35),
+        color: PrayerCastTokens.inkWash(context, 0.35),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -387,20 +387,22 @@ class _RateTile extends StatelessWidget {
         children: [
           Text(
             label,
-            style: text.labelSmall?.copyWith(color: PrayerCastColors.mist),
+            style: text.labelSmall?.copyWith(
+              color: PrayerCastTokens.washLabel(context),
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
             style: text.titleMedium?.copyWith(
-              color: PrayerCastColors.surfaceRaised,
+              color: PrayerCastTokens.washEmphasis(context),
             ),
           ),
           const SizedBox(height: 2),
           Text(
             detail,
             style: text.bodySmall?.copyWith(
-              color: PrayerCastColors.mistDeep,
+              color: PrayerCastTokens.washDetail(context),
               fontSize: 11,
             ),
           ),

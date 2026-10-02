@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
+import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/l10n/app_localizations.dart';
 import 'package:prayer_cast/prayer_tracker/prayer_tracker_providers.dart';
 import 'package:prayer_cast/prayer_tracker/prayer_tracker_store.dart';
@@ -12,6 +13,7 @@ import 'package:prayer_cast/prayer_tracker/ui/prayer_tracker_page.dart';
 Future<void> _pumpTracker(
   WidgetTester tester, {
   Size size = const Size(320, 568),
+  bool castTheme = false,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
@@ -25,13 +27,18 @@ Future<void> _pumpTracker(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        prayerTrackerStoreProvider.overrideWithValue(MemoryPrayerTrackerStore()),
+        prayerTrackerStoreProvider.overrideWithValue(
+          MemoryPrayerTrackerStore(),
+        ),
       ],
-      child: const MaterialApp(
-        locale: Locale('en'),
+      child: MaterialApp(
+        locale: const Locale('en'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: PrayerTrackerPage(),
+        theme: castTheme ? PrayerCastTheme.light() : null,
+        darkTheme: castTheme ? PrayerCastTheme.forest() : null,
+        themeMode: castTheme ? ThemeMode.light : ThemeMode.system,
+        home: const PrayerTrackerPage(),
       ),
     ),
   );
@@ -106,9 +113,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          prayerTrackerStoreProvider.overrideWithValue(store),
-        ],
+        overrides: [prayerTrackerStoreProvider.overrideWithValue(store)],
         child: const MaterialApp(
           locale: Locale('en'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -149,9 +154,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          prayerTrackerStoreProvider.overrideWithValue(store),
-        ],
+        overrides: [prayerTrackerStoreProvider.overrideWithValue(store)],
         child: const MaterialApp(
           locale: Locale('en'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -188,7 +191,9 @@ void main() {
     expect(find.byKey(const ValueKey('prayer_heat_row')), findsOneWidget);
     expect(
       tester.getTopLeft(find.text('Insights')).dy,
-      lessThan(tester.getTopLeft(find.byKey(const ValueKey('prayer_heat_row'))).dy),
+      lessThan(
+        tester.getTopLeft(find.byKey(const ValueKey('prayer_heat_row'))).dy,
+      ),
     );
 
     await tester.tap(find.text('30 days'));
@@ -211,7 +216,9 @@ void main() {
     expect(find.text('No outstanding qadha.'), findsOneWidget);
     expect(find.text('Yesterday 5 prayers were not logged.'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('prayer_tracker_qadha_plus_fajr')));
+    await tester.tap(
+      find.byKey(const ValueKey('prayer_tracker_qadha_plus_fajr')),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
     expect(find.text('1 prayer outstanding.'), findsOneWidget);
@@ -251,9 +258,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          prayerTrackerStoreProvider.overrideWithValue(store),
-        ],
+        overrides: [prayerTrackerStoreProvider.overrideWithValue(store)],
         child: const MaterialApp(
           locale: Locale('en'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -270,5 +275,23 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('3 qadha still on the list.'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('light mode uses ink on an unselected segment and a rate tile', (
+    tester,
+  ) async {
+    await _pumpTracker(tester, castTheme: true);
+
+    final segment = tester.widget<Text>(find.text('Mosque').first);
+    expect(segment.style?.color, PrayerCastColors.ink);
+    expect(segment.style?.color, isNot(PrayerCastColors.mist));
+
+    await tester.tap(find.byKey(const ValueKey('prayer_tracker_stats_button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final value = tester.widget<Text>(find.text('--').first);
+    expect(value.style?.color, PrayerCastColors.ink);
+    expect(value.style?.color, isNot(PrayerCastColors.surfaceRaised));
   });
 }

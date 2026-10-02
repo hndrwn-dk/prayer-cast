@@ -423,7 +423,7 @@ class _SegmentedPair extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: PrayerCastColors.ink.withValues(alpha: 0.45),
+        color: PrayerCastTokens.inkWash(context, 0.45),
         borderRadius: BorderRadius.circular(22),
       ),
       child: SizedBox(
@@ -469,7 +469,9 @@ class _Segment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? PrayerCastColors.leaf : Colors.transparent,
+      color: selected
+          ? PrayerCastTokens.segmentFill(context)
+          : Colors.transparent,
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
         onTap: enabled ? onTap : null,
@@ -483,8 +485,8 @@ class _Segment extends StatelessWidget {
               fontFamily: PrayerCastTheme.bodyFont,
               fontSize: 11,
               color: selected
-                  ? PrayerCastColors.surfaceRaised
-                  : PrayerCastColors.mist,
+                  ? PrayerCastTokens.washEmphasis(context)
+                  : PrayerCastTokens.washLabel(context),
             ),
           ),
         ),
@@ -757,7 +759,7 @@ class _YesterdayQadhaPrompt extends StatelessWidget {
     final n = missed.length;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: PrayerCastColors.ink.withValues(alpha: 0.35),
+        color: PrayerCastTokens.inkWash(context, 0.35),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Padding(
@@ -770,7 +772,7 @@ class _YesterdayQadhaPrompt extends StatelessWidget {
                   ? 'Kemarin $n sholat belum tercatat.'
                   : 'Yesterday $n prayers were not logged.',
               style: text.bodySmall?.copyWith(
-                color: PrayerCastColors.mist,
+                color: PrayerCastTokens.washLabel(context),
                 height: 1.35,
               ),
             ),
@@ -819,7 +821,7 @@ class _QadhaTextButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: filled
-          ? PrayerCastColors.leaf.withValues(alpha: 0.35)
+          ? PrayerCastTokens.leafWash(context, 0.35)
           : PrayerCastColors.inkSoft,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
@@ -834,7 +836,7 @@ class _QadhaTextButton extends StatelessWidget {
               fontFamily: PrayerCastTheme.bodyFont,
               fontSize: 12,
               color: filled
-                  ? PrayerCastColors.surfaceRaised
+                  ? PrayerCastTokens.washEmphasis(context)
                   : PrayerCastColors.mist,
             ),
           ),
@@ -912,7 +914,7 @@ class _QadhaStep extends StatelessWidget {
     return Material(
       color: enabled
           ? PrayerCastColors.inkSoft
-          : PrayerCastColors.ink.withValues(alpha: 0.35),
+          : PrayerCastTokens.inkWash(context, 0.35),
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: enabled ? onTap : null,
@@ -929,7 +931,7 @@ class _QadhaStep extends StatelessWidget {
                 height: 1,
                 color: enabled
                     ? PrayerCastColors.surfaceRaised
-                    : PrayerCastColors.mistDeep,
+                    : PrayerCastTokens.washDetail(context),
               ),
             ),
           ),

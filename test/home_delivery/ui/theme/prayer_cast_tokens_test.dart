@@ -135,4 +135,80 @@ void main() {
     final decoration = box.decoration! as BoxDecoration;
     expect(decoration.color, PrayerCastColors.canopyDeep);
   });
+
+  testWidgets('light tracker wells are opaque mist with ink type', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PrayerCastTheme.light(),
+        darkTheme: PrayerCastTheme.forest(),
+        themeMode: ThemeMode.light,
+        home: Builder(
+          builder: (context) {
+            expect(
+              PrayerCastTokens.inkWash(context, 0.45),
+              PrayerCastColors.mist,
+            );
+            expect(PrayerCastTokens.inkWash(context, 0.35).a, 1);
+            expect(
+              PrayerCastTokens.leafWash(context, 0.35),
+              PrayerCastColors.mistDeep,
+            );
+            expect(
+              PrayerCastTokens.segmentFill(context),
+              PrayerCastColors.mistDeep,
+            );
+            expect(PrayerCastTokens.washLabel(context), PrayerCastColors.ink);
+            expect(
+              PrayerCastTokens.washEmphasis(context),
+              PrayerCastColors.ink,
+            );
+            expect(PrayerCastTokens.washDetail(context), PrayerCastColors.ink);
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+  });
+
+  testWidgets('forest tracker wells keep canopy washes', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PrayerCastTheme.light(),
+        darkTheme: PrayerCastTheme.forest(),
+        themeMode: ThemeMode.dark,
+        home: Builder(
+          builder: (context) {
+            expect(
+              PrayerCastTokens.inkWash(context, 0.45),
+              PrayerCastColors.ink.withValues(alpha: 0.45),
+            );
+            expect(
+              PrayerCastTokens.inkWash(context, 0.35),
+              PrayerCastColors.ink.withValues(alpha: 0.35),
+            );
+            expect(
+              PrayerCastTokens.leafWash(context, 0.35),
+              PrayerCastColors.leaf.withValues(alpha: 0.35),
+            );
+            expect(
+              PrayerCastTokens.segmentFill(context),
+              PrayerCastColors.leaf,
+            );
+            expect(PrayerCastTokens.washLabel(context), PrayerCastColors.mist);
+            expect(
+              PrayerCastTokens.washEmphasis(context),
+              PrayerCastColors.surfaceRaised,
+            );
+            expect(
+              PrayerCastTokens.washDetail(context),
+              PrayerCastColors.mistDeep,
+            );
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+  });
 }
