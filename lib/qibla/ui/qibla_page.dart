@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../home_delivery/coordinator/prayer_delivery_coordinator.dart';
 import '../../home_delivery/ui/theme/prayer_cast_colors.dart';
 import '../../home_delivery/ui/theme/prayer_cast_theme.dart';
+import '../../home_delivery/ui/theme/prayer_cast_tokens.dart';
 import '../../home_delivery/ui/widgets/editorial_chrome.dart';
 import '../../l10n/l10n_ext.dart';
 import '../../prayer_times/prayer_times_providers.dart';
@@ -302,7 +303,9 @@ class _QiblaBodyState extends ConsumerState<_QiblaBody> {
           key: const ValueKey<String>('qibla_align_label'),
           textAlign: TextAlign.center,
           style: text.bodyMedium?.copyWith(
-            color: aligned ? PrayerCastColors.leaf : PrayerCastColors.mistDeep,
+            color: aligned
+                ? PrayerCastColors.leaf
+                : PrayerCastTokens.glyphMuted(context),
           ),
         ),
         if (showCalibration) ...[
@@ -575,8 +578,10 @@ class _ForestAction extends StatelessWidget {
         borderRadius: radius,
         side: filled
             ? BorderSide.none
-            : const BorderSide(
-                color: PrayerCastColors.mistDeep,
+            : BorderSide(
+                color: PrayerCastTokens.isForest(context)
+                    ? PrayerCastColors.mistDeep
+                    : PrayerCastColors.inkSoft,
                 width: PrayerCastTheme.cardHairline,
               ),
       ),
@@ -594,7 +599,7 @@ class _ForestAction extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 color: filled
                     ? PrayerCastColors.surfaceRaised
-                    : PrayerCastColors.mist,
+                    : PrayerCastTokens.glyph(context),
               ),
             ),
           ),

@@ -19,6 +19,24 @@ abstract final class PrayerCastTokens {
   static Color onSurface(BuildContext context) =>
       isForest(context) ? PrayerCastColors.surfaceRaised : PrayerCastColors.ink;
 
+  /// Card and field well. Forest keeps canopyDeep; light uses [surface]
+  /// so theme ink sits on a light slab.
+  static Color slab(BuildContext context) =>
+      isForest(context) ? PrayerCastColors.canopyDeep : surface(context);
+
+  /// Icon or label on a page fill or [slab]. Forest keeps mist.
+  static Color glyph(BuildContext context) =>
+      isForest(context) ? PrayerCastColors.mist : onSurface(context);
+
+  /// Secondary ink on a page fill or [slab]. Forest keeps mistDeep.
+  static Color glyphMuted(BuildContext context) => isForest(context)
+      ? PrayerCastColors.mistDeep
+      : Theme.of(context).colorScheme.onSurfaceVariant;
+
+  /// Dropdown and field value. Forest keeps [PrayerCastTheme.forestDropdown].
+  static TextStyle fieldValue(BuildContext context) =>
+      PrayerCastTheme.forestDropdown.copyWith(color: glyph(context));
+
   /// Dawn on both forest and light.
   static Color hairline(BuildContext context) =>
       switch (Theme.of(context).brightness) {

@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../home_delivery/ui/theme/prayer_cast_colors.dart';
 import '../../home_delivery/ui/theme/prayer_cast_theme.dart';
+import '../../home_delivery/ui/theme/prayer_cast_tokens.dart';
 import '../../home_delivery/ui/widgets/editorial_chrome.dart';
 import '../../l10n/l10n_ext.dart';
 import '../../prayer_times/location_resolver.dart';
@@ -968,8 +969,11 @@ class _MosqueRow extends StatelessWidget {
     final distance =
         '${formatDistanceMeters(mosque.distanceMeters, isId: isId)} \u00B7 '
         '${cardinalLabel(mosque.bearingDegrees, isId: isId)}';
+    final forest = PrayerCastTokens.isForest(context);
     return Material(
-      color: selected ? PrayerCastColors.canopy : PrayerCastColors.canopyDeep,
+      color: selected
+          ? (forest ? PrayerCastColors.canopy : PrayerCastColors.atmosphere)
+          : PrayerCastTokens.slab(context),
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         key: ValueKey<String>('mosque_row_${mosque.id}'),
@@ -985,8 +989,10 @@ class _MosqueRow extends StatelessWidget {
                     : Icons.meeting_room_outlined,
                 size: 18,
                 color: selected
-                    ? PrayerCastColors.dawnSoft
-                    : PrayerCastColors.mistDeep,
+                    ? (forest
+                          ? PrayerCastColors.dawnSoft
+                          : PrayerCastColors.dawn)
+                    : PrayerCastTokens.glyphMuted(context),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -1008,9 +1014,11 @@ class _MosqueRow extends StatelessWidget {
                 key: ValueKey<String>('mosque_open_${mosque.id}'),
                 onPressed: onOpenExternal,
                 tooltip: isId ? 'Buka di peta' : 'Open in maps',
-                icon: const Icon(
+                icon: Icon(
                   Icons.directions_outlined,
-                  color: PrayerCastColors.dawnSoft,
+                  color: forest
+                      ? PrayerCastColors.dawnSoft
+                      : PrayerCastColors.dawn,
                 ),
               ),
             ],
@@ -1055,7 +1063,11 @@ class _MosqueError extends StatelessWidget {
             onPressed: onRetry,
             child: Text(
               isId ? 'Coba lagi' : 'Try again',
-              style: const TextStyle(color: PrayerCastColors.dawnSoft),
+              style: TextStyle(
+                color: PrayerCastTokens.isForest(context)
+                    ? PrayerCastColors.dawnSoft
+                    : PrayerCastColors.dawn,
+              ),
             ),
           ),
         ],

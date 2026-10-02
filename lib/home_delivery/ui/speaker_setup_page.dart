@@ -13,6 +13,7 @@ import 'home_setup_providers.dart';
 import 'icons/premium_icons.dart';
 import 'theme/prayer_cast_colors.dart';
 import 'theme/prayer_cast_theme.dart';
+import 'theme/prayer_cast_tokens.dart';
 import 'widgets/cast_scan_spinner.dart';
 import 'widgets/editorial_chrome.dart';
 import 'widgets/oem_battery_banner.dart';
@@ -1047,7 +1048,7 @@ class _SpeakerTile extends StatelessWidget {
                       style: text.bodyMedium?.copyWith(
                         color: saving
                             ? PrayerCastColors.dawnSoft
-                            : PrayerCastColors.mistDeep,
+                            : PrayerCastTokens.glyphMuted(context),
                       ),
                     ),
                   ],
@@ -1056,10 +1057,10 @@ class _SpeakerTile extends StatelessWidget {
               if (selecting)
                 const SizedBox.shrink()
               else if (saving)
-                const CastScanSpinner(
+                CastScanSpinner(
                   size: 22,
                   strokeWidth: 2.4,
-                  color: PrayerCastColors.mist,
+                  color: PrayerCastTokens.glyph(context),
                   trackColor: PrayerCastColors.inkSoft,
                   pulse: false,
                 )
@@ -1080,7 +1081,7 @@ class _SpeakerTile extends StatelessWidget {
               else
                 PremiumIcons.caretRight(
                   size: 22,
-                  color: PrayerCastColors.mistDeep,
+                  color: PrayerCastTokens.glyphMuted(context),
                 ),
             ],
           ),
@@ -1133,7 +1134,9 @@ class _SelectMark extends StatelessWidget {
         color: checked ? PrayerCastColors.leaf : Colors.transparent,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: checked ? PrayerCastColors.leaf : PrayerCastColors.mistDeep,
+          color: checked
+              ? PrayerCastColors.leaf
+              : PrayerCastTokens.glyphMuted(context),
           width: 1.4,
         ),
       ),

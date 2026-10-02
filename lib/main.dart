@@ -1152,7 +1152,7 @@ class _SpeakerBand extends StatelessWidget {
               : '$speakerName · not on WiFi')
         : speakerName!;
     return ColoredBox(
-      color: PrayerCastColors.canopyDeep,
+      color: PrayerCastTokens.slab(context),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(28, 4, 16, 20),
         child: Column(
@@ -1184,13 +1184,13 @@ class _SpeakerBand extends StatelessWidget {
                             children: [
                               Text(
                                 l10n.changeHomeSpeaker,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: PrayerCastTheme.displayFont,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
                                   letterSpacing: -0.1,
                                   height: 1.2,
-                                  color: PrayerCastColors.surfaceRaised,
+                                  color: PrayerCastTokens.onSurface(context),
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -1198,11 +1198,11 @@ class _SpeakerBand extends StatelessWidget {
                                 subtitle,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: PrayerCastTheme.bodyFont,
                                   fontSize: 13,
                                   height: 1.35,
-                                  color: PrayerCastColors.mistDeep,
+                                  color: PrayerCastTokens.glyphMuted(context),
                                 ),
                               ),
                             ],
@@ -1210,7 +1210,7 @@ class _SpeakerBand extends StatelessWidget {
                         ),
                         PremiumIcons.caretRight(
                           size: 18,
-                          color: PrayerCastColors.mist,
+                          color: PrayerCastTokens.glyph(context),
                         ),
                       ],
                     ),
@@ -1293,7 +1293,9 @@ class _PipeDivider extends StatelessWidget {
       width: slotWidth,
       child: Center(
         child: ColoredBox(
-          color: PrayerCastColors.mistDeep.withValues(alpha: 0.55),
+          color: PrayerCastTokens.isForest(context)
+              ? PrayerCastColors.mistDeep.withValues(alpha: 0.55)
+              : PrayerCastColors.ink.withValues(alpha: 0.22),
           child: const SizedBox(width: 1, height: 20),
         ),
       ),

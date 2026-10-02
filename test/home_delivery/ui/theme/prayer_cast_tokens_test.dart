@@ -5,6 +5,7 @@ import 'package:prayer_cast/home_delivery/ui/app_settings_page.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_tokens.dart';
+import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
 import 'package:prayer_cast/l10n/app_localizations.dart';
 import 'package:prayer_cast/l10n/locale_controller.dart';
 
@@ -81,5 +82,57 @@ void main() {
 
     final context = tester.element(find.byKey(AppSettingsPage.keyName));
     expect(Theme.of(context).brightness, Brightness.light);
+  });
+
+  testWidgets('light slab is dark type on a light fill', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PrayerCastTheme.light(),
+        darkTheme: PrayerCastTheme.forest(),
+        themeMode: ThemeMode.light,
+        home: const Scaffold(body: InkSurface(child: Text('Fajr'))),
+      ),
+    );
+
+    final box = tester.widget<DecoratedBox>(
+      find
+          .descendant(
+            of: find.byType(InkSurface),
+            matching: find.byType(DecoratedBox),
+          )
+          .first,
+    );
+    final decoration = box.decoration! as BoxDecoration;
+    expect(decoration.color, PrayerCastColors.surface);
+    expect(decoration.color, isNot(PrayerCastColors.canopyDeep));
+
+    final color = DefaultTextStyle.of(
+      tester.element(find.text('Fajr')),
+    ).style.color;
+    expect(color, PrayerCastColors.inkSoft);
+    expect(color, isNot(PrayerCastColors.mist));
+    expect(color, isNot(PrayerCastColors.surfaceRaised));
+  });
+
+  testWidgets('forest slab stays canopyDeep', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PrayerCastTheme.light(),
+        darkTheme: PrayerCastTheme.forest(),
+        themeMode: ThemeMode.dark,
+        home: const Scaffold(body: InkSurface(child: Text('Fajr'))),
+      ),
+    );
+
+    final box = tester.widget<DecoratedBox>(
+      find
+          .descendant(
+            of: find.byType(InkSurface),
+            matching: find.byType(DecoratedBox),
+          )
+          .first,
+    );
+    final decoration = box.decoration! as BoxDecoration;
+    expect(decoration.color, PrayerCastColors.canopyDeep);
   });
 }

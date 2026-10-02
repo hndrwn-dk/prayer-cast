@@ -21,9 +21,12 @@ class EditorialEyebrow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ink = color == PrayerCastColors.mistDeep
+        ? PrayerCastTokens.glyphMuted(context)
+        : color;
     return Text(
       label.toUpperCase(),
-      style: PrayerCastTheme.editorialEyebrow(color),
+      style: PrayerCastTheme.editorialEyebrow(ink),
     );
   }
 }
@@ -149,10 +152,13 @@ class InkSurface extends StatelessWidget {
     final radius = BorderRadius.circular(borderRadius);
     final content = Padding(padding: padding, child: child);
     final border = borderColor;
+    final fill = color == PrayerCastColors.canopyDeep
+        ? PrayerCastTokens.slab(context)
+        : color;
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: color,
+        color: fill,
         borderRadius: radius,
         border: border == null
             ? null

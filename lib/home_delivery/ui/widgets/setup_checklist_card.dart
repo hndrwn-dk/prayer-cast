@@ -6,6 +6,7 @@ import 'package:prayer_cast/home_delivery/ui/home_setup_providers.dart';
 import 'package:prayer_cast/home_delivery/ui/icons/premium_icons.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
+import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_tokens.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 import 'package:prayer_cast/prayer_times/prayer_times_providers.dart';
@@ -115,7 +116,7 @@ class SetupChecklistCard extends ConsumerWidget {
     final showDelivery = speaker == null && flags.noSpeaker;
 
     return ColoredBox(
-      color: PrayerCastColors.canopyDeep,
+      color: PrayerCastTokens.slab(context),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(28, 0, 16, 16),
         child: Material(

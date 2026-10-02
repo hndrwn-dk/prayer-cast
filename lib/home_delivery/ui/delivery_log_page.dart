@@ -14,6 +14,7 @@ import 'outcome_status.dart';
 import 'theme/atmosphere_background.dart';
 import 'theme/prayer_cast_colors.dart';
 import 'theme/prayer_cast_theme.dart';
+import 'theme/prayer_cast_tokens.dart';
 import 'widgets/editorial_chrome.dart';
 
 /// Local-only delivery attempt history (spec §6.3).
@@ -155,7 +156,7 @@ class _DeliveryLogPageState extends ConsumerState<DeliveryLogPage> {
                               children: [
                                 PremiumIcons.clock(
                                   size: 56,
-                                  color: PrayerCastColors.mist,
+                                  color: PrayerCastTokens.glyph(context),
                                 ),
                                 const SizedBox(height: 16),
                                 Text(

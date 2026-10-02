@@ -321,7 +321,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                 children: [
                                   PremiumIcons.house(
                                     size: 20,
-                                    color: PrayerCastColors.mist,
+                                    color: PrayerCastTokens.glyph(context),
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
@@ -383,7 +383,10 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                         controller: _cityController,
                                         textCapitalization:
                                             TextCapitalization.words,
-                                        decoration: _fieldDecoration(l10n.city),
+                                        decoration: _fieldDecoration(
+                                          context,
+                                          l10n.city,
+                                        ),
                                         onChanged: (v) {
                                           setState(() {
                                             _draft = draft.copyWith(
@@ -400,6 +403,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                         textCapitalization:
                                             TextCapitalization.words,
                                         decoration: _fieldDecoration(
+                                          context,
                                           l10n.country,
                                         ),
                                         onChanged: (v) {
@@ -459,7 +463,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                       draft.methodId,
                                     ),
                                     isExpanded: true,
-                                    style: PrayerCastTheme.forestDropdown,
+                                    style: PrayerCastTokens.fieldValue(context),
                                     items: [
                                       for (final m in AladhanMethods.common)
                                         DropdownMenuItem(
@@ -477,7 +481,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                       setState(() => _draft = next);
                                       unawaited(_refreshSchedule(next));
                                     },
-                                    decoration: _fieldDecoration(null),
+                                    decoration: _fieldDecoration(context, null),
                                   ),
                                   if (_isAutoMethod(draft))
                                     Padding(
@@ -499,7 +503,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                 key: ValueKey('madhab-${draft.madhabId}'),
                                 initialValue: draft.madhabId,
                                 isExpanded: true,
-                                style: PrayerCastTheme.forestDropdown,
+                                style: PrayerCastTokens.fieldValue(context),
                                 items: [
                                   DropdownMenuItem(
                                     value: PrayerMadhabId.shafi,
@@ -520,7 +524,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                   });
                                   unawaited(_refreshSchedule(next));
                                 },
-                                decoration: _fieldDecoration(null),
+                                decoration: _fieldDecoration(context, null),
                               ),
                               const SizedBox(height: 8),
                               Text(
@@ -947,8 +951,8 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
     return found;
   }
 
-  static InputDecoration _fieldDecoration(String? label) {
-    return PrayerCastTheme.darkField(label);
+  static InputDecoration _fieldDecoration(BuildContext context, String? label) {
+    return PrayerCastTheme.darkField(context, label);
   }
 
   static int _methodOrFallback(int id) {
@@ -982,7 +986,7 @@ class _CastFallbackCard extends StatelessWidget {
     final isId = Localizations.localeOf(context).languageCode == 'id';
     final text = Theme.of(context).textTheme;
     return Material(
-      color: PrayerCastColors.canopyDeep,
+      color: PrayerCastTokens.slab(context),
       borderRadius: BorderRadius.circular(14),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
@@ -1001,7 +1005,9 @@ class _CastFallbackCard extends StatelessWidget {
               isId
                   ? 'Hanya bila speaker rumah sudah disimpan. Putar Adhan di ponsel jika Cast gagal (atau nada singkat jika lokasi rumah belum yakin).'
                   : 'Only when a home speaker is saved. Play Adhan on this phone if Cast fails (or a short chime if home presence is uncertain).',
-              style: text.bodySmall?.copyWith(color: PrayerCastColors.mistDeep),
+              style: text.bodySmall?.copyWith(
+                color: PrayerCastTokens.glyphMuted(context),
+              ),
             ),
           ),
           value: enabled,
@@ -1033,7 +1039,7 @@ class _PrePrayerAlertCard extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final selectedMinutes = _normalizedMinutes(minutes);
     return Material(
-      color: PrayerCastColors.canopyDeep,
+      color: PrayerCastTokens.slab(context),
       borderRadius: BorderRadius.circular(14),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -1056,8 +1062,8 @@ class _PrePrayerAlertCard extends StatelessWidget {
               key: ValueKey('pre-prayer-minutes-$selectedMinutes'),
               initialValue: selectedMinutes,
               isExpanded: true,
-              style: PrayerCastTheme.forestDropdown,
-              dropdownColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+              style: PrayerCastTokens.fieldValue(context),
+              dropdownColor: PrayerCastTokens.slab(context),
               items: [
                 for (final m in const [0, 10, 15])
                   DropdownMenuItem(
@@ -1073,8 +1079,11 @@ class _PrePrayerAlertCard extends StatelessWidget {
                 if (value == null) return;
                 onChanged(value);
               },
-              decoration: _PrayerSettingsPageState._fieldDecoration(null)
-                  .copyWith(
+              decoration:
+                  _PrayerSettingsPageState._fieldDecoration(
+                    context,
+                    null,
+                  ).copyWith(
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -1093,10 +1102,8 @@ class _PrePrayerAlertCard extends StatelessWidget {
                 key: ValueKey('pre-prayer-sound-${sound.name}'),
                 initialValue: sound,
                 isExpanded: true,
-                style: PrayerCastTheme.forestDropdown,
-                dropdownColor: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHigh,
+                style: PrayerCastTokens.fieldValue(context),
+                dropdownColor: PrayerCastTokens.slab(context),
                 items: [
                   DropdownMenuItem(
                     value: PrePrayerAlertSound.shortBeep,
@@ -1111,8 +1118,11 @@ class _PrePrayerAlertCard extends StatelessWidget {
                   if (value == null) return;
                   onSoundChanged(value);
                 },
-                decoration: _PrayerSettingsPageState._fieldDecoration(null)
-                    .copyWith(
+                decoration:
+                    _PrayerSettingsPageState._fieldDecoration(
+                      context,
+                      null,
+                    ).copyWith(
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -1147,7 +1157,7 @@ class _IqamahReminderCard extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final anyOn = _prayers.any((p) => draft.iqamahMinutesFor(p) > 0);
     return Material(
-      color: PrayerCastColors.canopyDeep,
+      color: PrayerCastTokens.slab(context),
       borderRadius: BorderRadius.circular(14),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -1184,10 +1194,8 @@ class _IqamahReminderCard extends StatelessWidget {
                       ),
                       initialValue: draft.iqamahMinutesFor(prayer),
                       isExpanded: true,
-                      style: PrayerCastTheme.forestDropdown,
-                      dropdownColor: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHigh,
+                      style: PrayerCastTokens.fieldValue(context),
+                      dropdownColor: PrayerCastTokens.slab(context),
                       items: [
                         for (final m in const [0, 5, 10, 15, 20])
                           DropdownMenuItem(
@@ -1205,6 +1213,7 @@ class _IqamahReminderCard extends StatelessWidget {
                       },
                       decoration:
                           _PrayerSettingsPageState._fieldDecoration(
+                            context,
                             null,
                           ).copyWith(
                             isDense: true,
@@ -1229,10 +1238,8 @@ class _IqamahReminderCard extends StatelessWidget {
                 key: ValueKey('iqamah-sound-${draft.iqamahSound.name}'),
                 initialValue: draft.iqamahSound,
                 isExpanded: true,
-                style: PrayerCastTheme.forestDropdown,
-                dropdownColor: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHigh,
+                style: PrayerCastTokens.fieldValue(context),
+                dropdownColor: PrayerCastTokens.slab(context),
                 items: [
                   DropdownMenuItem(
                     value: IqamahSound.silent,
@@ -1247,8 +1254,11 @@ class _IqamahReminderCard extends StatelessWidget {
                   if (value == null) return;
                   onSoundChanged(value);
                 },
-                decoration: _PrayerSettingsPageState._fieldDecoration(null)
-                    .copyWith(
+                decoration:
+                    _PrayerSettingsPageState._fieldDecoration(
+                      context,
+                      null,
+                    ).copyWith(
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -1426,7 +1436,7 @@ class PrayerScheduleTile extends StatelessWidget {
                 onTap: () async {
                   final mode = await showModalBottomSheet<PrayerDeliveryMode>(
                     context: context,
-                    backgroundColor: scheme.surfaceContainerHigh,
+                    backgroundColor: PrayerCastTokens.slab(context),
                     builder: (context) {
                       return SafeArea(
                         child: Column(
@@ -1491,7 +1501,7 @@ class PrayerScheduleTile extends StatelessWidget {
                 onTap: () async {
                   final id = await showModalBottomSheet<String>(
                     context: context,
-                    backgroundColor: scheme.surfaceContainerHigh,
+                    backgroundColor: PrayerCastTokens.slab(context),
                     builder: (context) {
                       return SafeArea(
                         child: Column(
@@ -1555,7 +1565,9 @@ class _PickerTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+      color: PrayerCastTokens.isForest(context)
+          ? scheme.surfaceContainerHighest.withValues(alpha: 0.35)
+          : PrayerCastColors.ink.withValues(alpha: 0.06),
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: enabled ? onTap : null,
@@ -1567,7 +1579,7 @@ class _PickerTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: PrayerCastTheme.forestDropdown,
+                  style: PrayerCastTokens.fieldValue(context),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -1630,7 +1642,7 @@ class _CastVolumeControl extends StatelessWidget {
                   size: 20,
                   color: useSpeaker
                       ? PrayerCastColors.dawn
-                      : PrayerCastColors.mistDeep,
+                      : PrayerCastTokens.glyphMuted(context),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -1662,7 +1674,7 @@ class _CastVolumeControl extends StatelessWidget {
                   '${(((volume ?? 0.5) * 100).round())}%',
                   textAlign: TextAlign.end,
                   style: text.bodySmall?.copyWith(
-                    color: PrayerCastColors.mistDeep,
+                    color: PrayerCastTokens.glyphMuted(context),
                   ),
                 ),
               ),

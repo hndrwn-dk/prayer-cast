@@ -4,15 +4,13 @@ import 'package:flutter/material.dart';
 
 import '../icons/premium_icons.dart';
 import '../theme/prayer_cast_colors.dart';
+import '../theme/prayer_cast_tokens.dart';
 
 /// Soft radiating rings around a speaker icon — “searching”, not a Material spinner.
 ///
 /// Loop is ~1.2s so repeat visits stay calm.
 class SpeakerSearchPulse extends StatefulWidget {
-  const SpeakerSearchPulse({
-    super.key,
-    this.size = 96,
-  });
+  const SpeakerSearchPulse({super.key, this.size = 96});
 
   final double size;
 
@@ -51,7 +49,10 @@ class _SpeakerSearchPulseState extends State<SpeakerSearchPulse>
           animation: _controller,
           builder: (context, _) {
             return CustomPaint(
-              painter: _PulseRingsPainter(progress: _controller.value),
+              painter: _PulseRingsPainter(
+                progress: _controller.value,
+                color: PrayerCastTokens.glyph(context),
+              ),
               child: Center(
                 child: Container(
                   width: size * 0.42,
@@ -76,9 +77,10 @@ class _SpeakerSearchPulseState extends State<SpeakerSearchPulse>
 }
 
 class _PulseRingsPainter extends CustomPainter {
-  _PulseRingsPainter({required this.progress});
+  _PulseRingsPainter({required this.progress, required this.color});
 
   final double progress;
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -90,7 +92,7 @@ class _PulseRingsPainter extends CustomPainter {
       final radius = maxR * (0.28 + 0.72 * t);
       final opacity = (1.0 - t) * 0.45;
       final paint = Paint()
-        ..color = PrayerCastColors.mist.withValues(alpha: opacity)
+        ..color = color.withValues(alpha: opacity)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.0;
       canvas.drawCircle(center, radius, paint);
@@ -99,6 +101,6 @@ class _PulseRingsPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _PulseRingsPainter oldDelegate) {
-    return oldDelegate.progress != progress;
+    return oldDelegate.progress != progress || oldDelegate.color != color;
   }
 }

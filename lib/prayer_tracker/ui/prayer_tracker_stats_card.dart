@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../home_delivery/ui/icons/premium_icons.dart';
 import '../../home_delivery/ui/theme/prayer_cast_colors.dart';
 import '../../home_delivery/ui/theme/prayer_cast_theme.dart';
+import '../../home_delivery/ui/theme/prayer_cast_tokens.dart';
 import '../../l10n/l10n_ext.dart';
 import '../prayer_tracker_providers.dart';
 import '../prayer_tracker_stats.dart';
@@ -20,7 +21,7 @@ class PrayerTrackerStatsCard extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
 
     return Material(
-      color: PrayerCastColors.canopyDeep,
+      color: PrayerCastTokens.slab(context),
       borderRadius: BorderRadius.circular(14),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -191,7 +192,9 @@ class _StatsBody extends StatelessWidget {
             Expanded(
               child: _RateTile(
                 label: isId ? 'Jamaah' : 'In mosque',
-                value: stats.placedSlots == 0 ? '--' : '${stats.jamaahPercent}%',
+                value: stats.placedSlots == 0
+                    ? '--'
+                    : '${stats.jamaahPercent}%',
                 detail: stats.placedSlots == 0
                     ? (isId ? 'belum ada' : 'none yet')
                     : '${stats.jamaah}/${stats.placedSlots}',
@@ -212,15 +215,14 @@ class _StatsBody extends StatelessWidget {
         const SizedBox(height: 16),
         Text(
           isId ? 'Per sholat' : 'By prayer',
-          style: text.labelMedium?.copyWith(color: PrayerCastColors.mist),
+          style: text.labelMedium?.copyWith(
+            color: PrayerCastTokens.glyph(context),
+          ),
         ),
         const SizedBox(height: 8),
         for (final prayer in kTrackedPrayers)
           _PrayerBar(
-            name: prayerDisplayName(
-              context.l10n,
-              prayer,
-            ),
+            name: prayerDisplayName(context.l10n, prayer),
             logged: stats.loggedByPrayer[prayer] ?? 0,
             possible: stats.elapsedDays,
           ),
@@ -292,7 +294,7 @@ class _InsightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: PrayerCastColors.canopyDeep,
+      color: PrayerCastTokens.slab(context),
       borderRadius: BorderRadius.circular(14),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -302,10 +304,7 @@ class _InsightCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: insight.positive
-                  ? PremiumIcons.trendUp(
-                      size: 20,
-                      color: PrayerCastColors.leaf,
-                    )
+                  ? PremiumIcons.trendUp(size: 20, color: PrayerCastColors.leaf)
                   : PremiumIcons.alertCircle(
                       size: 20,
                       color: PrayerCastColors.dawn,
@@ -316,9 +315,9 @@ class _InsightCard extends StatelessWidget {
               child: Text(
                 insight.text,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: PrayerCastColors.mist,
-                      height: 1.4,
-                    ),
+                  color: PrayerCastTokens.glyph(context),
+                  height: 1.4,
+                ),
               ),
             ),
           ],
@@ -348,15 +347,15 @@ class _HeroMetric extends StatelessWidget {
         Text(
           value,
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: PrayerCastColors.surfaceRaised,
-              ),
+            color: PrayerCastTokens.onSurface(context),
+          ),
         ),
         const SizedBox(height: 2),
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: PrayerCastColors.mist,
-              ),
+            color: PrayerCastTokens.glyph(context),
+          ),
         ),
       ],
     );
@@ -426,8 +425,8 @@ class _HeatStrip extends StatelessWidget {
         Text(
           isId ? 'Peta 5 sholat / hari' : 'Map of 5 prayers / day',
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: PrayerCastColors.mist,
-              ),
+            color: PrayerCastTokens.glyph(context),
+          ),
         ),
         const SizedBox(height: 8),
         if (monthGrid)
@@ -465,9 +464,9 @@ class _HeatStrip extends StatelessWidget {
               ? 'Kosong = belum tercatat. Penuh = 5/5.'
               : 'Empty = not logged. Solid = 5/5.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: PrayerCastColors.mist,
-                fontSize: 11,
-              ),
+            color: PrayerCastTokens.glyph(context),
+            fontSize: 11,
+          ),
         ),
       ],
     );
@@ -510,12 +509,32 @@ class _YearBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const namesId = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
     const namesEn = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final names = isId ? namesId : namesEn;
     return Column(
@@ -524,8 +543,8 @@ class _YearBars extends StatelessWidget {
         Text(
           isId ? 'Isi per bulan' : 'Fill by month',
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: PrayerCastColors.mist,
-              ),
+            color: PrayerCastTokens.glyph(context),
+          ),
         ),
         const SizedBox(height: 10),
         SizedBox(
@@ -594,9 +613,9 @@ class _MonthBar extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: PrayerCastColors.mistDeep,
-                fontSize: 9,
-              ),
+            color: PrayerCastTokens.glyphMuted(context),
+            fontSize: 9,
+          ),
         ),
       ],
     );
@@ -627,8 +646,8 @@ class _PrayerBar extends StatelessWidget {
             child: Text(
               name,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: PrayerCastColors.mist,
-                  ),
+                color: PrayerCastTokens.glyph(context),
+              ),
             ),
           ),
           Expanded(
@@ -661,9 +680,9 @@ class _PrayerBar extends StatelessWidget {
               '$logged/$possible',
               textAlign: TextAlign.right,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: PrayerCastColors.mistDeep,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
+                color: PrayerCastTokens.glyphMuted(context),
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
         ],

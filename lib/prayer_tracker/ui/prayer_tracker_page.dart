@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../home_delivery/ui/icons/premium_icons.dart';
 import '../../home_delivery/ui/theme/prayer_cast_colors.dart';
 import '../../home_delivery/ui/theme/prayer_cast_theme.dart';
+import '../../home_delivery/ui/theme/prayer_cast_tokens.dart';
 import '../../home_delivery/ui/widgets/editorial_chrome.dart';
 import '../../l10n/l10n_ext.dart';
 import '../prayer_tracker_providers.dart';
@@ -44,7 +45,10 @@ class _PrayerTrackerPageState extends ConsumerState<PrayerTrackerPage> {
           key: const ValueKey<String>('prayer_tracker_stats_button'),
           tooltip: isId ? 'Jejak ibadah' : 'Your rhythm',
           onPressed: () => _openRhythm(context),
-          icon: PremiumIcons.bars(size: 22, color: PrayerCastColors.mist),
+          icon: PremiumIcons.bars(
+            size: 22,
+            color: PrayerCastTokens.glyph(context),
+          ),
         ),
       ),
       slivers: [
@@ -234,7 +238,7 @@ class _TodaySummaryCard extends StatelessWidget {
     }
 
     return Material(
-      color: PrayerCastColors.canopyDeep,
+      color: PrayerCastTokens.slab(context),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
@@ -251,7 +255,7 @@ class _TodaySummaryCard extends StatelessWidget {
               Text(
                 parts.join(' · '),
                 style: text.bodySmall?.copyWith(
-                  color: PrayerCastColors.mist,
+                  color: PrayerCastTokens.glyph(context),
                   fontSize: 12,
                 ),
               ),
@@ -319,7 +323,7 @@ class _PrayerLogCard extends StatelessWidget {
     final e = entry;
 
     return Material(
-      color: PrayerCastColors.canopyDeep,
+      color: PrayerCastTokens.slab(context),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 6, 8, 8),
@@ -353,10 +357,10 @@ class _PrayerLogCard extends StatelessWidget {
                       height: 32,
                     ),
                     padding: EdgeInsets.zero,
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.close,
                       size: 16,
-                      color: PrayerCastColors.mist,
+                      color: PrayerCastTokens.glyph(context),
                     ),
                   ),
               ],
@@ -531,7 +535,7 @@ class _ReflectionCard extends StatelessWidget {
     final tip = tips[now.difference(DateTime(now.year)).inDays % tips.length];
 
     return Material(
-      color: PrayerCastColors.canopyDeep,
+      color: PrayerCastTokens.slab(context),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
@@ -560,7 +564,7 @@ class _ReflectionCard extends StatelessWidget {
                   child: Text(
                     headline,
                     style: text.bodySmall?.copyWith(
-                      color: PrayerCastColors.mist,
+                      color: PrayerCastTokens.glyph(context),
                       height: 1.35,
                     ),
                   ),
@@ -571,7 +575,7 @@ class _ReflectionCard extends StatelessWidget {
             Text(
               tip,
               style: text.bodySmall?.copyWith(
-                color: PrayerCastColors.mistDeep,
+                color: PrayerCastTokens.glyphMuted(context),
                 height: 1.4,
               ),
             ),
@@ -600,7 +604,7 @@ class _StreakCard extends ConsumerWidget {
         : (isId ? 'hari rantai' : 'day streak');
 
     return Material(
-      color: PrayerCastColors.canopyDeep,
+      color: PrayerCastTokens.slab(context),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
@@ -613,7 +617,9 @@ class _StreakCard extends ConsumerWidget {
               children: [
                 PremiumIcons.flame(
                   size: 28,
-                  color: young ? PrayerCastColors.mist : PrayerCastColors.dawn,
+                  color: young
+                      ? PrayerCastTokens.glyph(context)
+                      : PrayerCastColors.dawn,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -631,7 +637,7 @@ class _StreakCard extends ConsumerWidget {
                       Text(
                         subtitle,
                         style: text.bodySmall?.copyWith(
-                          color: PrayerCastColors.mist,
+                          color: PrayerCastTokens.glyph(context),
                           fontSize: 12,
                         ),
                       ),
@@ -676,7 +682,7 @@ class _QadhaCard extends ConsumerWidget {
                     : '$total prayers outstanding.'));
 
     return Material(
-      color: PrayerCastColors.canopyDeep,
+      color: PrayerCastTokens.slab(context),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
@@ -689,7 +695,7 @@ class _QadhaCard extends ConsumerWidget {
               subtitle,
               key: const ValueKey<String>('prayer_tracker_qadha_total'),
               style: text.bodySmall?.copyWith(
-                color: PrayerCastColors.mist,
+                color: PrayerCastTokens.glyph(context),
                 fontSize: 12,
               ),
             ),

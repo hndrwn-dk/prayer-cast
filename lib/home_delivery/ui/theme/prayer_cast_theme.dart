@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'prayer_cast_colors.dart';
+import 'prayer_cast_tokens.dart';
 
 /// Premium, high-legibility theme for young and older users.
 ///
@@ -539,15 +540,20 @@ abstract final class PrayerCastTheme {
     fontVariations: [FontVariation('wght', 300)],
   );
 
-  static InputDecoration darkField(String? label) {
+  static InputDecoration darkField(BuildContext context, String? label) {
+    final forest = PrayerCastTokens.isForest(context);
     return InputDecoration(
       labelText: label,
       filled: true,
-      fillColor: PrayerCastColors.canopyDeep,
-      labelStyle: const TextStyle(
+      fillColor: forest
+          ? PrayerCastColors.canopyDeep
+          : PrayerCastTokens.surface(context),
+      labelStyle: TextStyle(
         fontFamily: bodyFont,
         fontSize: 14,
-        color: PrayerCastColors.mistDeep,
+        color: forest
+            ? PrayerCastColors.mistDeep
+            : PrayerCastTokens.onSurface(context),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
