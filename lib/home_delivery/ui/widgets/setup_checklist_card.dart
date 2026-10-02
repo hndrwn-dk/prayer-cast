@@ -39,17 +39,27 @@ bool shouldShowSetupCard({
   return true;
 }
 
-/// Saved phone delivery: adhan on this phone, beep, or takbir.
-///
-/// Cast stays unticked. The row reads the persisted default, so the tick
-/// appears after settings are saved.
-bool setupCardDeliveryDone(PrayerDeliveryMode mode) {
+bool _setupCardPhoneDeliveryMode(PrayerDeliveryMode mode) {
   return switch (mode) {
     PrayerDeliveryMode.adhanPhone ||
     PrayerDeliveryMode.beep ||
     PrayerDeliveryMode.takbir => true,
     PrayerDeliveryMode.cast => false,
   };
+}
+
+/// Saved phone delivery: adhan on this phone, beep, or takbir.
+///
+/// Cast stays unticked. Matches persisted [PrayerPrefs.defaultDeliveryMode]
+/// or any per-prayer entry in [PrayerPrefs.deliveryByPrayer].
+bool setupCardDeliveryDone(PrayerPrefs prefs) {
+  if (_setupCardPhoneDeliveryMode(prefs.defaultDeliveryMode)) return true;
+  for (final raw in prefs.deliveryByPrayer.values) {
+    if (_setupCardPhoneDeliveryMode(PrayerDeliveryModeX.parse(raw))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 class SetupChecklistCard extends ConsumerWidget {
@@ -160,7 +170,7 @@ class SetupChecklistCard extends ConsumerWidget {
                   _SetupRow(
                     rowKey: SetupChecklistCard.deliveryKey,
                     label: l10n.setupCardDelivery,
-                    done: setupCardDeliveryDone(prefs.defaultDeliveryMode),
+                    done: setupCardDeliveryDone(prefs),
                     onTap: onOpenDelivery,
                   ),
                 _SetupRow(

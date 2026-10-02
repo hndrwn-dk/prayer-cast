@@ -184,5 +184,19 @@ void main() {
       await pumpMode(mode);
       expect(tick, findsOneWidget);
     }
+
+    await _pumpCard(
+      tester,
+      setupStore: MemorySetupCardStore(
+        const SetupCardFlags(noSpeaker: true, existingUserMigrated: true),
+      ),
+      prefsStore: MemoryPrayerPrefsStore(
+        PrayerPrefs.defaults.copyWith(
+          defaultDeliveryMode: PrayerDeliveryMode.cast,
+          deliveryByPrayer: const {'fajr': 'adhanPhone'},
+        ),
+      ),
+    );
+    expect(tick, findsOneWidget);
   });
 }
