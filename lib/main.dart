@@ -35,6 +35,7 @@ import 'package:prayer_cast/home_delivery/ui/spiritual_benefits_page.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/atmosphere_background.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
+import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_tokens.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/adhan_countdown.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/oem_battery_banner.dart';
@@ -603,12 +604,13 @@ class _HomeShellState extends ConsumerState<_HomeShell>
       orElse: () => null,
     );
 
+    final pageSurface = PrayerCastTokens.surface(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: PrayerCastTheme.forestSystemUi,
+      value: PrayerCastTokens.systemUi(context),
       child: Scaffold(
-        backgroundColor: PrayerCastColors.ink,
+        backgroundColor: pageSurface,
         body: ColoredBox(
-          color: PrayerCastColors.ink,
+          color: pageSurface,
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
@@ -694,13 +696,13 @@ class _HomeShellState extends ConsumerState<_HomeShell>
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: ColoredBox(
-                  color: PrayerCastColors.ink,
+                  color: pageSurface,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: IgnorePointer(
-                          child: ColoredBox(color: PrayerCastColors.ink),
+                          child: ColoredBox(color: pageSurface),
                         ),
                       ),
                       FadeSlideIn(
@@ -727,6 +729,18 @@ class _HomeShellState extends ConsumerState<_HomeShell>
     );
   }
 }
+
+Color _heroInk(BuildContext context) => PrayerCastTokens.isForest(context)
+    ? PrayerCastColors.surfaceRaised
+    : PrayerCastColors.ink;
+
+Color _heroMist(BuildContext context) => PrayerCastTokens.isForest(context)
+    ? PrayerCastColors.mist
+    : PrayerCastColors.inkSoft;
+
+Color _heroMistDeep(BuildContext context) => PrayerCastTokens.isForest(context)
+    ? PrayerCastColors.mistDeep
+    : PrayerCastColors.quiet;
 
 class _HomeHero extends StatelessWidget {
   const _HomeHero({
@@ -783,8 +797,11 @@ class _HomeHero extends StatelessWidget {
     final placeDetail = speakerLoading ? l10n.speakerLoading : speakerName;
 
     final insets = MediaQuery.viewPaddingOf(context);
+    final heroColor = PrayerCastTokens.isForest(context)
+        ? PrayerCastColors.canopyDeep
+        : PrayerCastColors.atmosphere;
     return ColoredBox(
-      color: PrayerCastColors.canopyDeep,
+      color: heroColor,
       child: Stack(
         children: [
           const Positioned.fill(child: CrescentField()),
@@ -875,7 +892,7 @@ class _HomeMasthead extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'PRAYER',
                   style: TextStyle(
                     fontFamily: PrayerCastTheme.displayFont,
@@ -884,12 +901,12 @@ class _HomeMasthead extends StatelessWidget {
                     fontStyle: FontStyle.italic,
                     letterSpacing: 3.2,
                     height: 1,
-                    color: PrayerCastColors.mist,
-                    fontVariations: [FontVariation('wght', 500)],
+                    color: _heroMist(context),
+                    fontVariations: const [FontVariation('wght', 500)],
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Cast',
                   style: TextStyle(
                     fontFamily: PrayerCastTheme.displayFont,
@@ -897,8 +914,8 @@ class _HomeMasthead extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                     letterSpacing: -0.3,
                     height: 1.05,
-                    color: PrayerCastColors.surfaceRaised,
-                    fontVariations: [FontVariation('wght', 500)],
+                    color: _heroInk(context),
+                    fontVariations: const [FontVariation('wght', 500)],
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -909,7 +926,7 @@ class _HomeMasthead extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SupportIconButton(color: PrayerCastColors.mist),
+              SupportIconButton(color: _heroMist(context)),
               IconButton(
                 key: const ValueKey<String>('home_settings'),
                 tooltip: l10n.settings,
@@ -919,7 +936,7 @@ class _HomeMasthead extends StatelessWidget {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   padding: const EdgeInsets.all(8),
                 ),
-                icon: PremiumIcons.gear(size: 22, color: PrayerCastColors.mist),
+                icon: PremiumIcons.gear(size: 22, color: _heroMist(context)),
               ),
             ],
           ),
@@ -956,13 +973,18 @@ class _NextAdhanJewel extends StatelessWidget {
     final child = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        EditorialEyebrow(l10n.nextAdhanEyebrow),
+        EditorialEyebrow(l10n.nextAdhanEyebrow, color: _heroMistDeep(context)),
         const SizedBox(height: 10),
         if (configured && time != null) ...[
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(time!, style: PrayerCastTheme.heroTime),
+            child: Text(
+              time!,
+              style: PrayerCastTheme.heroTime.copyWith(
+                color: _heroInk(context),
+              ),
+            ),
           ),
           if (scheduledAt != null) ...[
             const SizedBox(height: 8),
@@ -974,13 +996,13 @@ class _NextAdhanJewel extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               prayerName!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: PrayerCastTheme.displayFont,
                 fontSize: 22,
                 fontWeight: FontWeight.w400,
                 fontStyle: FontStyle.italic,
                 letterSpacing: 0.2,
-                color: PrayerCastColors.mist,
+                color: _heroMist(context),
               ),
             ),
           ],
@@ -992,12 +1014,12 @@ class _NextAdhanJewel extends StatelessWidget {
         ] else
           Text(
             emptyLabel ?? l10n.prayerNotConfigured,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: PrayerCastTheme.bodyFont,
               fontSize: 18,
               fontWeight: FontWeight.w700,
               height: 1.3,
-              color: PrayerCastColors.mist,
+              color: _heroMist(context),
             ),
           ),
       ],
@@ -1027,18 +1049,18 @@ class _PlaceAndPresence extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    const placeStyle = TextStyle(
+    final placeStyle = TextStyle(
       fontFamily: PrayerCastTheme.bodyFont,
       fontSize: 14,
       letterSpacing: 0.15,
       height: 1.45,
-      color: PrayerCastColors.mist,
+      color: _heroMist(context),
     );
-    const countryStyle = TextStyle(
+    final countryStyle = TextStyle(
       fontFamily: PrayerCastTheme.bodyFont,
       fontSize: 14,
       height: 1.45,
-      color: PrayerCastColors.mistDeep,
+      color: _heroMistDeep(context),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1071,7 +1093,7 @@ class _PlaceAndPresence extends StatelessWidget {
                     presenceLabel,
                     color: presenceLabel == l10n.speakerNotSelected
                         ? PrayerCastColors.dawn
-                        : PrayerCastColors.mistDeep,
+                        : _heroMistDeep(context),
                   ),
                   if (placeDetail != null && placeDetail!.isNotEmpty) ...[
                     const SizedBox(height: 3),
@@ -1079,11 +1101,11 @@ class _PlaceAndPresence extends StatelessWidget {
                       placeDetail!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: PrayerCastTheme.displayFont,
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
-                        color: PrayerCastColors.surfaceRaised,
+                        color: _heroInk(context),
                       ),
                     ),
                   ],
@@ -1299,7 +1321,7 @@ class _DestinationCell extends StatelessWidget {
       label: title,
       child: Material(
         key: cellKey,
-        color: PrayerCastColors.ink,
+        color: PrayerCastTokens.surface(context),
         child: InkWell(
           onTap: onTap,
           child: ConstrainedBox(
@@ -1325,13 +1347,13 @@ class _DestinationCell extends StatelessWidget {
                         maxLines: 1,
                         softWrap: false,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: PrayerCastTheme.displayFont,
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
                           height: 1.2,
                           letterSpacing: -0.2,
-                          color: PrayerCastColors.surfaceRaised,
+                          color: PrayerCastTokens.onSurface(context),
                         ),
                       ),
                     ),
@@ -1638,8 +1660,7 @@ final class _NoopCastPlatform implements CastPlatform {
   Future<bool> confirmSdkSighting(
     String deviceId, {
     Duration budget = const Duration(seconds: 4),
-  }) async =>
-      false;
+  }) async => false;
 
   @override
   Future<double> getVolume() async => 0.5;

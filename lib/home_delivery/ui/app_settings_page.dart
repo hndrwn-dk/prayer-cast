@@ -11,15 +11,12 @@ import 'delivery_log_page.dart';
 import 'icons/premium_icons.dart';
 import 'theme/prayer_cast_colors.dart';
 import 'theme/prayer_cast_theme.dart';
+import 'theme/prayer_cast_tokens.dart';
 import 'widgets/editorial_chrome.dart';
 
 /// Language, adhan history, about, and legal — off the home screen.
 class AppSettingsPage extends ConsumerWidget {
-  const AppSettingsPage({
-    super.key,
-    required this.version,
-    this.coordinator,
-  });
+  const AppSettingsPage({super.key, required this.version, this.coordinator});
 
   final String version;
   final PrayerDeliveryCoordinator? coordinator;
@@ -52,105 +49,101 @@ class AppSettingsPage extends ConsumerWidget {
         localeOverride?.languageCode ??
         Localizations.localeOf(context).languageCode;
 
-    return Theme(
-      data: PrayerCastTheme.forest(),
-      child: ForestScaffold(
-        header: EditorialPageHeader(
-          title: l10n.settings,
-          backTooltip: l10n.back,
-          onBack: () => Navigator.of(context).maybePop(),
-        ),
-        body: SingleChildScrollView(
-          key: keyName,
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              EditorialEyebrow(l10n.language, color: PrayerCastColors.dawn),
-              const SizedBox(height: 6),
-              Text(
-                l10n.languageHint,
-                style: const TextStyle(
-                  fontFamily: PrayerCastTheme.bodyFont,
-                  fontSize: 13,
-                  height: 1.35,
-                  color: PrayerCastColors.mistDeep,
-                ),
+    return ForestScaffold(
+      header: EditorialPageHeader(
+        title: l10n.settings,
+        backTooltip: l10n.back,
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
+      body: SingleChildScrollView(
+        key: keyName,
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            EditorialEyebrow(l10n.language, color: PrayerCastColors.dawn),
+            const SizedBox(height: 6),
+            Text(
+              l10n.languageHint,
+              style: TextStyle(
+                fontFamily: PrayerCastTheme.bodyFont,
+                fontSize: 13,
+                height: 1.35,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(height: 8),
-              _LanguageChoice(
-                rowKey: languageIdKey,
-                label: l10n.languageIndonesian,
-                selected: activeLang == 'id',
-                onTap: () => ref
-                    .read(appLocaleProvider.notifier)
-                    .setLocale(const Locale('id')),
-              ),
-              _LanguageChoice(
-                rowKey: languageEnKey,
-                label: l10n.languageEnglish,
-                selected: activeLang == 'en',
-                onTap: () => ref
-                    .read(appLocaleProvider.notifier)
-                    .setLocale(const Locale('en')),
-              ),
-              const SizedBox(height: 28),
-              _SettingsLink(
-                rowKey: deliveryLogKey,
-                title: l10n.deliveryLog,
-                subtitle: l10n.deliveryLogHint,
-                onTap: () {
-                  Navigator.of(context).push(
-                    PageRouteBuilder<void>(
-                      pageBuilder: (_, __, ___) => DeliveryLogPage(
-                        coordinator: coordinator,
-                      ),
-                      transitionsBuilder: (_, animation, __, child) {
-                        return FadeTransition(opacity: animation, child: child);
-                      },
-                      transitionDuration: const Duration(milliseconds: 280),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 28),
-              EditorialEyebrow(l10n.aboutEyebrow, color: PrayerCastColors.dawn),
-              const SizedBox(height: 8),
-              _SettingsFact(
-                rowKey: versionKey,
-                title: l10n.appVersion,
-                subtitle: version,
-              ),
-              _SettingsLink(
-                rowKey: rateKey,
-                title: l10n.rateApp,
-                subtitle: l10n.rateAppHint,
-                onTap: () => openPlayStoreUrl(context),
-              ),
-              _SettingsLink(
-                rowKey: shareKey,
-                title: l10n.shareApp,
-                subtitle: l10n.shareAppHint,
-                onTap: () =>
-                    sharePlainText(l10n.shareAppMessage(AppLinks.playStoreUrl)),
-              ),
-              const SizedBox(height: 28),
-              EditorialEyebrow(l10n.legalEyebrow, color: PrayerCastColors.dawn),
-              const SizedBox(height: 8),
-              _SettingsLink(
-                rowKey: privacyKey,
-                title: l10n.privacyPolicy,
-                subtitle: l10n.privacyPolicyHint,
-                onTap: () => openPrivacyPolicyUrl(context),
-              ),
-              _SettingsLink(
-                rowKey: termsKey,
-                title: l10n.termsOfService,
-                subtitle: l10n.termsOfServiceHint,
-                onTap: () => openTermsOfServiceUrl(context),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            _LanguageChoice(
+              rowKey: languageIdKey,
+              label: l10n.languageIndonesian,
+              selected: activeLang == 'id',
+              onTap: () => ref
+                  .read(appLocaleProvider.notifier)
+                  .setLocale(const Locale('id')),
+            ),
+            _LanguageChoice(
+              rowKey: languageEnKey,
+              label: l10n.languageEnglish,
+              selected: activeLang == 'en',
+              onTap: () => ref
+                  .read(appLocaleProvider.notifier)
+                  .setLocale(const Locale('en')),
+            ),
+            const SizedBox(height: 28),
+            _SettingsLink(
+              rowKey: deliveryLogKey,
+              title: l10n.deliveryLog,
+              subtitle: l10n.deliveryLogHint,
+              onTap: () {
+                Navigator.of(context).push(
+                  PageRouteBuilder<void>(
+                    pageBuilder: (_, __, ___) =>
+                        DeliveryLogPage(coordinator: coordinator),
+                    transitionsBuilder: (_, animation, __, child) {
+                      return FadeTransition(opacity: animation, child: child);
+                    },
+                    transitionDuration: const Duration(milliseconds: 280),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 28),
+            EditorialEyebrow(l10n.aboutEyebrow, color: PrayerCastColors.dawn),
+            const SizedBox(height: 8),
+            _SettingsFact(
+              rowKey: versionKey,
+              title: l10n.appVersion,
+              subtitle: version,
+            ),
+            _SettingsLink(
+              rowKey: rateKey,
+              title: l10n.rateApp,
+              subtitle: l10n.rateAppHint,
+              onTap: () => openPlayStoreUrl(context),
+            ),
+            _SettingsLink(
+              rowKey: shareKey,
+              title: l10n.shareApp,
+              subtitle: l10n.shareAppHint,
+              onTap: () =>
+                  sharePlainText(l10n.shareAppMessage(AppLinks.playStoreUrl)),
+            ),
+            const SizedBox(height: 28),
+            EditorialEyebrow(l10n.legalEyebrow, color: PrayerCastColors.dawn),
+            const SizedBox(height: 8),
+            _SettingsLink(
+              rowKey: privacyKey,
+              title: l10n.privacyPolicy,
+              subtitle: l10n.privacyPolicyHint,
+              onTap: () => openPrivacyPolicyUrl(context),
+            ),
+            _SettingsLink(
+              rowKey: termsKey,
+              title: l10n.termsOfService,
+              subtitle: l10n.termsOfServiceHint,
+              onTap: () => openTermsOfServiceUrl(context),
+            ),
+          ],
         ),
       ),
     );
@@ -185,7 +178,14 @@ class _LanguageChoice extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(label, style: PrayerCastTheme.forestDropdown),
+                  child: Text(
+                    label,
+                    style: PrayerCastTheme.forestDropdown.copyWith(
+                      color: PrayerCastTokens.isForest(context)
+                          ? PrayerCastColors.mist
+                          : PrayerCastTokens.onSurface(context),
+                    ),
+                  ),
                 ),
                 if (selected)
                   PremiumIcons.check(size: 18, color: PrayerCastColors.dawn),
@@ -219,22 +219,22 @@ class _SettingsFact extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: PrayerCastTheme.displayFont,
               fontSize: 18,
               fontWeight: FontWeight.w500,
               letterSpacing: -0.2,
-              color: PrayerCastColors.surfaceRaised,
+              color: PrayerCastTokens.onSurface(context),
             ),
           ),
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: PrayerCastTheme.bodyFont,
               fontSize: 13,
               height: 1.35,
-              color: PrayerCastColors.mistDeep,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -276,30 +276,37 @@ class _SettingsLink extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: PrayerCastTheme.displayFont,
                           fontSize: 18,
                           fontWeight: FontWeight.w500,
                           letterSpacing: -0.2,
-                          color: PrayerCastColors.surfaceRaised,
+                          color: PrayerCastTokens.onSurface(context),
                         ),
                       ),
                       if (subtitle != null) ...[
                         const SizedBox(height: 4),
                         Text(
                           subtitle!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: PrayerCastTheme.bodyFont,
                             fontSize: 13,
                             height: 1.35,
-                            color: PrayerCastColors.mistDeep,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
                     ],
                   ),
                 ),
-                PremiumIcons.caretRight(size: 18, color: PrayerCastColors.mist),
+                PremiumIcons.caretRight(
+                  size: 18,
+                  color: PrayerCastTokens.isForest(context)
+                      ? PrayerCastColors.mist
+                      : PrayerCastTokens.onSurface(context),
+                ),
               ],
             ),
           ),

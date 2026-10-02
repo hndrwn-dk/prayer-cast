@@ -106,7 +106,7 @@ void main() {
     expect(find.text('Gagal saja'), findsOneWidget);
     expect(
       tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor,
-      PrayerCastColors.ink,
+      PrayerCastColors.surface,
     );
   });
 

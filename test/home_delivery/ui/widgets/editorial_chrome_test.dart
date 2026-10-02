@@ -20,8 +20,11 @@ void main() {
     addTearDown(tester.view.resetViewPadding);
 
     await tester.pumpWidget(
-      const MaterialApp(
-        home: ForestScaffold(
+      MaterialApp(
+        theme: PrayerCastTheme.light(),
+        darkTheme: PrayerCastTheme.forest(),
+        themeMode: ThemeMode.dark,
+        home: const ForestScaffold(
           header: Text('Title'),
           body: Align(alignment: Alignment.bottomCenter, child: Text('Tail')),
           bottom: Text('Bar'),

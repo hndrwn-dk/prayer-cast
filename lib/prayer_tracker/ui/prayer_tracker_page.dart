@@ -33,85 +33,73 @@ class _PrayerTrackerPageState extends ConsumerState<PrayerTrackerPage> {
     final dayLabel = _formatToday(isId);
     final title = isId ? 'Catatan sholat' : 'Prayer tracker';
 
-    return Theme(
-      data: PrayerCastTheme.forest(),
-      child: ForestScrollScaffold(
-        header: EditorialPageHeader(
-          eyebrow: dayLabel,
-          title: title,
-          backTooltip: l10n.back,
-          onBack: () => Navigator.of(context).maybePop(),
-          padding: const EdgeInsets.fromLTRB(8, 4, 16, 10),
-          trailing: IconButton(
-            key: const ValueKey<String>('prayer_tracker_stats_button'),
-            tooltip: isId ? 'Jejak ibadah' : 'Your rhythm',
-            onPressed: () => _openRhythm(context),
-            icon: PremiumIcons.bars(
-              size: 22,
-              color: PrayerCastColors.mist,
-            ),
-          ),
+    return ForestScrollScaffold(
+      header: EditorialPageHeader(
+        eyebrow: dayLabel,
+        title: title,
+        backTooltip: l10n.back,
+        onBack: () => Navigator.of(context).maybePop(),
+        padding: const EdgeInsets.fromLTRB(8, 4, 16, 10),
+        trailing: IconButton(
+          key: const ValueKey<String>('prayer_tracker_stats_button'),
+          tooltip: isId ? 'Jejak ibadah' : 'Your rhythm',
+          onPressed: () => _openRhythm(context),
+          icon: PremiumIcons.bars(size: 22, color: PrayerCastColors.mist),
         ),
-        slivers: [
-          log.when(
-            loading: () => const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, _) => SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: Text('$e')),
-            ),
-            data: (saved) {
-              final draft = _draft ?? saved;
-              return SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    _ReflectionCard(log: draft, isId: isId),
-                    const SizedBox(height: 8),
-                    _StreakCard(isId: isId),
-                    const SizedBox(height: 8),
-                    _TodaySummaryCard(log: draft, isId: isId),
-                    const SizedBox(height: 16),
-                    _DawnTitle(isId ? 'Sholat hari ini' : "Today's prayers"),
-                    const SizedBox(height: 10),
-                    for (var i = 0; i < kTrackedPrayers.length; i++) ...[
-                      if (i > 0) const SizedBox(height: 4),
-                      _PrayerLogCard(
-                        prayerId: kTrackedPrayers[i],
-                        prayerName: prayerDisplayName(
-                          l10n,
-                          kTrackedPrayers[i],
-                        ),
-                        entry: draft[kTrackedPrayers[i]],
-                        enabled: !_saving,
-                        isId: isId,
-                        onTiming: (timing) =>
-                            _setTiming(kTrackedPrayers[i], timing, draft),
-                        onWhere: (where) =>
-                            _setWhere(kTrackedPrayers[i], where, draft),
-                        onClear: () =>
-                            _clearPrayer(kTrackedPrayers[i], draft),
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    _QadhaCard(isId: isId),
-                  ]),
-                ),
-              );
-            },
-          ),
-        ],
       ),
+      slivers: [
+        log.when(
+          loading: () => const SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (e, _) => SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(child: Text('$e')),
+          ),
+          data: (saved) {
+            final draft = _draft ?? saved;
+            return SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _ReflectionCard(log: draft, isId: isId),
+                  const SizedBox(height: 8),
+                  _StreakCard(isId: isId),
+                  const SizedBox(height: 8),
+                  _TodaySummaryCard(log: draft, isId: isId),
+                  const SizedBox(height: 16),
+                  _DawnTitle(isId ? 'Sholat hari ini' : "Today's prayers"),
+                  const SizedBox(height: 10),
+                  for (var i = 0; i < kTrackedPrayers.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 4),
+                    _PrayerLogCard(
+                      prayerId: kTrackedPrayers[i],
+                      prayerName: prayerDisplayName(l10n, kTrackedPrayers[i]),
+                      entry: draft[kTrackedPrayers[i]],
+                      enabled: !_saving,
+                      isId: isId,
+                      onTiming: (timing) =>
+                          _setTiming(kTrackedPrayers[i], timing, draft),
+                      onWhere: (where) =>
+                          _setWhere(kTrackedPrayers[i], where, draft),
+                      onClear: () => _clearPrayer(kTrackedPrayers[i], draft),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  _QadhaCard(isId: isId),
+                ]),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
   void _openRhythm(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const PrayerTrackerStatsPage(),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const PrayerTrackerStatsPage()),
     );
   }
 
@@ -119,23 +107,39 @@ class _PrayerTrackerPageState extends ConsumerState<PrayerTrackerPage> {
     final now = DateTime.now();
     if (isId) {
       const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-        'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'Mei',
+        'Jun',
+        'Jul',
+        'Agu',
+        'Sep',
+        'Okt',
+        'Nov',
+        'Des',
       ];
       return '${now.day} ${months[now.month - 1]} ${now.year}';
     }
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[now.month - 1]} ${now.day}, ${now.year}';
   }
 
-  void _setTiming(
-    String prayer,
-    PrayerLogTiming timing,
-    PrayerDayLog current,
-  ) {
+  void _setTiming(String prayer, PrayerLogTiming timing, PrayerDayLog current) {
     final existing = current[prayer] ?? const PrayerLogEntry();
     final nextTiming = existing.timing == timing ? null : timing;
     _updateEntry(
@@ -161,11 +165,7 @@ class _PrayerTrackerPageState extends ConsumerState<PrayerTrackerPage> {
     unawaited(_persist(next));
   }
 
-  void _updateEntry(
-    String prayer,
-    PrayerLogEntry entry,
-    PrayerDayLog current,
-  ) {
+  void _updateEntry(String prayer, PrayerLogEntry entry, PrayerDayLog current) {
     final next = Map<String, PrayerLogEntry>.from(current);
     if (entry.isEmpty) {
       next.remove(prayer);
@@ -199,7 +199,9 @@ class _TodaySummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final logged = kTrackedPrayers.where((p) => log[p]?.isLogged ?? false).length;
+    final logged = kTrackedPrayers
+        .where((p) => log[p]?.isLogged ?? false)
+        .length;
     var onTime = 0;
     var late = 0;
     var jamaah = 0;
@@ -512,17 +514,18 @@ class _ReflectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final logged =
-        kTrackedPrayers.where((p) => log[p]?.isLogged ?? false).length;
+    final logged = kTrackedPrayers
+        .where((p) => log[p]?.isLogged ?? false)
+        .length;
     final remaining = kTrackedPrayers.length - logged;
     final complete = remaining == 0;
     final headline = complete
         ? (isId
-            ? 'Alhamdulillah — 5 sholat hari ini sudah tercatat.'
-            : 'Alhamdulillah — all 5 prayers logged today.')
+              ? 'Alhamdulillah — 5 sholat hari ini sudah tercatat.'
+              : 'Alhamdulillah — all 5 prayers logged today.')
         : (isId
-            ? 'Sisa $remaining sholat yang belum tercatat hari ini.'
-            : '$remaining prayers left to log today.');
+              ? 'Sisa $remaining sholat yang belum tercatat hari ini.'
+              : '$remaining prayers left to log today.');
     final tips = isId ? _reflectionTipsId : _reflectionTipsEn;
     final now = DateTime.now();
     final tip = tips[now.difference(DateTime(now.year)).inDays % tips.length];
@@ -592,8 +595,8 @@ class _StreakCard extends ConsumerWidget {
     final young = streak <= 1;
     final subtitle = young
         ? (isId
-            ? 'Catat besok untuk mulai rantai.'
-            : 'Log tomorrow to start a streak.')
+              ? 'Catat besok untuk mulai rantai.'
+              : 'Log tomorrow to start a streak.')
         : (isId ? 'hari rantai' : 'day streak');
 
     return Material(
@@ -619,7 +622,9 @@ class _StreakCard extends ConsumerWidget {
                     children: [
                       Text(
                         '$streak',
-                        key: const ValueKey<String>('prayer_tracker_streak_value'),
+                        key: const ValueKey<String>(
+                          'prayer_tracker_streak_value',
+                        ),
                         style: text.titleMedium,
                       ),
                       const SizedBox(height: 2),
@@ -651,24 +656,24 @@ class _QadhaCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final text = Theme.of(context).textTheme;
-    final ledger = ref.watch(qadhaLedgerProvider).valueOrNull ?? const QadhaLedger();
-    final missed = ref.watch(yesterdayUnloggedProvider).valueOrNull ?? const <String>[];
+    final ledger =
+        ref.watch(qadhaLedgerProvider).valueOrNull ?? const QadhaLedger();
+    final missed =
+        ref.watch(yesterdayUnloggedProvider).valueOrNull ?? const <String>[];
     final now = DateTime.now();
     final yesterdayKey = FilePrayerTrackerStore.dayKey(
       DateTime(now.year, now.month, now.day - 1),
     );
-    final showAccrual = missed.isNotEmpty &&
-        ledger.dismissedAccrualDay != yesterdayKey;
+    final showAccrual =
+        missed.isNotEmpty && ledger.dismissedAccrualDay != yesterdayKey;
     final total = ledger.total;
     final subtitle = total == 0
-        ? (isId
-            ? 'Belum ada qadha tertunggak.'
-            : 'No outstanding qadha.')
+        ? (isId ? 'Belum ada qadha tertunggak.' : 'No outstanding qadha.')
         : (isId
-            ? '$total sholat tertunggak.'
-            : (total == 1
-                ? '1 prayer outstanding.'
-                : '$total prayers outstanding.'));
+              ? '$total sholat tertunggak.'
+              : (total == 1
+                    ? '1 prayer outstanding.'
+                    : '$total prayers outstanding.'));
 
     return Material(
       color: PrayerCastColors.canopyDeep,
@@ -697,10 +702,8 @@ class _QadhaCard extends ConsumerWidget {
                   ref,
                   ledger.added(missed).dismissingAccrual(yesterdayKey),
                 ),
-                onDismiss: () => _write(
-                  ref,
-                  ledger.dismissingAccrual(yesterdayKey),
-                ),
+                onDismiss: () =>
+                    _write(ref, ledger.dismissingAccrual(yesterdayKey)),
               ),
             ],
             const SizedBox(height: 10),
@@ -710,15 +713,10 @@ class _QadhaCard extends ConsumerWidget {
                 prayerId: kTrackedPrayers[i],
                 prayerName: prayerDisplayName(l10n, kTrackedPrayers[i]),
                 count: ledger.of(kTrackedPrayers[i]),
-                onAdd: () => _write(
-                  ref,
-                  ledger.incremented(kTrackedPrayers[i]),
-                ),
+                onAdd: () =>
+                    _write(ref, ledger.incremented(kTrackedPrayers[i])),
                 onComplete: ledger.of(kTrackedPrayers[i]) > 0
-                    ? () => _write(
-                          ref,
-                          ledger.decremented(kTrackedPrayers[i]),
-                        )
+                    ? () => _write(ref, ledger.decremented(kTrackedPrayers[i]))
                     : null,
               ),
             ],
@@ -878,11 +876,7 @@ class _QadhaRow extends StatelessWidget {
           style: text.titleMedium?.copyWith(fontSize: 16),
         ),
         const SizedBox(width: 8),
-        _QadhaStep(
-          label: '-',
-          enabled: onComplete != null,
-          onTap: onComplete,
-        ),
+        _QadhaStep(label: '-', enabled: onComplete != null, onTap: onComplete),
         const SizedBox(width: 4),
         _QadhaStep(
           key: ValueKey<String>('prayer_tracker_qadha_plus_$prayerId'),
@@ -948,9 +942,9 @@ class _DawnTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: PrayerCastColors.dawn,
-          ),
+      style: Theme.of(
+        context,
+      ).textTheme.labelLarge?.copyWith(color: PrayerCastColors.dawn),
     );
   }
 }

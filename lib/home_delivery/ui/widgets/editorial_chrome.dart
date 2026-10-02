@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../icons/premium_icons.dart';
 import '../theme/prayer_cast_colors.dart';
 import '../theme/prayer_cast_theme.dart';
+import '../theme/prayer_cast_tokens.dart';
 
 /// Small-caps section label (DEVICE, SCHEDULE, NEXT ADHAN).
 class EditorialEyebrow extends StatelessWidget {
@@ -73,11 +74,15 @@ class EditorialPageHeader extends StatelessWidget {
   final VoidCallback? onBack;
   final String? backTooltip;
   final Widget? trailing;
+
   /// Default 8px bottom. Tracker pages use 10 to match the period-chip gap.
   final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
+    final backColor = PrayerCastTokens.isForest(context)
+        ? PrayerCastColors.mist
+        : PrayerCastTokens.onSurface(context);
     return Padding(
       padding: padding,
       child: Row(
@@ -88,10 +93,7 @@ class EditorialPageHeader extends StatelessWidget {
                 backTooltip ??
                 MaterialLocalizations.of(context).backButtonTooltip,
             onPressed: onBack,
-            icon: PremiumIcons.caretLeft(
-              size: 26,
-              color: PrayerCastColors.mist,
-            ),
+            icon: PremiumIcons.caretLeft(size: 26, color: backColor),
           ),
           Expanded(
             child: Column(
@@ -216,8 +218,11 @@ class HomeClosingNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final noteColor = PrayerCastTokens.isForest(context)
+        ? PrayerCastColors.mistDeep
+        : PrayerCastColors.quiet;
     return ColoredBox(
-      color: PrayerCastColors.ink,
+      color: PrayerCastTokens.surface(context),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -232,12 +237,12 @@ class HomeClosingNote extends StatelessWidget {
             child: Text(
               message,
               key: messageKey,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: PrayerCastTheme.displayFont,
                 fontSize: 11,
                 fontStyle: FontStyle.italic,
                 height: 1.35,
-                color: PrayerCastColors.mistDeep,
+                color: noteColor,
               ),
             ),
           ),
@@ -271,8 +276,11 @@ class ColophonFootnote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final noteColor = PrayerCastTokens.isForest(context)
+        ? PrayerCastColors.mistDeep
+        : PrayerCastColors.quiet;
     return ColoredBox(
-      color: PrayerCastColors.ink,
+      color: PrayerCastTokens.surface(context),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -294,14 +302,14 @@ class ColophonFootnote extends StatelessWidget {
                     onTap: onPrivacyTap,
                     child: Text(
                       message,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: PrayerCastTheme.displayFont,
                         fontSize: 11,
                         fontStyle: FontStyle.italic,
                         height: 1.35,
-                        color: PrayerCastColors.mistDeep,
+                        color: noteColor,
                         decoration: TextDecoration.underline,
-                        decorationColor: PrayerCastColors.mistDeep,
+                        decorationColor: noteColor,
                         decorationThickness: 1,
                       ),
                     ),
@@ -310,12 +318,12 @@ class ColophonFootnote extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   versionLine,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: PrayerCastTheme.bodyFont,
                     fontSize: 9,
                     letterSpacing: 1.2,
                     height: 1.3,
-                    color: PrayerCastColors.mistDeep,
+                    color: noteColor,
                   ),
                 ),
               ],
@@ -381,14 +389,14 @@ class ForestScrollScaffold extends StatelessWidget {
     required this.header,
     required this.slivers,
     this.toolbarHeight = 64,
-    this.backgroundColor = PrayerCastColors.ink,
+    this.backgroundColor,
     this.wash = true,
   });
 
   final Widget header;
   final List<Widget> slivers;
   final double toolbarHeight;
-  final Color backgroundColor;
+  final Color? backgroundColor;
   final bool wash;
 
   @override
@@ -401,10 +409,11 @@ class ForestScrollScaffold extends StatelessWidget {
     final bottomInset = math.max(mq.viewPadding.bottom, mq.padding.bottom);
     // Extra air so the last card clears the translucent nav scrim.
     const bottomExtra = 16.0;
+    final fill = backgroundColor ?? PrayerCastTokens.surface(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: PrayerCastTheme.forestSystemUi,
+      value: PrayerCastTokens.systemUi(context),
       child: Scaffold(
-        backgroundColor: backgroundColor,
+        backgroundColor: fill,
         body: Stack(
           fit: StackFit.expand,
           children: [
@@ -417,13 +426,13 @@ class ForestScrollScaffold extends StatelessWidget {
                   primary: false,
                   automaticallyImplyLeading: false,
                   toolbarHeight: toolbarHeight + topInset,
-                  backgroundColor: backgroundColor,
+                  backgroundColor: fill,
                   surfaceTintColor: Colors.transparent,
                   elevation: 0,
                   scrolledUnderElevation: 0,
                   forceMaterialTransparency: false,
                   flexibleSpace: ColoredBox(
-                    color: backgroundColor,
+                    color: fill,
                     child: Padding(
                       padding: EdgeInsets.only(top: topInset),
                       child: header,
@@ -450,14 +459,14 @@ class ForestScaffold extends StatelessWidget {
     required this.header,
     required this.body,
     this.bottom,
-    this.backgroundColor = PrayerCastColors.ink,
+    this.backgroundColor,
     this.wash = true,
   });
 
   final Widget header;
   final Widget body;
   final Widget? bottom;
-  final Color backgroundColor;
+  final Color? backgroundColor;
   final bool wash;
 
   @override
@@ -469,10 +478,11 @@ class ForestScaffold extends StatelessWidget {
       left: math.max(mq.viewPadding.left, mq.padding.left),
       right: math.max(mq.viewPadding.right, mq.padding.right),
     );
+    final fill = backgroundColor ?? PrayerCastTokens.surface(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: PrayerCastTheme.forestSystemUi,
+      value: PrayerCastTokens.systemUi(context),
       child: Scaffold(
-        backgroundColor: backgroundColor,
+        backgroundColor: fill,
         body: Stack(
           fit: StackFit.expand,
           children: [

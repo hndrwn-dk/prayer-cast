@@ -4,6 +4,7 @@ import 'package:prayer_cast/prayer_times/spiritual_benefits.dart';
 
 import 'theme/prayer_cast_colors.dart';
 import 'theme/prayer_cast_theme.dart';
+import 'theme/prayer_cast_tokens.dart';
 import 'widgets/editorial_chrome.dart';
 
 /// Full spiritual-benefits card. Optional — never blocks adhan delivery.
@@ -21,74 +22,67 @@ class SpiritualBenefitsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final copy = SpiritualBenefits.of(l10n, prayer);
-    final title = prayerDisplayName(
-      l10n,
-      copy?.prayerKey ?? prayer,
-    );
+    final title = prayerDisplayName(l10n, copy?.prayerKey ?? prayer);
 
-    return Theme(
-      data: PrayerCastTheme.forest(),
-      child: Builder(
-        builder: (context) {
-          final text = Theme.of(context).textTheme;
-          return ForestScaffold(
-            header: EditorialPageHeader(
-              eyebrow: l10n.spiritualBenefitsSection,
-              title: title,
-              backTooltip: l10n.back,
-              onBack: () => Navigator.of(context).maybePop(),
-            ),
-            body: copy == null
-                ? const SizedBox.shrink()
-                : ListView(
-                    key: keyName,
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-                    children: [
-                      _BenefitsSection(
-                        eyebrow: l10n.spiritualBenefitsSection,
-                        children: [
-                          for (final line in copy.benefits)
-                            _BulletLine(line, style: text.bodyLarge),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      _BenefitsSection(
-                        eyebrow: l10n.sunnahPracticesSection,
-                        children: [
-                          for (final line in copy.sunnah)
-                            _BulletLine(line, style: text.bodyLarge),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      _BenefitsSection(
-                        eyebrow: copy.asideKind == SpiritualAsideKind.saying
-                            ? l10n.sayingSection
-                            : l10n.noteSection,
-                        children: [
-                          Text(
-                            copy.aside,
-                            style: text.bodyLarge?.copyWith(
-                              fontFamily: PrayerCastTheme.displayFont,
-                              fontStyle: FontStyle.italic,
-                              color: PrayerCastColors.mist,
-                            ),
+    return Builder(
+      builder: (context) {
+        final text = Theme.of(context).textTheme;
+        return ForestScaffold(
+          header: EditorialPageHeader(
+            eyebrow: l10n.spiritualBenefitsSection,
+            title: title,
+            backTooltip: l10n.back,
+            onBack: () => Navigator.of(context).maybePop(),
+          ),
+          body: copy == null
+              ? const SizedBox.shrink()
+              : ListView(
+                  key: keyName,
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+                  children: [
+                    _BenefitsSection(
+                      eyebrow: l10n.spiritualBenefitsSection,
+                      children: [
+                        for (final line in copy.benefits)
+                          _BulletLine(line, style: text.bodyLarge),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _BenefitsSection(
+                      eyebrow: l10n.sunnahPracticesSection,
+                      children: [
+                        for (final line in copy.sunnah)
+                          _BulletLine(line, style: text.bodyLarge),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _BenefitsSection(
+                      eyebrow: copy.asideKind == SpiritualAsideKind.saying
+                          ? l10n.sayingSection
+                          : l10n.noteSection,
+                      children: [
+                        Text(
+                          copy.aside,
+                          style: text.bodyLarge?.copyWith(
+                            fontFamily: PrayerCastTheme.displayFont,
+                            fontStyle: FontStyle.italic,
+                            color: PrayerCastTokens.isForest(context)
+                                ? PrayerCastColors.mist
+                                : text.bodyLarge?.color,
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
-          );
-        },
-      ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+        );
+      },
     );
   }
 }
 
 class _BenefitsSection extends StatelessWidget {
-  const _BenefitsSection({
-    required this.eyebrow,
-    required this.children,
-  });
+  const _BenefitsSection({required this.eyebrow, required this.children});
 
   final String eyebrow;
   final List<Widget> children;
@@ -100,10 +94,7 @@ class _BenefitsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          EditorialEyebrow(
-            eyebrow,
-            color: PrayerCastColors.dawn,
-          ),
+          EditorialEyebrow(eyebrow, color: PrayerCastColors.dawn),
           const SizedBox(height: 12),
           for (var i = 0; i < children.length; i++) ...[
             if (i > 0) const SizedBox(height: 10),

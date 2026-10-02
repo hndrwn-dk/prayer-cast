@@ -24,10 +24,26 @@ const kMosqueTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 /// Soft green-tinted darken of the OSM tiles to match the forest chrome.
 const kMosqueTileDarkenFilter = ColorFilter.matrix(<double>[
-  0.28, 0.22, 0.18, 0, -35,
-  0.20, 0.30, 0.18, 0, -40,
-  0.16, 0.20, 0.28, 0, -45,
-  0, 0, 0, 1, 0,
+  0.28,
+  0.22,
+  0.18,
+  0,
+  -35,
+  0.20,
+  0.30,
+  0.18,
+  0,
+  -40,
+  0.16,
+  0.20,
+  0.28,
+  0,
+  -45,
+  0,
+  0,
+  0,
+  1,
+  0,
 ]);
 
 const kOpenStreetMapCopyrightUrl = 'https://www.openstreetmap.org/copyright';
@@ -314,111 +330,105 @@ class _MosqueMapPageState extends ConsumerState<MosqueMapPage> {
       _origin?.longitude ?? widget.fix.longitude,
     );
 
-    return Theme(
-      data: PrayerCastTheme.forest(),
-      child: ForestScaffold(
-        header: EditorialPageHeader(
-          eyebrow: isId ? 'Arah sholat' : 'Prayer direction',
-          title: isId ? 'Masjid terdekat' : 'Nearby mosques',
-          backTooltip: l10n.back,
-          onBack: () => Navigator.of(context).maybePop(),
-          padding: const EdgeInsets.fromLTRB(8, 4, 16, 10),
-        ),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              flex: 2,
-              child: Stack(
-                children: [
-                  _MosqueMapBody(
-                    map: _map,
-                    centre: centre,
-                    origin: _origin,
-                    mosques: result?.mosques ?? const [],
-                    selectedId: _selectedId,
-                    showCrosshair: offersSearchHere,
-                    onSelect: _select,
-                    onMapEvent: _onMapEvent,
+    return ForestScaffold(
+      header: EditorialPageHeader(
+        eyebrow: isId ? 'Arah sholat' : 'Prayer direction',
+        title: isId ? 'Masjid terdekat' : 'Nearby mosques',
+        backTooltip: l10n.back,
+        onBack: () => Navigator.of(context).maybePop(),
+        padding: const EdgeInsets.fromLTRB(8, 4, 16, 10),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Stack(
+              children: [
+                _MosqueMapBody(
+                  map: _map,
+                  centre: centre,
+                  origin: _origin,
+                  mosques: result?.mosques ?? const [],
+                  selectedId: _selectedId,
+                  showCrosshair: offersSearchHere,
+                  onSelect: _select,
+                  onMapEvent: _onMapEvent,
+                ),
+                Positioned(
+                  left: 12,
+                  right: 12,
+                  top: 12,
+                  child: _AddressSearchBar(
+                    controller: _address,
+                    isId: isId,
+                    geocoding: _geocoding,
+                    error: _geocodeError,
+                    onSubmitted: _submitAddress,
                   ),
-                  Positioned(
-                    left: 12,
-                    right: 12,
-                    top: 12,
-                    child: _AddressSearchBar(
-                      controller: _address,
+                ),
+                if (offersSearchHere)
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _SearchHereButton(isId: isId, onTap: _searchHere),
+                    ),
+                  ),
+                // Only before the first answer: a background refresh must
+                // not throw a spinner over rows the user is already reading.
+                if (_resolvingOrigin ||
+                    (result == null && (search?.isLoading ?? false)))
+                  const IgnorePointer(
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                if (query != null && (search?.hasError ?? false))
+                  ColoredBox(
+                    color: PrayerCastColors.ink.withValues(alpha: 0.72),
+                    child: _MosqueError(
                       isId: isId,
-                      geocoding: _geocoding,
-                      error: _geocodeError,
-                      onSubmitted: _submitAddress,
+                      message: search!.error is MosqueOverpassFailure
+                          ? (search.error! as MosqueOverpassFailure).hint(
+                              isId: isId,
+                            )
+                          : '${search.error}',
+                      onRetry: () =>
+                          ref.invalidate(nearbyMosquesProvider(query)),
                     ),
                   ),
-                  if (offersSearchHere)
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: _SearchHereButton(
-                          isId: isId,
-                          onTap: _searchHere,
-                        ),
-                      ),
-                    ),
-                  // Only before the first answer: a background refresh must
-                  // not throw a spinner over rows the user is already reading.
-                  if (_resolvingOrigin ||
-                      (result == null && (search?.isLoading ?? false)))
-                    const IgnorePointer(
-                      child: Center(child: CircularProgressIndicator()),
-                    ),
-                  if (query != null && (search?.hasError ?? false))
-                    ColoredBox(
-                      color: PrayerCastColors.ink.withValues(alpha: 0.72),
-                      child: _MosqueError(
-                        isId: isId,
-                        message: search!.error is MosqueOverpassFailure
-                            ? (search.error! as MosqueOverpassFailure).hint(
-                                isId: isId,
-                              )
-                            : '${search.error}',
-                        onRetry: () =>
-                            ref.invalidate(nearbyMosquesProvider(query)),
-                      ),
-                    ),
-                ],
-              ),
+              ],
             ),
-            if (_origin == null)
-              _NoOriginNotice(
-                isId: isId,
-                resolving: _resolvingOrigin,
-                denied: _gpsDenied,
-              )
-            else if (result != null && result.mosques.isEmpty)
-              _MosqueList(
-                mosques: const [],
+          ),
+          if (_origin == null)
+            _NoOriginNotice(
+              isId: isId,
+              resolving: _resolvingOrigin,
+              denied: _gpsDenied,
+            )
+          else if (result != null && result.mosques.isEmpty)
+            _MosqueList(
+              mosques: const [],
+              result: result,
+              selectedId: _selectedId,
+              isId: isId,
+              origin: _origin!,
+              onSelect: _selectAndCentre,
+              onOpenExternal: _openExternal,
+            )
+          else if (result != null)
+            Expanded(
+              flex: 3,
+              child: _MosqueList(
+                mosques: result.mosques,
                 result: result,
                 selectedId: _selectedId,
                 isId: isId,
                 origin: _origin!,
                 onSelect: _selectAndCentre,
                 onOpenExternal: _openExternal,
-              )
-            else if (result != null)
-              Expanded(
-                flex: 3,
-                child: _MosqueList(
-                  mosques: result.mosques,
-                  result: result,
-                  selectedId: _selectedId,
-                  isId: isId,
-                  origin: _origin!,
-                  onSelect: _selectAndCentre,
-                  onOpenExternal: _openExternal,
-                ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }

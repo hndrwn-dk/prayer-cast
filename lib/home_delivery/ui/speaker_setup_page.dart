@@ -105,64 +105,73 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
       context: context,
       barrierColor: PrayerCastColors.ink.withValues(alpha: 0.72),
       builder: (ctx) {
-        return Theme(
-          data: PrayerCastTheme.forest(),
-          child: AlertDialog(
-            key: const ValueKey('household_election_code_dialog'),
-            backgroundColor: PrayerCastColors.canopyDeep,
-            surfaceTintColor: Colors.transparent,
-            title: Text(
-              l10n.householdCodeTitle,
-              style: const TextStyle(
-                color: PrayerCastColors.surfaceRaised,
-                fontSize: 22,
-                fontWeight: FontWeight.w500,
-              ),
+        return AlertDialog(
+          key: const ValueKey('household_election_code_dialog'),
+          backgroundColor: PrayerCastColors.canopyDeep,
+          surfaceTintColor: Colors.transparent,
+          title: Text(
+            l10n.householdCodeTitle,
+            style: const TextStyle(
+              color: PrayerCastColors.surfaceRaised,
+              fontSize: 22,
+              fontWeight: FontWeight.w500,
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  l10n.householdCodeBody,
-                  style: TextStyle(
-                    color: PrayerCastColors.mist.withValues(alpha: 0.92),
-                    height: 1.35,
-                  ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l10n.householdCodeBody,
+                style: TextStyle(
+                  color: PrayerCastColors.mist.withValues(alpha: 0.92),
+                  height: 1.35,
                 ),
-                const SizedBox(height: 16),
-                SelectableText(
-                  code,
-                  key: const ValueKey('household_election_code_value'),
-                  style: const TextStyle(
-                    color: PrayerCastColors.surfaceRaised,
-                    fontFamily: 'monospace',
-                    fontSize: 13,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                key: const ValueKey('household_election_code_copy'),
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: code));
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(content: Text(l10n.householdCodeCopied)),
-                    );
-                  }
-                },
-                child: Text(l10n.householdCodeCopy),
               ),
-              TextButton(
-                key: const ValueKey('household_election_code_done'),
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: Text(l10n.householdCodeDone),
+              const SizedBox(height: 16),
+              SelectableText(
+                code,
+                key: const ValueKey('household_election_code_value'),
+                style: const TextStyle(
+                  color: PrayerCastColors.surfaceRaised,
+                  fontFamily: 'monospace',
+                  fontSize: 13,
+                  letterSpacing: 0.4,
+                ),
               ),
             ],
           ),
+          actions: [
+            TextButton(
+              key: const ValueKey('household_election_code_copy'),
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: code));
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(content: Text(l10n.householdCodeCopied)),
+                  );
+                }
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: PrayerCastColors.mist,
+              ),
+              child: Text(
+                l10n.householdCodeCopy,
+                style: const TextStyle(color: PrayerCastColors.mist),
+              ),
+            ),
+            TextButton(
+              key: const ValueKey('household_election_code_done'),
+              onPressed: () => Navigator.of(ctx).pop(),
+              style: TextButton.styleFrom(
+                foregroundColor: PrayerCastColors.mist,
+              ),
+              child: Text(
+                l10n.householdCodeDone,
+                style: const TextStyle(color: PrayerCastColors.mist),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -176,44 +185,53 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
       context: context,
       barrierColor: PrayerCastColors.ink.withValues(alpha: 0.72),
       builder: (ctx) {
-        return Theme(
-          data: PrayerCastTheme.forest(),
-          child: AlertDialog(
-            key: const ValueKey('household_election_import_dialog'),
-            backgroundColor: PrayerCastColors.canopyDeep,
-            surfaceTintColor: Colors.transparent,
-            title: Text(
-              l10n.householdCodeImportTitle,
-              style: const TextStyle(
-                color: PrayerCastColors.surfaceRaised,
-                fontSize: 22,
-                fontWeight: FontWeight.w500,
-              ),
+        return AlertDialog(
+          key: const ValueKey('household_election_import_dialog'),
+          backgroundColor: PrayerCastColors.canopyDeep,
+          surfaceTintColor: Colors.transparent,
+          title: Text(
+            l10n.householdCodeImportTitle,
+            style: const TextStyle(
+              color: PrayerCastColors.surfaceRaised,
+              fontSize: 22,
+              fontWeight: FontWeight.w500,
             ),
-            content: TextField(
-              key: const ValueKey('household_election_import_field'),
-              controller: controller,
-              autofocus: true,
-              style: const TextStyle(color: PrayerCastColors.surfaceRaised),
-              decoration: InputDecoration(
-                hintText: l10n.householdCodeImportHint,
-                hintStyle: TextStyle(
-                  color: PrayerCastColors.mist.withValues(alpha: 0.55),
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: Text(l10n.removeHomeSpeakerCancel),
-              ),
-              TextButton(
-                key: const ValueKey('household_election_import_confirm'),
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: Text(l10n.householdCodeImportConfirm),
-              ),
-            ],
           ),
+          content: TextField(
+            key: const ValueKey('household_election_import_field'),
+            controller: controller,
+            autofocus: true,
+            style: const TextStyle(color: PrayerCastColors.surfaceRaised),
+            decoration: InputDecoration(
+              hintText: l10n.householdCodeImportHint,
+              hintStyle: TextStyle(
+                color: PrayerCastColors.mist.withValues(alpha: 0.55),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              style: TextButton.styleFrom(
+                foregroundColor: PrayerCastColors.mist,
+              ),
+              child: Text(
+                l10n.removeHomeSpeakerCancel,
+                style: const TextStyle(color: PrayerCastColors.mist),
+              ),
+            ),
+            TextButton(
+              key: const ValueKey('household_election_import_confirm'),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: PrayerCastColors.mist,
+              ),
+              child: Text(
+                l10n.householdCodeImportConfirm,
+                style: const TextStyle(color: PrayerCastColors.mist),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -222,16 +240,18 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
       return;
     }
     try {
-      await ref.read(homeOnboardingProvider).importElectionSecret(controller.text);
+      await ref
+          .read(homeOnboardingProvider)
+          .importElectionSecret(controller.text);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.householdCodeImported)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.householdCodeImported)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.speakerSaveFailed('$e'))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.speakerSaveFailed('$e'))));
     } finally {
       controller.dispose();
     }
@@ -262,67 +282,63 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
       context: context,
       barrierColor: PrayerCastColors.ink.withValues(alpha: 0.72),
       builder: (ctx) {
-        // Overlay uses MaterialApp light theme; ink onSurface is unreadable
-        // on this dark dialog. Color every string explicitly.
-        return Theme(
-          data: PrayerCastTheme.forest(),
-          child: AlertDialog(
-            key: const ValueKey('remove_home_speaker_dialog'),
-            backgroundColor: PrayerCastColors.canopyDeep,
-            surfaceTintColor: Colors.transparent,
-            elevation: 12,
-            shadowColor: PrayerCastColors.ink.withValues(alpha: 0.55),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: PrayerCastColors.mist.withValues(alpha: 0.28),
-                width: 1,
-              ),
+        // Dark dialog on either brightness. Color every string explicitly.
+        return AlertDialog(
+          key: const ValueKey('remove_home_speaker_dialog'),
+          backgroundColor: PrayerCastColors.canopyDeep,
+          surfaceTintColor: Colors.transparent,
+          elevation: 12,
+          shadowColor: PrayerCastColors.ink.withValues(alpha: 0.55),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: PrayerCastColors.mist.withValues(alpha: 0.28),
+              width: 1,
             ),
-            title: Text(
-              l10n.removeHomeSpeakerConfirmTitle,
-              style: const TextStyle(
-                color: PrayerCastColors.surfaceRaised,
-                fontSize: 22,
-                fontWeight: FontWeight.w500,
-                height: 1.25,
-              ),
-            ),
-            content: Text(
-              l10n.removeHomeSpeakerConfirmBody,
-              style: const TextStyle(
-                color: PrayerCastColors.mist,
-                fontSize: 16,
-                fontWeight: FontWeight.w400,
-                height: 1.45,
-              ),
-            ),
-            actions: [
-              TextButton(
-                key: const ValueKey('remove_home_speaker_cancel'),
-                onPressed: () => Navigator.of(ctx).pop(false),
-                style: TextButton.styleFrom(
-                  foregroundColor: PrayerCastColors.mist,
-                ),
-                child: Text(
-                  l10n.removeHomeSpeakerCancel,
-                  style: const TextStyle(color: PrayerCastColors.mist),
-                ),
-              ),
-              FilledButton(
-                key: const ValueKey('remove_home_speaker_confirm'),
-                onPressed: () => Navigator.of(ctx).pop(true),
-                style: FilledButton.styleFrom(
-                  backgroundColor: PrayerCastColors.canopy,
-                  foregroundColor: PrayerCastColors.surfaceRaised,
-                ),
-                child: Text(
-                  l10n.removeHomeSpeakerConfirm,
-                  style: const TextStyle(color: PrayerCastColors.surfaceRaised),
-                ),
-              ),
-            ],
           ),
+          title: Text(
+            l10n.removeHomeSpeakerConfirmTitle,
+            style: const TextStyle(
+              color: PrayerCastColors.surfaceRaised,
+              fontSize: 22,
+              fontWeight: FontWeight.w500,
+              height: 1.25,
+            ),
+          ),
+          content: Text(
+            l10n.removeHomeSpeakerConfirmBody,
+            style: const TextStyle(
+              color: PrayerCastColors.mist,
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              height: 1.45,
+            ),
+          ),
+          actions: [
+            TextButton(
+              key: const ValueKey('remove_home_speaker_cancel'),
+              onPressed: () => Navigator.of(ctx).pop(false),
+              style: TextButton.styleFrom(
+                foregroundColor: PrayerCastColors.mist,
+              ),
+              child: Text(
+                l10n.removeHomeSpeakerCancel,
+                style: const TextStyle(color: PrayerCastColors.mist),
+              ),
+            ),
+            FilledButton(
+              key: const ValueKey('remove_home_speaker_confirm'),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: PrayerCastColors.canopy,
+                foregroundColor: PrayerCastColors.surfaceRaised,
+              ),
+              child: Text(
+                l10n.removeHomeSpeakerConfirm,
+                style: const TextStyle(color: PrayerCastColors.surfaceRaised),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -437,208 +453,201 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
           ).where((d) => !hiddenIds.contains(d.deviceId)).toList()
         : const <CastReceiver>[];
     final showSelect = visibleSpeakers.isNotEmpty && !isInitialLoading;
-    final savedOffline = savedSpeaker != null &&
+    final savedOffline =
+        savedSpeaker != null &&
         !isInitialLoading &&
         !isRefreshing &&
         !visibleSpeakers.any((d) => d.deviceId == savedSpeaker.deviceId);
-    final batteryUnrestricted = ref.watch(batteryUnrestrictedProvider).maybeWhen(
-          data: (value) => value,
-          orElse: () => true,
-        );
+    final batteryUnrestricted = ref
+        .watch(batteryUnrestrictedProvider)
+        .maybeWhen(data: (value) => value, orElse: () => true);
 
-    return Theme(
-      data: PrayerCastTheme.forest(),
-      child: Builder(
-        builder: (context) {
-          final text = Theme.of(context).textTheme;
-          return ForestScaffold(
-            header: EditorialPageHeader(
-              eyebrow: l10n.deviceEyebrow,
-              title: _selecting
-                  ? l10n.speakersSelected(_selectedIds.length)
-                  : l10n.speakerSetupTitle,
-              backTooltip: _selecting
-                  ? l10n.removeHomeSpeakerCancel
-                  : l10n.back,
-              onBack: _busy
-                  ? null
-                  : _selecting
-                  ? _exitSelect
-                  : () => Navigator.of(context).maybePop(),
-            ),
-            body: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+    return Builder(
+      builder: (context) {
+        final text = Theme.of(context).textTheme;
+        return ForestScaffold(
+          header: EditorialPageHeader(
+            eyebrow: l10n.deviceEyebrow,
+            title: _selecting
+                ? l10n.speakersSelected(_selectedIds.length)
+                : l10n.speakerSetupTitle,
+            backTooltip: _selecting ? l10n.removeHomeSpeakerCancel : l10n.back,
+            onBack: _busy
+                ? null
+                : _selecting
+                ? _exitSelect
+                : () => Navigator.of(context).maybePop(),
+          ),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(28, 4, 28, 4),
+                child: Text(l10n.speakerSetupIntro, style: text.bodyLarge),
+              ),
+              if (!batteryUnrestricted)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 4, 28, 4),
-                  child: Text(l10n.speakerSetupIntro, style: text.bodyLarge),
-                ),
-                if (!batteryUnrestricted)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
-                    child: OemBatteryBanner(
-                      onOpen: () {
-                        unawaited(
-                          ref.read(oemBatterySettingsProvider).open(),
-                        );
-                      },
-                    ),
-                  ),
-                if (savedOffline)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
-                    child: SavedSpeakerOfflineBanner(
-                      speakerName: savedSpeaker.displayName,
-                      onRescan: _busy || _selecting ? null : _rescan,
-                    ),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 4, 28, 8),
-                  child: Text(
-                    l10n.speakerGroupDelayHint,
-                    key: const ValueKey('speaker_group_delay_hint'),
-                    style: text.bodySmall,
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 8, 16, 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          isInitialLoading || isRefreshing
-                              ? l10n.scanning
-                              : l10n.speakersFound(visibleSpeakers.length),
-                          style: text.titleMedium,
-                        ),
-                      ),
-                      PopupMenuButton<String>(
-                        key: const ValueKey('household_code_menu'),
-                        enabled: !_busy && !_selecting,
-                        tooltip: l10n.householdCodeTitle,
-                        onSelected: (value) {
-                          if (value == 'show') {
-                            unawaited(_showHouseholdCodeDialog());
-                          } else if (value == 'import') {
-                            unawaited(_importHouseholdCodeDialog());
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          PopupMenuItem(
-                            value: 'show',
-                            child: Text(l10n.householdCodeShow),
-                          ),
-                          PopupMenuItem(
-                            value: 'import',
-                            child: Text(l10n.householdCodeImportTitle),
-                          ),
-                        ],
-                      ),
-                      if (showSelect) ...[
-                        _CircleIconButton(
-                          buttonKey: const ValueKey('speaker_select_mode'),
-                          tooltip: l10n.selectSpeakers,
-                          onTap: isRefreshing || _busy
-                              ? null
-                              : _selecting
-                              ? _exitSelect
-                              : _enterSelect,
-                          child: PremiumIcons.trash(
-                            size: 22,
-                            color: _selecting
-                                ? PrayerCastColors.dawnSoft
-                                : PrayerCastColors.mist,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      _CircleIconButton(
-                        tooltip: l10n.scanAgain,
-                        onTap:
-                            isInitialLoading ||
-                                isRefreshing ||
-                                _busy ||
-                                _selecting
-                            ? null
-                            : _rescan,
-                        child: isRefreshing
-                            ? const CastScanSpinner(
-                                size: 18,
-                                strokeWidth: 2.2,
-                                color: PrayerCastColors.mist,
-                                trackColor: PrayerCastColors.inkSoft,
-                                pulse: false,
-                              )
-                            : Opacity(
-                                opacity: isInitialLoading || _selecting
-                                    ? 0.35
-                                    : 1,
-                                child: PremiumIcons.refresh(
-                                  size: 22,
-                                  color: PrayerCastColors.mist,
-                                ),
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: discovery.when(
-                    skipLoadingOnReload: true,
-                    skipError: true,
-                    loading: () => const _ScanningState(),
-                    error: (error, _) => _ErrorState(
-                      message: l10n.speakerScanFailed('$error'),
-                      showOpenSettings: _looksLikePermissionError(error),
-                      onRetry: _rescan,
-                    ),
-                    data: (result) {
-                      if (visibleSpeakers.isEmpty) {
-                        // Reload keeps the previous (empty) value. Do not show
-                        // "no speakers" until this scan has actually finished.
-                        if (isRefreshing) {
-                          return const _ScanningState();
-                        }
-                        final onlyTvs = result.devices
-                            .where((d) => !hiddenIds.contains(d.deviceId))
-                            .isNotEmpty;
-                        return _EmptyState(
-                          guidance: onlyTvs
-                              ? l10n.speakerOnlyTvsFound
-                              : l10n.noSpeakersFoundGuidance,
-                          onRetry: _rescan,
-                        );
-                      }
-                      return _SpeakerList(
-                        speakers: visibleSpeakers,
-                        selectedId: selectedId,
-                        savingDeviceId: _savingDeviceId,
-                        saveSucceeded: _saveSucceeded,
-                        enabled: !_busy,
-                        selecting: _selecting,
-                        checkedIds: _selectedIds,
-                        onSelect: _select,
-                        onLongPress: _onLongPress,
-                        onSwipeDelete: (receiver) =>
-                            _onSwipeDelete(receiver, selectedId),
-                        onSwipedAway: _onSwipedAway,
-                      );
+                  padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
+                  child: OemBatteryBanner(
+                    onOpen: () {
+                      unawaited(ref.read(oemBatterySettingsProvider).open());
                     },
                   ),
                 ),
-              ],
-            ),
-            bottom: _selecting && showSelect
-                ? _SelectActionBar(
-                    count: _selectedIds.length,
-                    enabled: !_busy && _selectedIds.isNotEmpty,
-                    onDelete: () => _deleteSelected(selectedId),
-                    onCancel: _busy ? null : _exitSelect,
-                  )
-                : null,
-          );
-        },
-      ),
+              if (savedOffline)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
+                  child: SavedSpeakerOfflineBanner(
+                    speakerName: savedSpeaker.displayName,
+                    onRescan: _busy || _selecting ? null : _rescan,
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(28, 4, 28, 8),
+                child: Text(
+                  l10n.speakerGroupDelayHint,
+                  key: const ValueKey('speaker_group_delay_hint'),
+                  style: text.bodySmall,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(28, 8, 16, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        isInitialLoading || isRefreshing
+                            ? l10n.scanning
+                            : l10n.speakersFound(visibleSpeakers.length),
+                        style: text.titleMedium,
+                      ),
+                    ),
+                    PopupMenuButton<String>(
+                      key: const ValueKey('household_code_menu'),
+                      enabled: !_busy && !_selecting,
+                      tooltip: l10n.householdCodeTitle,
+                      onSelected: (value) {
+                        if (value == 'show') {
+                          unawaited(_showHouseholdCodeDialog());
+                        } else if (value == 'import') {
+                          unawaited(_importHouseholdCodeDialog());
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'show',
+                          child: Text(l10n.householdCodeShow),
+                        ),
+                        PopupMenuItem(
+                          value: 'import',
+                          child: Text(l10n.householdCodeImportTitle),
+                        ),
+                      ],
+                    ),
+                    if (showSelect) ...[
+                      _CircleIconButton(
+                        buttonKey: const ValueKey('speaker_select_mode'),
+                        tooltip: l10n.selectSpeakers,
+                        onTap: isRefreshing || _busy
+                            ? null
+                            : _selecting
+                            ? _exitSelect
+                            : _enterSelect,
+                        child: PremiumIcons.trash(
+                          size: 22,
+                          color: _selecting
+                              ? PrayerCastColors.dawnSoft
+                              : PrayerCastColors.mist,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    _CircleIconButton(
+                      tooltip: l10n.scanAgain,
+                      onTap:
+                          isInitialLoading ||
+                              isRefreshing ||
+                              _busy ||
+                              _selecting
+                          ? null
+                          : _rescan,
+                      child: isRefreshing
+                          ? const CastScanSpinner(
+                              size: 18,
+                              strokeWidth: 2.2,
+                              color: PrayerCastColors.mist,
+                              trackColor: PrayerCastColors.inkSoft,
+                              pulse: false,
+                            )
+                          : Opacity(
+                              opacity: isInitialLoading || _selecting
+                                  ? 0.35
+                                  : 1,
+                              child: PremiumIcons.refresh(
+                                size: 22,
+                                color: PrayerCastColors.mist,
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: discovery.when(
+                  skipLoadingOnReload: true,
+                  skipError: true,
+                  loading: () => const _ScanningState(),
+                  error: (error, _) => _ErrorState(
+                    message: l10n.speakerScanFailed('$error'),
+                    showOpenSettings: _looksLikePermissionError(error),
+                    onRetry: _rescan,
+                  ),
+                  data: (result) {
+                    if (visibleSpeakers.isEmpty) {
+                      // Reload keeps the previous (empty) value. Do not show
+                      // "no speakers" until this scan has actually finished.
+                      if (isRefreshing) {
+                        return const _ScanningState();
+                      }
+                      final onlyTvs = result.devices
+                          .where((d) => !hiddenIds.contains(d.deviceId))
+                          .isNotEmpty;
+                      return _EmptyState(
+                        guidance: onlyTvs
+                            ? l10n.speakerOnlyTvsFound
+                            : l10n.noSpeakersFoundGuidance,
+                        onRetry: _rescan,
+                      );
+                    }
+                    return _SpeakerList(
+                      speakers: visibleSpeakers,
+                      selectedId: selectedId,
+                      savingDeviceId: _savingDeviceId,
+                      saveSucceeded: _saveSucceeded,
+                      enabled: !_busy,
+                      selecting: _selecting,
+                      checkedIds: _selectedIds,
+                      onSelect: _select,
+                      onLongPress: _onLongPress,
+                      onSwipeDelete: (receiver) =>
+                          _onSwipeDelete(receiver, selectedId),
+                      onSwipedAway: _onSwipedAway,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+          bottom: _selecting && showSelect
+              ? _SelectActionBar(
+                  count: _selectedIds.length,
+                  enabled: !_busy && _selectedIds.isNotEmpty,
+                  onDelete: () => _deleteSelected(selectedId),
+                  onCancel: _busy ? null : _exitSelect,
+                )
+              : null,
+        );
+      },
     );
   }
 }

@@ -170,7 +170,7 @@ void main() {
     expect(find.textContaining('Gunakan lokasi saat ini'), findsNothing);
 
     final homeScaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
-    expect(homeScaffold.backgroundColor, PrayerCastColors.ink);
+    expect(homeScaffold.backgroundColor, PrayerCastColors.surface);
 
     await tester.ensureVisible(find.byKey(_prayerTimesSlab));
     await tester.tap(find.byKey(_prayerTimesSlab));

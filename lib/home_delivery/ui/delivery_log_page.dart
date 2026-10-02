@@ -18,10 +18,7 @@ import 'widgets/editorial_chrome.dart';
 
 /// Local-only delivery attempt history (spec §6.3).
 class DeliveryLogPage extends ConsumerStatefulWidget {
-  const DeliveryLogPage({
-    super.key,
-    this.coordinator,
-  });
+  const DeliveryLogPage({super.key, this.coordinator});
 
   final PrayerDeliveryCoordinator? coordinator;
 
@@ -43,185 +40,176 @@ class _DeliveryLogPageState extends ConsumerState<DeliveryLogPage> {
     final locale = Localizations.localeOf(context);
     final isId = locale.languageCode == 'id';
 
-    return Theme(
-      data: PrayerCastTheme.forest(),
-      child: Builder(
-        builder: (context) {
-          return ForestScaffold(
-            header: EditorialPageHeader(
-              title: l10n.deliveryLog,
-              backTooltip: l10n.back,
-              onBack: () => Navigator.of(context).maybePop(),
-            ),
-            body: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                  child: Text(
-                    l10n.deliveryLogPageIntro,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+    return Builder(
+      builder: (context) {
+        return ForestScaffold(
+          header: EditorialPageHeader(
+            title: l10n.deliveryLog,
+            backTooltip: l10n.back,
+            onBack: () => Navigator.of(context).maybePop(),
+          ),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                child: Text(
+                  l10n.deliveryLogPageIntro,
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                  child: SegmentedButton<_LogFilter>(
-                    segments: [
-                      ButtonSegment(
-                        value: _LogFilter.all,
-                        label: Text(isId ? 'Semua' : 'All'),
-                      ),
-                      ButtonSegment(
-                        value: _LogFilter.failedOnly,
-                        label: Text(isId ? 'Gagal saja' : 'Failed only'),
-                      ),
-                    ],
-                    selected: {_filter},
-                    onSelectionChanged: (selected) {
-                      setState(() => _filter = selected.first);
-                    },
-                  ),
-                ),
-                missed.when(
-                  data: (count) {
-                    if (!shouldShowOemBatteryNudge(count)) {
-                      return const SizedBox.shrink();
-                    }
-                    return Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                      child: _OemBatteryBanner(
-                        count: count,
-                        isId: isId,
-                        onOpen: () async {
-                          final opened = await ref
-                              .read(oemBatterySettingsProvider)
-                              .open();
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                opened
-                                    ? (isId
-                                          ? 'Membuka pengaturan baterai…'
-                                          : 'Opening battery settings…')
-                                    : (isId
-                                          ? 'Tidak bisa membuka pengaturan baterai.'
-                                          : 'Could not open battery settings.'),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    );
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: SegmentedButton<_LogFilter>(
+                  segments: [
+                    ButtonSegment(
+                      value: _LogFilter.all,
+                      label: Text(isId ? 'Semua' : 'All'),
+                    ),
+                    ButtonSegment(
+                      value: _LogFilter.failedOnly,
+                      label: Text(isId ? 'Gagal saja' : 'Failed only'),
+                    ),
+                  ],
+                  selected: {_filter},
+                  onSelectionChanged: (selected) {
+                    setState(() => _filter = selected.first);
                   },
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, __) => const SizedBox.shrink(),
                 ),
-                Expanded(
-                  child: rows.when(
-                    loading: () => const Center(
-                      child: SizedBox(
-                        width: 36,
-                        height: 36,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          color: PrayerCastColors.leaf,
-                        ),
-                      ),
-                    ),
-                    error: (e, _) => Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Text(
-                          isId
-                              ? 'Gagal memuat riwayat.\n$e'
-                              : 'Could not load the log.\n$e',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ),
-                    data: (list) {
-                      final visible = _filter == _LogFilter.all
-                          ? list
-                          : list
-                              .where((row) {
-                                final kind =
-                                    OutcomeStatus.of(Outcome.fromCode(row.outcome))
-                                        .kind;
-                                return kind == OutcomeKind.problem;
-                              })
-                              .toList();
-                      if (visible.isEmpty) {
-                        return FadeSlideIn(
-                          child: Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(32),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  PremiumIcons.clock(
-                                    size: 56,
-                                    color: PrayerCastColors.mist,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    isId
-                                        ? 'Belum ada percobaan pengiriman.'
-                                        : 'No delivery attempts yet.',
-                                    textAlign: TextAlign.center,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleMedium,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    isId
-                                        ? 'Riwayat muncul setelah alarm Adhan pertama berjalan.'
-                                        : 'The log appears after the first Adhan alarm runs.',
-                                    textAlign: TextAlign.center,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodyLarge,
-                                  ),
-                                ],
-                              ),
+              ),
+              missed.when(
+                data: (count) {
+                  if (!shouldShowOemBatteryNudge(count)) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    child: _OemBatteryBanner(
+                      count: count,
+                      isId: isId,
+                      onOpen: () async {
+                        final opened = await ref
+                            .read(oemBatterySettingsProvider)
+                            .open();
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              opened
+                                  ? (isId
+                                        ? 'Membuka pengaturan baterai…'
+                                        : 'Opening battery settings…')
+                                  : (isId
+                                        ? 'Tidak bisa membuka pengaturan baterai.'
+                                        : 'Could not open battery settings.'),
                             ),
                           ),
                         );
-                      }
-                      return ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-                        itemCount: visible.length,
-                        itemBuilder: (context, index) {
-                          final row = visible[index];
-                          final outcome = Outcome.fromCode(row.outcome);
-                          final status = OutcomeStatus.of(outcome);
-                          return FadeSlideIn(
-                            delay: Duration(
-                              milliseconds: 40 * index.clamp(0, 8),
-                            ),
-                            child: _AttemptCard(
-                              row: row,
-                              locale: locale,
-                              retrying: _retryingId == row.id,
-                              onRetry:
-                                  status.kind == OutcomeKind.problem &&
-                                      widget.coordinator != null
-                                  ? () => _retry(row)
-                                  : null,
-                            ),
-                          );
-                        },
-                      );
-                    },
+                      },
+                    ),
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+              Expanded(
+                child: rows.when(
+                  loading: () => const Center(
+                    child: SizedBox(
+                      width: 36,
+                      height: 36,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: PrayerCastColors.leaf,
+                      ),
+                    ),
                   ),
+                  error: (e, _) => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        isId
+                            ? 'Gagal memuat riwayat.\n$e'
+                            : 'Could not load the log.\n$e',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ),
+                  ),
+                  data: (list) {
+                    final visible = _filter == _LogFilter.all
+                        ? list
+                        : list.where((row) {
+                            final kind = OutcomeStatus.of(
+                              Outcome.fromCode(row.outcome),
+                            ).kind;
+                            return kind == OutcomeKind.problem;
+                          }).toList();
+                    if (visible.isEmpty) {
+                      return FadeSlideIn(
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                PremiumIcons.clock(
+                                  size: 56,
+                                  color: PrayerCastColors.mist,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  isId
+                                      ? 'Belum ada percobaan pengiriman.'
+                                      : 'No delivery attempts yet.',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  isId
+                                      ? 'Riwayat muncul setelah alarm Adhan pertama berjalan.'
+                                      : 'The log appears after the first Adhan alarm runs.',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                    return ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                      itemCount: visible.length,
+                      itemBuilder: (context, index) {
+                        final row = visible[index];
+                        final outcome = Outcome.fromCode(row.outcome);
+                        final status = OutcomeStatus.of(outcome);
+                        return FadeSlideIn(
+                          delay: Duration(milliseconds: 40 * index.clamp(0, 8)),
+                          child: _AttemptCard(
+                            row: row,
+                            locale: locale,
+                            retrying: _retryingId == row.id,
+                            onRetry:
+                                status.kind == OutcomeKind.problem &&
+                                    widget.coordinator != null
+                                ? () => _retry(row)
+                                : null,
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
-              ],
-            ),
-          );
-        },
-      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -307,10 +295,7 @@ class _OemBatteryBanner extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               height: PrayerCastTheme.minTap,
-              child: FilledButton(
-                onPressed: onOpen,
-                child: Text(openLabel),
-              ),
+              child: FilledButton(onPressed: onOpen, child: Text(openLabel)),
             ),
           ],
         ),
@@ -398,7 +383,8 @@ class _AttemptCard extends StatelessWidget {
         ? null
         : DateTime.fromMillisecondsSinceEpoch(row.firedAt!);
     final now = DateTime.now();
-    final canRetry = onRetry != null &&
+    final canRetry =
+        onRetry != null &&
         DeliveryRetryWindow.canRetry(
           scheduledAzan: when,
           now: now,
@@ -492,8 +478,8 @@ class _AttemptCard extends StatelessWidget {
                             canRetry
                                 ? (isId ? 'Coba lagi' : 'Retry')
                                 : (isId
-                                    ? 'Coba lagi · $disabledReason'
-                                    : 'Retry · $disabledReason'),
+                                      ? 'Coba lagi · $disabledReason'
+                                      : 'Retry · $disabledReason'),
                           ),
                   ),
                 ),
@@ -523,9 +509,9 @@ class _StatusChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         child: Text(
           status.shortLabel(locale),
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: status.foreground,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.labelMedium?.copyWith(color: status.foreground),
         ),
       ),
     );

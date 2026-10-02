@@ -35,56 +35,53 @@ class QiblaPage extends ConsumerWidget {
         ? const CompassReading.unavailable()
         : readingAsync.asData?.value;
 
-    return Theme(
-      data: PrayerCastTheme.forest(),
-      child: ForestScrollScaffold(
-        header: EditorialPageHeader(
-          eyebrow: isId ? 'Arah sholat' : 'Prayer direction',
-          title: isId ? 'Kiblat' : 'Qibla',
-          backTooltip: l10n.back,
-          onBack: () => Navigator.of(context).maybePop(),
-          padding: const EdgeInsets.fromLTRB(8, 4, 16, 10),
-        ),
-        slivers: [
-          prefs.when(
-            loading: () => _pageSliver(
-              child: _LoadingLocation(
-                isId: isId,
-                onOpenSettings: () => _openSettings(context, ref),
-              ),
+    return ForestScrollScaffold(
+      header: EditorialPageHeader(
+        eyebrow: isId ? 'Arah sholat' : 'Prayer direction',
+        title: isId ? 'Kiblat' : 'Qibla',
+        backTooltip: l10n.back,
+        onBack: () => Navigator.of(context).maybePop(),
+        padding: const EdgeInsets.fromLTRB(8, 4, 16, 10),
+      ),
+      slivers: [
+        prefs.when(
+          loading: () => _pageSliver(
+            child: _LoadingLocation(
+              isId: isId,
+              onOpenSettings: () => _openSettings(context, ref),
             ),
-            // Prefs could not be read, so there is no saved location to work
-            // from. Point at the manual picker instead of a raw error.
-            error: (e, _) => _pageSliver(
-              child: _MissingLocation(
-                isId: isId,
-                readFailed: true,
-                onOpenSettings: () => _openSettings(context, ref),
-              ),
+          ),
+          // Prefs could not be read, so there is no saved location to work
+          // from. Point at the manual picker instead of a raw error.
+          error: (e, _) => _pageSliver(
+            child: _MissingLocation(
+              isId: isId,
+              readFailed: true,
+              onOpenSettings: () => _openSettings(context, ref),
             ),
-            data: (saved) {
-              final fix = resolveQiblaLocation(saved);
-              if (fix == null) {
-                return _pageSliver(
-                  child: _MissingLocation(
-                    isId: isId,
-                    onOpenSettings: () => _openSettings(context, ref),
-                  ),
-                );
-              }
+          ),
+          data: (saved) {
+            final fix = resolveQiblaLocation(saved);
+            if (fix == null) {
               return _pageSliver(
-                child: _QiblaBody(
-                  fix: fix,
-                  reading: reading,
+                child: _MissingLocation(
                   isId: isId,
-                  onOpenMosques: () => _openMosques(context, fix),
                   onOpenSettings: () => _openSettings(context, ref),
                 ),
               );
-            },
-          ),
-        ],
-      ),
+            }
+            return _pageSliver(
+              child: _QiblaBody(
+                fix: fix,
+                reading: reading,
+                isId: isId,
+                onOpenMosques: () => _openMosques(context, fix),
+                onOpenSettings: () => _openSettings(context, ref),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 

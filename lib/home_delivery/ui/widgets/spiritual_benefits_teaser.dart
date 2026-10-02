@@ -4,6 +4,7 @@ import 'package:prayer_cast/prayer_times/spiritual_benefits.dart';
 
 import '../theme/prayer_cast_colors.dart';
 import '../theme/prayer_cast_theme.dart';
+import '../theme/prayer_cast_tokens.dart';
 
 /// Quiet Home one-liner under the next-adhan chip. Tap opens the full card.
 class SpiritualBenefitsTeaserLine extends StatelessWidget {
@@ -44,11 +45,13 @@ class SpiritualBenefitsTeaserLine extends StatelessWidget {
               label,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: PrayerCastTheme.bodyFont,
                 fontSize: 13,
                 height: 1.35,
-                color: PrayerCastColors.mistDeep,
+                color: PrayerCastTokens.isForest(context)
+                    ? PrayerCastColors.mistDeep
+                    : PrayerCastColors.quiet,
               ),
             ),
           ),

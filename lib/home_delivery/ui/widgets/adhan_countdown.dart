@@ -5,6 +5,7 @@ import 'package:prayer_cast/l10n/l10n_ext.dart';
 
 import '../theme/prayer_cast_colors.dart';
 import '../theme/prayer_cast_theme.dart';
+import '../theme/prayer_cast_tokens.dart';
 
 /// Remaining time until the next adhan, aligned to prayer-time minutes.
 final class AdhanCountdown {
@@ -86,29 +87,32 @@ class _AdhanCountdownLabelState extends State<AdhanCountdownLabel> {
         ? l10n.adhanCountdownNow
         : l10n.adhanCountdownIn(AdhanCountdown.durationLabel(remaining, l10n));
     final name = widget.prayerName?.trim();
+    final mist = PrayerCastTokens.isForest(context)
+        ? PrayerCastColors.mist
+        : PrayerCastColors.inkSoft;
     return Text.rich(
       TextSpan(
         children: [
           if (name != null && name.isNotEmpty)
             TextSpan(
               text: name,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: PrayerCastTheme.displayFont,
                 fontSize: 22,
                 fontWeight: FontWeight.w400,
                 fontStyle: FontStyle.italic,
                 letterSpacing: 0.2,
-                color: PrayerCastColors.mist,
+                color: mist,
               ),
             ),
           TextSpan(
             text: name != null && name.isNotEmpty ? ' $countdown' : countdown,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: PrayerCastTheme.bodyFont,
               fontSize: 16,
               fontWeight: FontWeight.w400,
               letterSpacing: 0.4,
-              color: PrayerCastColors.mist,
+              color: mist,
             ),
           ),
         ],
