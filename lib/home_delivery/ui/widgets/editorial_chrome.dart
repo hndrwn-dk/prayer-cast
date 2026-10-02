@@ -83,9 +83,23 @@ class EditorialPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backColor = PrayerCastTokens.isForest(context)
+    final forest = PrayerCastTokens.isForest(context);
+    final backColor = forest
         ? PrayerCastColors.mist
         : PrayerCastTokens.onSurface(context);
+    // Pin Prayer Cast metrics so the 64px scroll-app-bar slot still fits
+    // eyebrow + title when a test (or host) has no PrayerCastTheme.
+    final titleStyle = TextStyle(
+      fontFamily: PrayerCastTheme.displayFont,
+      fontSize: forest ? 22 : 24,
+      fontWeight: forest ? FontWeight.w500 : FontWeight.w600,
+      height: forest ? 1.2 : 1.25,
+      letterSpacing: forest ? -0.2 : null,
+      color: forest
+          ? PrayerCastColors.surfaceRaised
+          : PrayerCastTokens.onSurface(context),
+      fontVariations: [FontVariation('wght', forest ? 500 : 600)],
+    );
     return Padding(
       padding: padding,
       child: Row(
@@ -110,7 +124,7 @@ class EditorialPageHeader extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.headlineMedium,
+                  style: titleStyle,
                 ),
               ],
             ),

@@ -8,6 +8,7 @@ import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_tokens.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
 import 'package:prayer_cast/l10n/app_localizations.dart';
 import 'package:prayer_cast/l10n/locale_controller.dart';
+import 'package:prayer_cast/theme/app_theme_store.dart';
 
 void main() {
   testWidgets('forest brightness uses ink surface', (tester) async {
@@ -66,6 +67,7 @@ void main() {
       ProviderScope(
         overrides: [
           localeStoreProvider.overrideWithValue(MemoryLocaleStore('en')),
+          appThemeStoreProvider.overrideWithValue(MemoryAppThemeStore()),
         ],
         child: MaterialApp(
           locale: const Locale('en'),
