@@ -38,6 +38,7 @@ import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/adhan_countdown.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/oem_battery_banner.dart';
+import 'package:prayer_cast/home_delivery/ui/widgets/setup_checklist_card.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/spiritual_benefits_teaser.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
 import 'package:prayer_cast/l10n/locale_controller.dart';
@@ -53,6 +54,7 @@ import 'package:prayer_cast/qibla/compass_heading.dart';
 import 'package:prayer_cast/qibla/mosque_cache.dart';
 import 'package:prayer_cast/qibla/qibla_providers.dart';
 import 'package:prayer_cast/qibla/ui/qibla_page.dart';
+import 'package:prayer_cast/setup/setup_card_store.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
@@ -86,6 +88,9 @@ Future<void> main() async {
     final mosqueCacheStore = FileMosqueCacheStore(
       File(p.join(docs.path, 'mosque_cache.json')),
     );
+    final setupCardStore = FileSetupCardStore(
+      File(p.join(docs.path, 'setup_card.txt')),
+    );
 
     const logger = ConsoleLogger();
     final nextPrayer = AdhanNextPrayerProvider(
@@ -106,6 +111,7 @@ Future<void> main() async {
         localeStoreProvider.overrideWithValue(localeStore),
         prayerTrackerStoreProvider.overrideWithValue(prayerTrackerStore),
         mosqueCacheStoreProvider.overrideWithValue(mosqueCacheStore),
+        setupCardStoreProvider.overrideWithValue(setupCardStore),
         adhanNextPrayerProvider.overrideWithValue(nextPrayer),
         activeDeliveryHeroProvider.overrideWith((ref) {
           final hero = activeHeroHolder.value;
@@ -442,12 +448,33 @@ class _HomeShellState extends ConsumerState<_HomeShell>
     ref.invalidate(homePresenceProvider);
   }
 
-  Future<void> _openPrayerSettings() async {
-    await Navigator.of(
-      context,
-    ).push(_fadeRoute(PrayerSettingsPage(coordinator: widget.coordinator)));
+  Future<void> _openPrayerSettings({
+    PrayerSettingsFocus focus = PrayerSettingsFocus.none,
+  }) async {
+    await Navigator.of(context).push(
+      _fadeRoute(
+        PrayerSettingsPage(
+          coordinator: widget.coordinator,
+          focus: focus,
+          onSaved: focus == PrayerSettingsFocus.reminders
+              ? () {
+                  unawaited(_markRemindersSeen());
+                }
+              : null,
+        ),
+      ),
+    );
     ref.invalidate(prayerPrefsProvider);
     ref.invalidate(nextPrayerSnapshotProvider);
+    ref.invalidate(setupCardFlagsProvider);
+  }
+
+  Future<void> _markRemindersSeen() async {
+    final store = ref.read(setupCardStoreProvider);
+    final flags = await store.read();
+    if (flags.remindersSeen) return;
+    await store.write(flags.copyWith(remindersSeen: true));
+    ref.invalidate(setupCardFlagsProvider);
   }
 
   Future<void> _openPrayerTracker() async {
@@ -620,6 +647,18 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                   onSpiritualBenefitsTap: nextPrayerKey == null
                       ? null
                       : () => _openSpiritualBenefits(nextPrayerKey),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: SetupChecklistCard(
+                  onOpenSpeaker: () => unawaited(_openSpeakerSetup()),
+                  onOpenPrayerTimes: () => unawaited(_openPrayerSettings()),
+                  onOpenDelivery: () => unawaited(
+                    _openPrayerSettings(focus: PrayerSettingsFocus.delivery),
+                  ),
+                  onOpenReminders: () => unawaited(
+                    _openPrayerSettings(focus: PrayerSettingsFocus.reminders),
+                  ),
                 ),
               ),
               SliverToBoxAdapter(
@@ -1554,6 +1593,7 @@ class PrayerCastAppForTest extends StatelessWidget {
         compassHeadingSourceProvider.overrideWithValue(
           StreamCompassHeadingSource.headings(Stream<double?>.value(0)),
         ),
+        setupCardStoreProvider.overrideWithValue(MemorySetupCardStore()),
       ],
       child: const PrayerCastApp(),
     );

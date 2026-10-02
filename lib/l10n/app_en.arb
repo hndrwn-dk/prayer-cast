@@ -389,5 +389,12 @@
   "ishaSunnah2": "Pray Witr (odd-numbered prayer)",
   "ishaSunnah3": "Recite Quran before sleep",
   "ishaSunnah4": "Make istighfar before bed",
-  "ishaNote": "The final prayer that brings peace to the heart and prepares the soul for rest."
+  "ishaNote": "The final prayer that brings peace to the heart and prepares the soul for rest.",
+  "setupCardTitle": "Finish setup",
+  "setupCardDismiss": "Dismiss",
+  "setupCardSpeaker": "Home speaker",
+  "setupCardNoSpeaker": "Use this phone",
+  "setupCardPrayer": "Prayer times",
+  "setupCardDelivery": "Adhan on this phone",
+  "setupCardReminders": "Reminders"
 }

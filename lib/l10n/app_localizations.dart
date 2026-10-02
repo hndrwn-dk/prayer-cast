@@ -1507,6 +1507,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The final prayer that brings peace to the heart and prepares the soul for rest.'**
   String get ishaNote;
+
+  /// No description provided for @setupCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish setup'**
+  String get setupCardTitle;
+
+  /// No description provided for @setupCardDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get setupCardDismiss;
+
+  /// No description provided for @setupCardSpeaker.
+  ///
+  /// In en, this message translates to:
+  /// **'Home speaker'**
+  String get setupCardSpeaker;
+
+  /// No description provided for @setupCardNoSpeaker.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this phone'**
+  String get setupCardNoSpeaker;
+
+  /// No description provided for @setupCardPrayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Prayer times'**
+  String get setupCardPrayer;
+
+  /// No description provided for @setupCardDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'Adhan on this phone'**
+  String get setupCardDelivery;
+
+  /// No description provided for @setupCardReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders'**
+  String get setupCardReminders;
 }
 
 class _AppLocalizationsDelegate

@@ -20,16 +20,29 @@ import '../prayer_prefs.dart';
 import '../prayer_times_providers.dart';
 import 'location_disclosure.dart';
 
+enum PrayerSettingsFocus { none, delivery, reminders }
+
 /// Premium prayer-time settings: location, method, schedule + voice test.
 class PrayerSettingsPage extends ConsumerStatefulWidget {
   const PrayerSettingsPage({
     super.key,
     this.coordinator,
     this.locationResolver = const LocationResolver(),
+    this.focus = PrayerSettingsFocus.none,
+    this.onSaved,
   });
+
+  static const deliverySectionKey = ValueKey<String>(
+    'prayer_settings_delivery_section',
+  );
+  static const remindersSectionKey = ValueKey<String>(
+    'prayer_settings_reminders_section',
+  );
 
   final PrayerDeliveryCoordinator? coordinator;
   final LocationResolving locationResolver;
+  final PrayerSettingsFocus focus;
+  final VoidCallback? onSaved;
 
   @override
   ConsumerState<PrayerSettingsPage> createState() => _PrayerSettingsPageState();
@@ -54,6 +67,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
   bool _controllersReady = false;
   int _lastAladhanMethodId = defaultAladhanMethodId;
   Timer? _saveDebounce;
+  bool _didScrollToFocus = false;
 
   @override
   void dispose() {
@@ -249,6 +263,13 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                     _scheduleError == null;
                 final draft = _draft ?? prefs;
                 _ensureControllers(draft);
+                if (!_didScrollToFocus &&
+                    widget.focus != PrayerSettingsFocus.none) {
+                  _didScrollToFocus = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) _scrollFocusIntoView();
+                  });
+                }
                 if (needsScheduleKick) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (mounted) unawaited(_refreshSchedule(draft));
@@ -535,15 +556,17 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                             ),
                           ),
                           const SizedBox(height: 14),
-                          InkSurface(
-                            borderColor: PrayerCastColors.inkSoft,
-                            borderWidth: PrayerCastTheme.cardHairline,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Row(
-                                  children: [
-                                    PremiumIcons.clock(
+                          KeyedSubtree(
+                            key: PrayerSettingsPage.deliverySectionKey,
+                            child: InkSurface(
+                              borderColor: PrayerCastColors.inkSoft,
+                              borderWidth: PrayerCastTheme.cardHairline,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Row(
+                                    children: [
+                                      PremiumIcons.clock(
                                       size: 20,
                                       color: PrayerCastColors.dawn,
                                     ),
@@ -674,6 +697,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                               ],
                             ),
                           ),
+                          ),
                           const SizedBox(height: 14),
                           if (PrayerPrefs.prayerKeys.any(
                             (p) =>
@@ -691,35 +715,48 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                             ),
                             const SizedBox(height: 14),
                           ],
-                          _PrePrayerAlertCard(
-                            minutes: draft.prePrayerAlertMinutes,
-                            sound: draft.prePrayerAlertSound,
-                            onChanged: (minutes) {
-                              _updateDraft(
-                                (d) => d.copyWith(
-                                  prePrayerAlertMinutes: minutes,
+                          KeyedSubtree(
+                            key: PrayerSettingsPage.remindersSectionKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _PrePrayerAlertCard(
+                                  minutes: draft.prePrayerAlertMinutes,
+                                  sound: draft.prePrayerAlertSound,
+                                  onChanged: (minutes) {
+                                    _updateDraft(
+                                      (d) => d.copyWith(
+                                        prePrayerAlertMinutes: minutes,
+                                      ),
+                                    );
+                                  },
+                                  onSoundChanged: (sound) {
+                                    _updateDraft(
+                                      (d) => d.copyWith(
+                                        prePrayerAlertSound: sound,
+                                      ),
+                                    );
+                                  },
                                 ),
-                              );
-                            },
-                            onSoundChanged: (sound) {
-                              _updateDraft(
-                                (d) => d.copyWith(prePrayerAlertSound: sound),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 14),
-                          _IqamahReminderCard(
-                            draft: draft,
-                            onMinutesChanged: (prayer, minutes) {
-                              _updateDraft(
-                                (d) => d.withIqamahMinutesFor(prayer, minutes),
-                              );
-                            },
-                            onSoundChanged: (sound) {
-                              _updateDraft(
-                                (d) => d.copyWith(iqamahSound: sound),
-                              );
-                            },
+                                const SizedBox(height: 14),
+                                _IqamahReminderCard(
+                                  draft: draft,
+                                  onMinutesChanged: (prayer, minutes) {
+                                    _updateDraft(
+                                      (d) => d.withIqamahMinutesFor(
+                                        prayer,
+                                        minutes,
+                                      ),
+                                    );
+                                  },
+                                  onSoundChanged: (sound) {
+                                    _updateDraft(
+                                      (d) => d.copyWith(iqamahSound: sound),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -833,6 +870,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
         await widget.coordinator?.retryScheduleAfterPermissionGranted();
         await widget.coordinator?.refreshPrePrayerAlert();
       }
+      widget.onSaved?.call();
       if (!mounted) return;
       if (popAfter) {
         Navigator.of(context).maybePop(toWrite);
@@ -856,6 +894,35 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
       _pageStatus = message;
       _pageStatusIsError = error;
     });
+  }
+
+  void _scrollFocusIntoView() {
+    if (!mounted || widget.focus == PrayerSettingsFocus.none) return;
+    final key = widget.focus == PrayerSettingsFocus.delivery
+        ? PrayerSettingsPage.deliverySectionKey
+        : PrayerSettingsPage.remindersSectionKey;
+    final target = _findKeyedElement(context as Element, key);
+    if (target == null) return;
+    Scrollable.ensureVisible(
+      target,
+      alignment: 0.08,
+      duration: Duration.zero,
+    );
+  }
+
+  Element? _findKeyedElement(Element root, Key key) {
+    Element? found;
+    void visit(Element element) {
+      if (found != null) return;
+      if (element.widget.key == key) {
+        found = element;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    visit(root);
+    return found;
   }
 
   static InputDecoration _fieldDecoration(String? label) {

@@ -234,5 +234,12 @@
   "ishaSunnah2": "Sholat Witir (sholat bernomor ganjil)",
   "ishaSunnah3": "Baca Al-Quran sebelum tidur",
   "ishaSunnah4": "Beristighfar sebelum tidur",
-  "ishaNote": "Sholat penutup yang menenangkan hati dan menyiapkan jiwa untuk istirahat."
+  "ishaNote": "Sholat penutup yang menenangkan hati dan menyiapkan jiwa untuk istirahat.",
+  "setupCardTitle": "Selesaikan pengaturan",
+  "setupCardDismiss": "Tutup",
+  "setupCardSpeaker": "Speaker rumah",
+  "setupCardNoSpeaker": "Pakai HP ini",
+  "setupCardPrayer": "Waktu sholat",
+  "setupCardDelivery": "Adzan di HP ini",
+  "setupCardReminders": "Pengingat"
 }

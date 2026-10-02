@@ -802,4 +802,25 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get ishaNote =>
       'Sholat penutup yang menenangkan hati dan menyiapkan jiwa untuk istirahat.';
+
+  @override
+  String get setupCardTitle => 'Selesaikan pengaturan';
+
+  @override
+  String get setupCardDismiss => 'Tutup';
+
+  @override
+  String get setupCardSpeaker => 'Speaker rumah';
+
+  @override
+  String get setupCardNoSpeaker => 'Pakai HP ini';
+
+  @override
+  String get setupCardPrayer => 'Waktu sholat';
+
+  @override
+  String get setupCardDelivery => 'Adzan di HP ini';
+
+  @override
+  String get setupCardReminders => 'Pengingat';
 }

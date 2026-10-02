@@ -800,4 +800,25 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get ishaNote =>
       'The final prayer that brings peace to the heart and prepares the soul for rest.';
+
+  @override
+  String get setupCardTitle => 'Finish setup';
+
+  @override
+  String get setupCardDismiss => 'Dismiss';
+
+  @override
+  String get setupCardSpeaker => 'Home speaker';
+
+  @override
+  String get setupCardNoSpeaker => 'Use this phone';
+
+  @override
+  String get setupCardPrayer => 'Prayer times';
+
+  @override
+  String get setupCardDelivery => 'Adhan on this phone';
+
+  @override
+  String get setupCardReminders => 'Reminders';
 }

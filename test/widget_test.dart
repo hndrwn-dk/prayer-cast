@@ -8,6 +8,7 @@ import 'package:prayer_cast/home_delivery/ui/app_settings_page.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/adhan_countdown.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
+import 'package:prayer_cast/home_delivery/ui/widgets/setup_checklist_card.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/spiritual_benefits_teaser.dart';
 import 'package:prayer_cast/main.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
@@ -117,12 +118,19 @@ void main() {
     expect(find.text('MEMERIKSA RUMAH'), findsNothing);
     expect(find.text('MENCARI RUMAH'), findsNothing);
     expect(find.text('Speaker'), findsOneWidget);
-    expect(find.text('Speaker rumah'), findsNothing);
+    expect(find.text('Speaker rumah'), findsOneWidget);
+    expect(find.byKey(SetupChecklistCard.keyName), findsOneWidget);
     expect(find.text('PERANGKAT'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(_destinationsStrip),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
     expect(find.text('JADWAL'), findsOneWidget);
     expect(find.text('IBADAH'), findsOneWidget);
     expect(find.text('ARAH'), findsOneWidget);
-    expect(find.text('Waktu sholat'), findsOneWidget);
+    expect(find.text('Waktu sholat', skipOffstage: false), findsNWidgets(2));
     expect(find.text('Catatan sholat'), findsOneWidget);
     expect(find.text('Kiblat/Masjid'), findsOneWidget);
     expect(find.text('|'), findsNothing);
@@ -164,7 +172,8 @@ void main() {
     final homeScaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
     expect(homeScaffold.backgroundColor, PrayerCastColors.ink);
 
-    await tester.tap(find.text('Waktu sholat'));
+    await tester.ensureVisible(find.byKey(_prayerTimesSlab));
+    await tester.tap(find.byKey(_prayerTimesSlab));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(milliseconds: 800));
