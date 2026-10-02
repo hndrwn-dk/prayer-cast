@@ -31,12 +31,24 @@ final class _FakeClock implements Clock {
 }
 
 final class _FakeExactAlarm implements ExactAlarmPlatform {
+  _FakeExactAlarm() {
+    _fireController.onListen = () {
+      final pending = pendingOnListen;
+      if (pending != null) {
+        _fireController.add(pending);
+      }
+    };
+  }
+
   final _fireController = StreamController<AlarmFiredEvent>.broadcast();
   final scheduled = <({int epochMs, String prayer, String voiceId})>[];
   final callOrder = <String>[];
   int stopForegroundCalls = 0;
   bool canSchedule = true;
   bool throwOnSchedule = false;
+
+  /// Buffered native pendingFire delivered when Dart first listens.
+  AlarmFiredEvent? pendingOnListen;
 
   @override
   Stream<AlarmFiredEvent> get onFired => _fireController.stream;
@@ -541,6 +553,141 @@ void main() {
     expect(alarm.callOrder.where((c) => c == 'acknowledgeAlarmFire').length, 2);
     expect(deliveries, hasLength(1));
   });
+
+  test(
+    'concurrent onFired mid-delivery does not acknowledge until first finishes',
+    () async {
+      final holdDelivery = Completer<void>();
+      final enteredDelivery = Completer<void>();
+      final coordinator = PrayerDeliveryCoordinator(
+        exactAlarm: alarm,
+        nextPrayer: _FakeNextPrayer([maghrib, isha]),
+        deviceConditions: _FakeConditions(),
+        settings: _FakeSettings(),
+        audioLoader: _FakeAudio(),
+        runDelivery: (request) async {
+          deliveries.add(request);
+          if (!enteredDelivery.isCompleted) enteredDelivery.complete();
+          await holdDelivery.future;
+          return const DeliveryAttemptResult(
+            sessionId: 'sess',
+            outcome: Outcome.played,
+            role: 'SOLO',
+          );
+        },
+        clock: clock,
+      );
+      await coordinator.start();
+      final wakeMs = alarm.scheduled.single.epochMs;
+      alarm.callOrder.clear();
+
+      clock.advanceTo(
+        DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true),
+      );
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib',
+          scheduledEpochMs: wakeMs,
+          firedAtMs: wakeMs,
+          voiceId: 'makkah',
+        ),
+      );
+      await enteredDelivery.future;
+
+      // Same-wake redelivery while the first attempt still holds FGS /
+      // disk pending (START_REDELIVER_INTENT or start() re-arm race).
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib',
+          scheduledEpochMs: wakeMs,
+          firedAtMs: wakeMs + 50,
+          voiceId: 'makkah',
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+
+      expect(
+        alarm.callOrder.where((c) => c == 'acknowledgeAlarmFire'),
+        isEmpty,
+        reason: 'mid-flight ack would wipe the only reboot recovery token',
+      );
+      expect(deliveries, hasLength(1));
+
+      holdDelivery.complete();
+      for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+
+      expect(
+        alarm.callOrder.where((c) => c == 'acknowledgeAlarmFire').length,
+        1,
+      );
+      expect(alarm.stopForegroundCalls, 1);
+      expect(deliveries, hasLength(1));
+    },
+  );
+
+  test(
+    'start does not re-arm a past-eligible wake that is already pending',
+    () async {
+      final wakeAt = maghrib.scheduledAt.add(PresenceSchedule.scanOffset);
+      clock.advanceTo(wakeAt.add(const Duration(seconds: 30)));
+      final wakeMs = wakeAt.millisecondsSinceEpoch;
+      final holdDelivery = Completer<void>();
+      final enteredDelivery = Completer<void>();
+      alarm.pendingOnListen = AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: clock.now().millisecondsSinceEpoch,
+        voiceId: 'makkah',
+      );
+      final coordinator = PrayerDeliveryCoordinator(
+        exactAlarm: alarm,
+        nextPrayer: _FakeNextPrayer([maghrib, isha]),
+        deviceConditions: _FakeConditions(),
+        settings: _FakeSettings(),
+        audioLoader: _FakeAudio(),
+        runDelivery: (request) async {
+          deliveries.add(request);
+          if (!enteredDelivery.isCompleted) enteredDelivery.complete();
+          await holdDelivery.future;
+          return const DeliveryAttemptResult(
+            sessionId: 'sess',
+            outcome: Outcome.played,
+            role: 'SOLO',
+          );
+        },
+        clock: clock,
+      );
+
+      await coordinator.start();
+      await enteredDelivery.future;
+
+      expect(
+        alarm.callOrder.where((c) => c == 'scheduleNext'),
+        isEmpty,
+        reason:
+            're-arming past-eligible Maghrib fires AlarmManager immediately '
+            'and races the in-flight pending token',
+      );
+      expect(
+        alarm.callOrder.where((c) => c == 'acknowledgeAlarmFire'),
+        isEmpty,
+      );
+      expect(deliveries, hasLength(1));
+
+      holdDelivery.complete();
+      for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+
+      expect(alarm.scheduled.single.prayer, 'isha');
+      expect(
+        alarm.callOrder.where((c) => c == 'acknowledgeAlarmFire').length,
+        1,
+      );
+    },
+  );
 
   test('start after azan+5 skips that prayer and arms the next', () async {
     clock.advanceTo(maghrib.scheduledAt.add(const Duration(minutes: 6)));
