@@ -42,6 +42,7 @@ import 'package:prayer_cast/home_delivery/ui/widgets/setup_checklist_card.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/spiritual_benefits_teaser.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
 import 'package:prayer_cast/l10n/locale_controller.dart';
+import 'package:prayer_cast/theme/app_theme_store.dart';
 import 'package:prayer_cast/prayer_tracker/prayer_tracker_providers.dart';
 import 'package:prayer_cast/prayer_tracker/prayer_tracker_store.dart';
 import 'package:prayer_cast/prayer_tracker/ui/prayer_tracker_page.dart';
@@ -82,6 +83,9 @@ Future<void> main() async {
     final localeStore = FileLocaleStore(
       File(p.join(docs.path, 'app_locale.txt')),
     );
+    final themeStore = FileAppThemeStore(
+      File(p.join(docs.path, 'app_theme.txt')),
+    );
     final prayerTrackerStore = FilePrayerTrackerStore(
       File(p.join(docs.path, 'prayer_tracker.json')),
     );
@@ -109,6 +113,7 @@ Future<void> main() async {
         deliveryDatabaseProvider.overrideWithValue(db),
         prayerPrefsStoreProvider.overrideWithValue(prayerPrefsStore),
         localeStoreProvider.overrideWithValue(localeStore),
+        appThemeStoreProvider.overrideWithValue(themeStore),
         prayerTrackerStoreProvider.overrideWithValue(prayerTrackerStore),
         mosqueCacheStoreProvider.overrideWithValue(mosqueCacheStore),
         setupCardStoreProvider.overrideWithValue(setupCardStore),
@@ -272,6 +277,7 @@ class PrayerCastApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final localeOverride = ref.watch(appLocaleProvider);
+    final themeChoice = ref.watch(appThemeProvider);
     return MaterialApp(
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       debugShowCheckedModeBanner: false,
@@ -288,6 +294,8 @@ class PrayerCastApp extends ConsumerWidget {
         return const Locale('id');
       },
       theme: PrayerCastTheme.light(),
+      darkTheme: PrayerCastTheme.forest(),
+      themeMode: themeModeFor(themeChoice),
       home: _HomeShell(exactAlarm: exactAlarm, coordinator: coordinator),
     );
   }
@@ -1587,6 +1595,7 @@ class PrayerCastAppForTest extends StatelessWidget {
           const SilentLocalPrayerPlayer(),
         ),
         localeStoreProvider.overrideWithValue(MemoryLocaleStore('id')),
+        appThemeStoreProvider.overrideWithValue(MemoryAppThemeStore()),
         prayerTrackerStoreProvider.overrideWithValue(
           MemoryPrayerTrackerStore(),
         ),
