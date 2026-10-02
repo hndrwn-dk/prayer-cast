@@ -178,6 +178,10 @@ final class PrayerDeliveryCoordinator {
       },
     );
 
+    // Buffered native pendingFire is posted when Dart listens. Let that
+    // emit claim _handling before we consider arming a past-eligible wake
+    // (AlarmManager fires those immediately and would race the in-flight ack).
+    await Future<void>.delayed(Duration.zero);
     await _tryScheduleIfPermitted();
     await _drainPendingIqamahLogs();
   }
