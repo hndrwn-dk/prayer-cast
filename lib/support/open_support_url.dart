@@ -46,6 +46,10 @@ Future<void> openPrivacyPolicyUrl(BuildContext context) {
   return openExternalUrl(context, AppLinks.privacyPolicyUrl);
 }
 
+Future<void> openTermsOfServiceUrl(BuildContext context) {
+  return openExternalUrl(context, AppLinks.termsOfServiceUrl);
+}
+
 /// Opens the Prayer Cast listing on Google Play.
 Future<void> openPlayStoreUrl(BuildContext context) {
   return openExternalUrl(context, AppLinks.playStoreUrl);

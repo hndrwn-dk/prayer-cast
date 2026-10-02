@@ -175,6 +175,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get privacyPolicy => 'Privacy policy';
 
   @override
+  String get termsOfService => 'Terms of Service';
+
+  @override
+  String get termsOfServiceHint => 'Rights and rules for using Prayer Cast';
+
+  @override
   String get exactAlarmTitle => 'Exact alarm permission needed';
 
   @override

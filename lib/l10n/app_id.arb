@@ -49,6 +49,8 @@
   "privacyPolicyHint": "Bagaimana Prayer Cast memakai data di ponsel ini",
   "dataOnDeviceOnly": "Data hanya tersimpan di ponsel Anda.",
   "privacyPolicy": "Kebijakan privasi",
+  "termsOfService": "Ketentuan layanan",
+  "termsOfServiceHint": "Hak dan aturan memakai Prayer Cast",
   "exactAlarmTitle": "Izin alarm tepat waktu diperlukan",
   "exactAlarmBody": "Tanpa izin ini, adzan tidak bisa dijadwalkan saat ponsel tidur.",
   "exactAlarmOpenSettings": "Buka pengaturan alarm",

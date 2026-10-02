@@ -98,6 +98,8 @@
   "@privacyPolicy": {
     "description": "Tooltip / accessibility label for the home privacy policy link"
   },
+  "termsOfService": "Terms of Service",
+  "termsOfServiceHint": "Rights and rules for using Prayer Cast",
   "exactAlarmTitle": "Exact alarm permission needed",
   "exactAlarmBody": "Without this permission, adhan cannot be scheduled while the phone sleeps.",
   "exactAlarmOpenSettings": "Open alarm settings",

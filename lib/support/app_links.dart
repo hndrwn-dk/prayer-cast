@@ -5,7 +5,10 @@ abstract final class AppLinks {
 
   /// Prayer Cast-specific policy (not the generic studio /privacy page).
   static const String privacyPolicyUrl =
-      'https://tursinalabs.com/privacy/prayer-cast';
+      'https://www.tursinalabs.com/prayercast/privacy';
+
+  static const String termsOfServiceUrl =
+      'https://www.tursinalabs.com/prayercast/terms';
 
   /// Google Play listing.
   static const String playStoreUrl =

@@ -246,9 +246,15 @@ void main() {
     await tester.tap(find.byKey(AppSettingsPage.privacyKey));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+
+    await tester.ensureVisible(find.byKey(AppSettingsPage.termsKey));
+    await tester.tap(find.byKey(AppSettingsPage.termsKey));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     expect(launched, [
       Uri.parse(AppLinks.playStoreUrl),
       Uri.parse(AppLinks.privacyPolicyUrl),
+      Uri.parse(AppLinks.termsOfServiceUrl),
     ]);
     expect(find.textContaining('Gunakan lokasi saat ini'), findsNothing);
   });

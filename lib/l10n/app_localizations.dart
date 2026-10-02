@@ -392,6 +392,18 @@ abstract class AppLocalizations {
   /// **'Privacy policy'**
   String get privacyPolicy;
 
+  /// No description provided for @termsOfService.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of Service'**
+  String get termsOfService;
+
+  /// No description provided for @termsOfServiceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Rights and rules for using Prayer Cast'**
+  String get termsOfServiceHint;
+
   /// No description provided for @exactAlarmTitle.
   ///
   /// In en, this message translates to:

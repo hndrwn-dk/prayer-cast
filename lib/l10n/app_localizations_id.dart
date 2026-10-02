@@ -176,6 +176,12 @@ class AppLocalizationsId extends AppLocalizations {
   String get privacyPolicy => 'Kebijakan privasi';
 
   @override
+  String get termsOfService => 'Ketentuan layanan';
+
+  @override
+  String get termsOfServiceHint => 'Hak dan aturan memakai Prayer Cast';
+
+  @override
   String get exactAlarmTitle => 'Izin alarm tepat waktu diperlukan';
 
   @override

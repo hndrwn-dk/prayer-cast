@@ -52,6 +52,22 @@ void main() {
     expect(launched, [Uri.parse(AppLinks.playStoreUrl)]);
   });
 
+  test('privacy and terms URLs are the tursinalabs.com/prayercast pages', () {
+    expect(
+      AppLinks.privacyPolicyUrl,
+      'https://www.tursinalabs.com/prayercast/privacy',
+    );
+    expect(
+      AppLinks.termsOfServiceUrl,
+      'https://www.tursinalabs.com/prayercast/terms',
+    );
+  });
+
+  testWidgets('openTermsOfServiceUrl launches the terms URL', (tester) async {
+    await pumpAndTap(tester, openTermsOfServiceUrl);
+    expect(launched, [Uri.parse(AppLinks.termsOfServiceUrl)]);
+  });
+
   testWidgets('openExternalUrl shows a snackbar when launch fails', (
     tester,
   ) async {

@@ -39,6 +39,7 @@ class AppSettingsPage extends ConsumerWidget {
   static const ValueKey<String> privacyKey = ValueKey<String>(
     'settings_privacy',
   );
+  static const ValueKey<String> termsKey = ValueKey<String>('settings_terms');
   static const ValueKey<String> versionKey = ValueKey<String>(
     'settings_version',
   );
@@ -141,6 +142,12 @@ class AppSettingsPage extends ConsumerWidget {
                 title: l10n.privacyPolicy,
                 subtitle: l10n.privacyPolicyHint,
                 onTap: () => openPrivacyPolicyUrl(context),
+              ),
+              _SettingsLink(
+                rowKey: termsKey,
+                title: l10n.termsOfService,
+                subtitle: l10n.termsOfServiceHint,
+                onTap: () => openTermsOfServiceUrl(context),
               ),
             ],
           ),
