@@ -868,4 +868,13 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get onboardingPrayerAction => 'Pilih kota dan metode';
+
+  @override
+  String get onboardingBatteryTitle => 'Agar adzan tetap jalan saat HP tidur';
+
+  @override
+  String get onboardingBatteryOpen => 'Buka pengaturan baterai';
+
+  @override
+  String get onboardingBatterySkip => 'Nanti';
 }

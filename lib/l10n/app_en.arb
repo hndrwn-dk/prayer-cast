@@ -411,5 +411,8 @@
   "onboardingPhoneBeep": "Beep on this phone",
   "onboardingUsePhoneAudio": "Use this phone instead",
   "onboardingPrayerTitle": "Set prayer times",
-  "onboardingPrayerAction": "Choose city and method"
+  "onboardingPrayerAction": "Choose city and method",
+  "onboardingBatteryTitle": "Keep the adhan on while the phone sleeps",
+  "onboardingBatteryOpen": "Open battery settings",
+  "onboardingBatterySkip": "Not now"
 }

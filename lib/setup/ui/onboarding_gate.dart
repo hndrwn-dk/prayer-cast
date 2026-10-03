@@ -12,6 +12,7 @@ import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 import 'package:prayer_cast/setup/onboarding_controller.dart';
 import 'package:prayer_cast/setup/onboarding_store.dart';
 import 'package:prayer_cast/setup/ui/onboarding_audio_step.dart';
+import 'package:prayer_cast/setup/ui/onboarding_battery_step.dart';
 import 'package:prayer_cast/setup/ui/onboarding_phone_step.dart';
 import 'package:prayer_cast/setup/ui/onboarding_permission_step.dart';
 import 'package:prayer_cast/setup/ui/onboarding_prayer_step.dart';
@@ -139,6 +140,7 @@ class _OnboardingResolved extends ConsumerWidget {
       OnboardingStep.completed => home,
       OnboardingStep.phone => OnboardingPhoneStep(record: record),
       OnboardingStep.prayer => OnboardingPrayerStep(record: record),
+      OnboardingStep.battery => OnboardingBatteryStep(record: record),
       OnboardingStep.notifications => OnboardingPermissionStep(
         title: l10n.notificationsBlockedTitle,
         body: l10n.notificationsBlockedBody,

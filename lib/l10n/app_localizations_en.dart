@@ -866,4 +866,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingPrayerAction => 'Choose city and method';
+
+  @override
+  String get onboardingBatteryTitle =>
+      'Keep the adhan on while the phone sleeps';
+
+  @override
+  String get onboardingBatteryOpen => 'Open battery settings';
+
+  @override
+  String get onboardingBatterySkip => 'Not now';
 }

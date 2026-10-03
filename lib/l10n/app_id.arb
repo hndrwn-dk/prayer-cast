@@ -256,5 +256,8 @@
   "onboardingPhoneBeep": "Beep di HP",
   "onboardingUsePhoneAudio": "Pakai audio di HP aja",
   "onboardingPrayerTitle": "Atur waktu sholat",
-  "onboardingPrayerAction": "Pilih kota dan metode"
+  "onboardingPrayerAction": "Pilih kota dan metode",
+  "onboardingBatteryTitle": "Agar adzan tetap jalan saat HP tidur",
+  "onboardingBatteryOpen": "Buka pengaturan baterai",
+  "onboardingBatterySkip": "Nanti"
 }

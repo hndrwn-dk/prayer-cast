@@ -1639,6 +1639,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose city and method'**
   String get onboardingPrayerAction;
+
+  /// No description provided for @onboardingBatteryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the adhan on while the phone sleeps'**
+  String get onboardingBatteryTitle;
+
+  /// No description provided for @onboardingBatteryOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open battery settings'**
+  String get onboardingBatteryOpen;
+
+  /// No description provided for @onboardingBatterySkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get onboardingBatterySkip;
 }
 
 class _AppLocalizationsDelegate
