@@ -305,6 +305,7 @@ class PrayerCastApp extends ConsumerWidget {
       themeMode: themeModeFor(themeChoice),
       home: OnboardingGate(
         home: _HomeShell(exactAlarm: exactAlarm, coordinator: coordinator),
+        exactAlarm: exactAlarm,
       ),
     );
   }
