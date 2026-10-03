@@ -4,8 +4,10 @@ import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_tokens.dart';
 import 'package:prayer_cast/setup/onboarding_controller.dart';
 import 'package:prayer_cast/setup/onboarding_store.dart';
 import 'package:prayer_cast/setup/ui/onboarding_audio_step.dart';
+import 'package:prayer_cast/setup/ui/onboarding_phone_step.dart';
 
-/// Resolves onboarding once, then shows home or the audio step.
+/// Resolves onboarding once, then shows home, the phone step, or the audio
+/// step.
 class OnboardingGate extends ConsumerStatefulWidget {
   const OnboardingGate({super.key, required this.home});
 
@@ -35,10 +37,10 @@ class _OnboardingGateState extends ConsumerState<OnboardingGate> {
         }
         return switch (record.step) {
           OnboardingStep.completed => widget.home,
-          // speaker and phone stay here until Tasks 4 and 5.
+          OnboardingStep.phone => OnboardingPhoneStep(record: record),
+          // speaker stays here until Task 5.
           OnboardingStep.audio ||
-          OnboardingStep.speaker ||
-          OnboardingStep.phone => const OnboardingAudioStep(),
+          OnboardingStep.speaker => const OnboardingAudioStep(),
           _ => const OnboardingAudioStep(),
         };
       },

@@ -848,4 +848,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingAudioPhone => 'This phone';
+
+  @override
+  String get onboardingPhoneTitle => 'How should this phone play it?';
+
+  @override
+  String get onboardingPhoneAdhan => 'Adhan on this phone';
+
+  @override
+  String get onboardingPhoneBeep => 'Beep on this phone';
 }

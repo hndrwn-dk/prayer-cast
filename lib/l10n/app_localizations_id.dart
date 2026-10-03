@@ -850,4 +850,13 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get onboardingAudioPhone => 'HP ini';
+
+  @override
+  String get onboardingPhoneTitle => 'HP ini memutarnya bagaimana?';
+
+  @override
+  String get onboardingPhoneAdhan => 'Adzan di HP';
+
+  @override
+  String get onboardingPhoneBeep => 'Beep di HP';
 }

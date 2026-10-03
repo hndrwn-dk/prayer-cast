@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 import 'package:prayer_cast/prayer_times/prayer_times_providers.dart';
 import 'package:prayer_cast/setup/onboarding_store.dart';
 
@@ -24,6 +25,16 @@ abstract final class OnboardingController {
         .read(onboardingStoreProvider)
         .write(OnboardingRecord(step: step, back: back));
     ref.invalidate(onboardingStepProvider);
+  }
+
+  static Future<void> setDelivery(
+    WidgetRef ref,
+    PrayerDeliveryMode mode,
+  ) async {
+    final store = ref.read(prayerPrefsStoreProvider);
+    final current = await store.read();
+    await store.write(current.withDefaultDelivery(mode));
+    ref.invalidate(prayerPrefsProvider);
   }
 }
 

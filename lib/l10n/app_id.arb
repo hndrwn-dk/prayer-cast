@@ -250,5 +250,8 @@
   "onboardingAudioEyebrow": "Pengaturan",
   "onboardingAudioTitle": "Adzan diputar di mana?",
   "onboardingAudioSpeaker": "Speaker rumah",
-  "onboardingAudioPhone": "HP ini"
+  "onboardingAudioPhone": "HP ini",
+  "onboardingPhoneTitle": "HP ini memutarnya bagaimana?",
+  "onboardingPhoneAdhan": "Adzan di HP",
+  "onboardingPhoneBeep": "Beep di HP"
 }

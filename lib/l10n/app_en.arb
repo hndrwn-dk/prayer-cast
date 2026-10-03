@@ -405,5 +405,8 @@
   "onboardingAudioEyebrow": "Setup",
   "onboardingAudioTitle": "Where should the adhan play?",
   "onboardingAudioSpeaker": "Home speaker",
-  "onboardingAudioPhone": "This phone"
+  "onboardingAudioPhone": "This phone",
+  "onboardingPhoneTitle": "How should this phone play it?",
+  "onboardingPhoneAdhan": "Adhan on this phone",
+  "onboardingPhoneBeep": "Beep on this phone"
 }

@@ -67,6 +67,7 @@ class EditorialPageHeader extends StatelessWidget {
     required this.title,
     this.eyebrow,
     this.onBack,
+    this.backButtonKey,
     this.backTooltip,
     this.trailing,
     this.padding = const EdgeInsets.fromLTRB(8, 4, 16, 8),
@@ -75,6 +76,7 @@ class EditorialPageHeader extends StatelessWidget {
   final String title;
   final String? eyebrow;
   final VoidCallback? onBack;
+  final Key? backButtonKey;
   final String? backTooltip;
   final Widget? trailing;
 
@@ -106,6 +108,7 @@ class EditorialPageHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           IconButton(
+            key: backButtonKey,
             tooltip:
                 backTooltip ??
                 MaterialLocalizations.of(context).backButtonTooltip,

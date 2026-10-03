@@ -1603,6 +1603,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This phone'**
   String get onboardingAudioPhone;
+
+  /// No description provided for @onboardingPhoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How should this phone play it?'**
+  String get onboardingPhoneTitle;
+
+  /// No description provided for @onboardingPhoneAdhan.
+  ///
+  /// In en, this message translates to:
+  /// **'Adhan on this phone'**
+  String get onboardingPhoneAdhan;
+
+  /// No description provided for @onboardingPhoneBeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Beep on this phone'**
+  String get onboardingPhoneBeep;
 }
 
 class _AppLocalizationsDelegate
