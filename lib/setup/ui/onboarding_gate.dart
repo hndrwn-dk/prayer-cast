@@ -10,6 +10,7 @@ import 'package:prayer_cast/setup/onboarding_controller.dart';
 import 'package:prayer_cast/setup/onboarding_store.dart';
 import 'package:prayer_cast/setup/ui/onboarding_audio_step.dart';
 import 'package:prayer_cast/setup/ui/onboarding_phone_step.dart';
+import 'package:prayer_cast/setup/ui/onboarding_prayer_step.dart';
 
 /// Resolves onboarding once, then shows home or the current onboarding step.
 class OnboardingGate extends ConsumerStatefulWidget {
@@ -80,6 +81,7 @@ class _OnboardingResolved extends ConsumerWidget {
     return switch (record.step) {
       OnboardingStep.completed => home,
       OnboardingStep.phone => OnboardingPhoneStep(record: record),
+      OnboardingStep.prayer => OnboardingPrayerStep(record: record),
       OnboardingStep.speaker => SpeakerSetupPage(
         onboarding: true,
         onUsePhoneAudio: () {

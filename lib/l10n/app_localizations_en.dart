@@ -860,4 +860,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingUsePhoneAudio => 'Use this phone instead';
+
+  @override
+  String get onboardingPrayerTitle => 'Set prayer times';
+
+  @override
+  String get onboardingPrayerAction => 'Choose city and method';
 }

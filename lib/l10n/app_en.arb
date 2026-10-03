@@ -409,5 +409,7 @@
   "onboardingPhoneTitle": "How should this phone play it?",
   "onboardingPhoneAdhan": "Adhan on this phone",
   "onboardingPhoneBeep": "Beep on this phone",
-  "onboardingUsePhoneAudio": "Use this phone instead"
+  "onboardingUsePhoneAudio": "Use this phone instead",
+  "onboardingPrayerTitle": "Set prayer times",
+  "onboardingPrayerAction": "Choose city and method"
 }

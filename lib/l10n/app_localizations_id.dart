@@ -862,4 +862,10 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get onboardingUsePhoneAudio => 'Pakai audio di HP aja';
+
+  @override
+  String get onboardingPrayerTitle => 'Atur waktu sholat';
+
+  @override
+  String get onboardingPrayerAction => 'Pilih kota dan metode';
 }

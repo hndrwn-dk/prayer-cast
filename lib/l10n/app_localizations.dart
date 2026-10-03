@@ -1627,6 +1627,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use this phone instead'**
   String get onboardingUsePhoneAudio;
+
+  /// No description provided for @onboardingPrayerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set prayer times'**
+  String get onboardingPrayerTitle;
+
+  /// No description provided for @onboardingPrayerAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose city and method'**
+  String get onboardingPrayerAction;
 }
 
 class _AppLocalizationsDelegate

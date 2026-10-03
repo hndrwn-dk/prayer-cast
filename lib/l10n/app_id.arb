@@ -254,5 +254,7 @@
   "onboardingPhoneTitle": "HP ini memutarnya bagaimana?",
   "onboardingPhoneAdhan": "Adzan di HP",
   "onboardingPhoneBeep": "Beep di HP",
-  "onboardingUsePhoneAudio": "Pakai audio di HP aja"
+  "onboardingUsePhoneAudio": "Pakai audio di HP aja",
+  "onboardingPrayerTitle": "Atur waktu sholat",
+  "onboardingPrayerAction": "Pilih kota dan metode"
 }
