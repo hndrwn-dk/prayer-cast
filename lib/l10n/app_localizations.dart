@@ -1621,6 +1621,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Beep on this phone'**
   String get onboardingPhoneBeep;
+
+  /// No description provided for @onboardingUsePhoneAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this phone instead'**
+  String get onboardingUsePhoneAudio;
 }
 
 class _AppLocalizationsDelegate

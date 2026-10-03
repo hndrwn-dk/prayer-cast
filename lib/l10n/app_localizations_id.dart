@@ -859,4 +859,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get onboardingPhoneBeep => 'Beep di HP';
+
+  @override
+  String get onboardingUsePhoneAudio => 'Pakai audio di HP aja';
 }

@@ -36,6 +36,7 @@ CastReceiver _speaker({
 Future<void> _pumpPage(
   WidgetTester tester, {
   required List<Override> overrides,
+  Widget page = const SpeakerSetupPage(),
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -54,7 +55,7 @@ Future<void> _pumpPage(
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         theme: PrayerCastTheme.light(),
-        home: const SpeakerSetupPage(),
+        home: page,
       ),
     ),
   );
@@ -306,7 +307,10 @@ void main() {
       expect(find.text('No speakers found'), findsOneWidget);
       expect(find.byKey(const ValueKey('speaker_scan_retry')), findsOneWidget);
       expect(find.text('Try again'), findsOneWidget);
-      expect(find.byKey(const ValueKey('speaker_scanning_state')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('speaker_scanning_state')),
+        findsNothing,
+      );
       expect(find.byType(SpeakerSearchPulse), findsNothing);
     },
   );
@@ -444,9 +448,13 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.byKey(const ValueKey('household_election_code_dialog')),
-          findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('household_election_code_done')));
+      expect(
+        find.byKey(const ValueKey('household_election_code_dialog')),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('household_election_code_done')),
+      );
       await tester.pumpAndSettle();
 
       expect(await store.readHomeCastId(), 'nest-1');
@@ -611,21 +619,15 @@ void main() {
     final dialog = tester.widget<AlertDialog>(
       find.byKey(const ValueKey('remove_home_speaker_dialog')),
     );
-    expect(dialog.backgroundColor, PrayerCastColors.canopyDeep);
-    expect(dialog.backgroundColor, isNot(PrayerCastColors.ink));
+    expect(dialog.backgroundColor, PrayerCastColors.surfaceRaised);
+    expect(dialog.backgroundColor, isNot(PrayerCastColors.canopyDeep));
     expect(dialog.elevation, 12);
     final shape = dialog.shape as RoundedRectangleBorder;
     expect(shape.side.width, 1);
+    expect(shape.side.color, PrayerCastColors.dawn);
     expect(
-      shape.side.color,
-      PrayerCastColors.mist.withValues(alpha: 0.28),
-    );
-    expect(
-      tester
-          .widget<Text>(find.text('Remove default speaker?'))
-          .style
-          ?.color,
-      PrayerCastColors.surfaceRaised,
+      tester.widget<Text>(find.text('Remove default speaker?')).style?.color,
+      PrayerCastColors.ink,
     );
     expect(
       tester
@@ -636,11 +638,11 @@ void main() {
           )
           .style
           ?.color,
-      PrayerCastColors.mist,
+      PrayerCastColors.inkSoft,
     );
     expect(
       tester.widget<Text>(find.text('Cancel')).style?.color,
-      PrayerCastColors.mist,
+      PrayerCastColors.canopy,
     );
 
     await tester.tap(find.byKey(const ValueKey('remove_home_speaker_confirm')));
@@ -770,8 +772,9 @@ void main() {
     expect(find.text('1 selected'), findsWidgets);
   });
 
-  testWidgets('restricted battery shows battery banner on speaker setup',
-      (tester) async {
+  testWidgets('restricted battery shows battery banner on speaker setup', (
+    tester,
+  ) async {
     await _pumpPage(
       tester,
       overrides: [
@@ -786,6 +789,124 @@ void main() {
 
     expect(find.byKey(OemBatteryBanner.bannerKey), findsOneWidget);
     expect(find.text('Open battery settings'), findsOneWidget);
+  });
+
+  testWidgets('onboarding hides the battery banner and can use phone audio', (
+    tester,
+  ) async {
+    var tappedPhone = false;
+    await _pumpPage(
+      tester,
+      page: SpeakerSetupPage(
+        onboarding: true,
+        onUsePhoneAudio: () => tappedPhone = true,
+      ),
+      overrides: [
+        speakerDiscoveryProvider.overrideWith(
+          (ref) async => const SpeakerScanResult(devices: []),
+        ),
+        batteryUnrestrictedProvider.overrideWith((ref) async => false),
+      ],
+    );
+    await tester.pump();
+
+    expect(find.byType(OemBatteryBanner), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('onboarding_use_phone_audio')));
+    await tester.pump();
+    expect(tappedPhone, isTrue);
+  });
+
+  testWidgets('entering a household code survives a theme change', (
+    tester,
+  ) async {
+    final errors = <Object>[];
+    final oldOnError = FlutterError.onError;
+    FlutterError.onError = (details) => errors.add(details.exception);
+    addTearDown(() => FlutterError.onError = oldOnError);
+
+    Future<void> pumpThemed(ThemeMode mode) {
+      return tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            savedHomeSpeakerProvider.overrideWith((ref) async => null),
+            speakerDiscoveryProvider.overrideWith(
+              (ref) async => const SpeakerScanResult(devices: []),
+            ),
+          ],
+          child: MaterialApp(
+            locale: const Locale('en'),
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            theme: PrayerCastTheme.light(),
+            darkTheme: PrayerCastTheme.forest(),
+            themeMode: mode,
+            home: const SpeakerSetupPage(),
+          ),
+        ),
+      );
+    }
+
+    await pumpThemed(ThemeMode.light);
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('household_code_menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Enter household code'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('household_election_import_field')),
+      'abc123',
+    );
+    await tester.pump();
+
+    await pumpThemed(ThemeMode.dark);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(errors, isEmpty, reason: errors.map((e) => '$e').join('\n'));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('closing the household code dialog does not red-screen', (
+    tester,
+  ) async {
+    final errors = <Object>[];
+    final oldOnError = FlutterError.onError;
+    FlutterError.onError = (details) => errors.add(details.exception);
+    addTearDown(() => FlutterError.onError = oldOnError);
+
+    await _pumpPage(
+      tester,
+      overrides: [
+        speakerDiscoveryProvider.overrideWith(
+          (ref) async => const SpeakerScanResult(devices: []),
+        ),
+      ],
+    );
+
+    await tester.tap(find.byKey(const ValueKey('household_code_menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Enter household code'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('household_election_import_field')),
+      'abc123',
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    FlutterError.onError = oldOnError;
+    expect(errors, isEmpty, reason: errors.map((e) => '$e').join('\n'));
+    expect(tester.takeException(), isNull);
+    expect(
+      find.byKey(const ValueKey('household_election_import_dialog')),
+      findsNothing,
+    );
   });
 }
 

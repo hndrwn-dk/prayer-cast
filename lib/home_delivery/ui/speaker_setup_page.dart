@@ -22,7 +22,16 @@ import 'widgets/speaker_search_pulse.dart';
 
 /// Cast speaker onboarding: scan LAN, pick home target, save Signal A + B.
 class SpeakerSetupPage extends ConsumerStatefulWidget {
-  const SpeakerSetupPage({super.key});
+  const SpeakerSetupPage({
+    super.key,
+    this.onboarding = false,
+    this.onUsePhoneAudio,
+    this.onBack,
+  });
+
+  final bool onboarding;
+  final VoidCallback? onUsePhoneAudio;
+  final VoidCallback? onBack;
 
   @override
   ConsumerState<SpeakerSetupPage> createState() => _SpeakerSetupPageState();
@@ -104,16 +113,25 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
     if (!mounted) return;
     await showDialog<void>(
       context: context,
-      barrierColor: PrayerCastColors.ink.withValues(alpha: 0.72),
+      barrierColor: PrayerCastTokens.scrim(context),
       builder: (ctx) {
+        final titleColor = PrayerCastTokens.panelTitle(ctx);
+        final bodyColor = PrayerCastTokens.panelBody(ctx);
+        final actionColor = PrayerCastTokens.isForest(ctx)
+            ? PrayerCastColors.mist
+            : PrayerCastColors.canopy;
         return AlertDialog(
           key: const ValueKey('household_election_code_dialog'),
-          backgroundColor: PrayerCastColors.canopyDeep,
+          backgroundColor: PrayerCastTokens.panel(ctx),
           surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: PrayerCastTokens.panelRule(ctx)),
+          ),
           title: Text(
             l10n.householdCodeTitle,
-            style: const TextStyle(
-              color: PrayerCastColors.surfaceRaised,
+            style: TextStyle(
+              color: titleColor,
               fontSize: 22,
               fontWeight: FontWeight.w500,
             ),
@@ -124,17 +142,14 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
             children: [
               Text(
                 l10n.householdCodeBody,
-                style: TextStyle(
-                  color: PrayerCastColors.mist.withValues(alpha: 0.92),
-                  height: 1.35,
-                ),
+                style: TextStyle(color: bodyColor, height: 1.35),
               ),
               const SizedBox(height: 16),
               SelectableText(
                 code,
                 key: const ValueKey('household_election_code_value'),
-                style: const TextStyle(
-                  color: PrayerCastColors.surfaceRaised,
+                style: TextStyle(
+                  color: titleColor,
                   fontFamily: 'monospace',
                   fontSize: 13,
                   letterSpacing: 0.4,
@@ -153,23 +168,19 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                   );
                 }
               },
-              style: TextButton.styleFrom(
-                foregroundColor: PrayerCastColors.mist,
-              ),
+              style: TextButton.styleFrom(foregroundColor: actionColor),
               child: Text(
                 l10n.householdCodeCopy,
-                style: const TextStyle(color: PrayerCastColors.mist),
+                style: TextStyle(color: actionColor),
               ),
             ),
             TextButton(
               key: const ValueKey('household_election_code_done'),
               onPressed: () => Navigator.of(ctx).pop(),
-              style: TextButton.styleFrom(
-                foregroundColor: PrayerCastColors.mist,
-              ),
+              style: TextButton.styleFrom(foregroundColor: actionColor),
               child: Text(
                 l10n.householdCodeDone,
-                style: const TextStyle(color: PrayerCastColors.mist),
+                style: TextStyle(color: actionColor),
               ),
             ),
           ],
@@ -181,69 +192,16 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
   Future<void> _importHouseholdCodeDialog() async {
     if (_busy) return;
     final l10n = context.l10n;
-    final controller = TextEditingController();
-    final imported = await showDialog<bool>(
+    // The field owns its controller. Disposing it here, while the route is
+    // still leaving, hits InheritedElement.debugDeactivated (red screen).
+    final secret = await showDialog<String>(
       context: context,
-      barrierColor: PrayerCastColors.ink.withValues(alpha: 0.72),
-      builder: (ctx) {
-        return AlertDialog(
-          key: const ValueKey('household_election_import_dialog'),
-          backgroundColor: PrayerCastColors.canopyDeep,
-          surfaceTintColor: Colors.transparent,
-          title: Text(
-            l10n.householdCodeImportTitle,
-            style: const TextStyle(
-              color: PrayerCastColors.surfaceRaised,
-              fontSize: 22,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          content: TextField(
-            key: const ValueKey('household_election_import_field'),
-            controller: controller,
-            autofocus: true,
-            style: const TextStyle(color: PrayerCastColors.surfaceRaised),
-            decoration: InputDecoration(
-              hintText: l10n.householdCodeImportHint,
-              hintStyle: TextStyle(
-                color: PrayerCastColors.mist.withValues(alpha: 0.55),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              style: TextButton.styleFrom(
-                foregroundColor: PrayerCastColors.mist,
-              ),
-              child: Text(
-                l10n.removeHomeSpeakerCancel,
-                style: const TextStyle(color: PrayerCastColors.mist),
-              ),
-            ),
-            TextButton(
-              key: const ValueKey('household_election_import_confirm'),
-              onPressed: () => Navigator.of(ctx).pop(true),
-              style: TextButton.styleFrom(
-                foregroundColor: PrayerCastColors.mist,
-              ),
-              child: Text(
-                l10n.householdCodeImportConfirm,
-                style: const TextStyle(color: PrayerCastColors.mist),
-              ),
-            ),
-          ],
-        );
-      },
+      barrierColor: PrayerCastTokens.scrim(context),
+      builder: (ctx) => const _HouseholdCodeImportDialog(),
     );
-    if (imported != true || !mounted) {
-      controller.dispose();
-      return;
-    }
+    if (secret == null || !mounted) return;
     try {
-      await ref
-          .read(homeOnboardingProvider)
-          .importElectionSecret(controller.text);
+      await ref.read(homeOnboardingProvider).importElectionSecret(secret);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -253,8 +211,6 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(l10n.speakerSaveFailed('$e'))));
-    } finally {
-      controller.dispose();
     }
   }
 
@@ -281,26 +237,27 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
     final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
-      barrierColor: PrayerCastColors.ink.withValues(alpha: 0.72),
+      barrierColor: PrayerCastTokens.scrim(context),
       builder: (ctx) {
-        // Dark dialog on either brightness. Color every string explicitly.
+        final titleColor = PrayerCastTokens.panelTitle(ctx);
+        final bodyColor = PrayerCastTokens.panelBody(ctx);
+        final actionColor = PrayerCastTokens.isForest(ctx)
+            ? PrayerCastColors.mist
+            : PrayerCastColors.canopy;
         return AlertDialog(
           key: const ValueKey('remove_home_speaker_dialog'),
-          backgroundColor: PrayerCastColors.canopyDeep,
+          backgroundColor: PrayerCastTokens.panel(ctx),
           surfaceTintColor: Colors.transparent,
           elevation: 12,
           shadowColor: PrayerCastColors.ink.withValues(alpha: 0.55),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: PrayerCastColors.mist.withValues(alpha: 0.28),
-              width: 1,
-            ),
+            side: BorderSide(color: PrayerCastTokens.panelRule(ctx), width: 1),
           ),
           title: Text(
             l10n.removeHomeSpeakerConfirmTitle,
-            style: const TextStyle(
-              color: PrayerCastColors.surfaceRaised,
+            style: TextStyle(
+              color: titleColor,
               fontSize: 22,
               fontWeight: FontWeight.w500,
               height: 1.25,
@@ -308,8 +265,8 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
           ),
           content: Text(
             l10n.removeHomeSpeakerConfirmBody,
-            style: const TextStyle(
-              color: PrayerCastColors.mist,
+            style: TextStyle(
+              color: bodyColor,
               fontSize: 16,
               fontWeight: FontWeight.w400,
               height: 1.45,
@@ -319,12 +276,10 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
             TextButton(
               key: const ValueKey('remove_home_speaker_cancel'),
               onPressed: () => Navigator.of(ctx).pop(false),
-              style: TextButton.styleFrom(
-                foregroundColor: PrayerCastColors.mist,
-              ),
+              style: TextButton.styleFrom(foregroundColor: actionColor),
               child: Text(
                 l10n.removeHomeSpeakerCancel,
-                style: const TextStyle(color: PrayerCastColors.mist),
+                style: TextStyle(color: actionColor),
               ),
             ),
             FilledButton(
@@ -477,7 +432,15 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                 ? null
                 : _selecting
                 ? _exitSelect
-                : () => Navigator.of(context).maybePop(),
+                : () {
+                    final back = widget.onBack;
+                    if (back != null) {
+                      back();
+                      return;
+                    }
+                    if (widget.onboarding) return;
+                    Navigator.of(context).maybePop();
+                  },
           ),
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -486,7 +449,7 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                 padding: const EdgeInsets.fromLTRB(28, 4, 28, 4),
                 child: Text(l10n.speakerSetupIntro, style: text.bodyLarge),
               ),
-              if (!batteryUnrestricted)
+              if (!batteryUnrestricted && !widget.onboarding)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
                   child: OemBatteryBanner(
@@ -558,7 +521,7 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                           size: 22,
                           color: _selecting
                               ? PrayerCastColors.dawnSoft
-                              : PrayerCastColors.mist,
+                              : PrayerCastTokens.onMark(context),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -573,10 +536,10 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                           ? null
                           : _rescan,
                       child: isRefreshing
-                          ? const CastScanSpinner(
+                          ? CastScanSpinner(
                               size: 18,
                               strokeWidth: 2.2,
-                              color: PrayerCastColors.mist,
+                              color: PrayerCastTokens.onMark(context),
                               trackColor: PrayerCastColors.inkSoft,
                               pulse: false,
                             )
@@ -586,7 +549,7 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                                   : 1,
                               child: PremiumIcons.refresh(
                                 size: 22,
-                                color: PrayerCastColors.mist,
+                                color: PrayerCastTokens.onMark(context),
                               ),
                             ),
                     ),
@@ -618,6 +581,7 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                             ? l10n.speakerOnlyTvsFound
                             : l10n.noSpeakersFoundGuidance,
                         onRetry: _rescan,
+                        onUsePhoneAudio: widget.onUsePhoneAudio,
                       );
                     }
                     return _SpeakerList(
@@ -661,6 +625,86 @@ bool _looksLikePermissionError(Object error) {
       msg.contains('localnetwork');
 }
 
+/// Household code field. The controller lives here so it is disposed only
+/// after the text field has unmounted.
+class _HouseholdCodeImportDialog extends StatefulWidget {
+  const _HouseholdCodeImportDialog();
+
+  @override
+  State<_HouseholdCodeImportDialog> createState() =>
+      _HouseholdCodeImportDialogState();
+}
+
+class _HouseholdCodeImportDialogState
+    extends State<_HouseholdCodeImportDialog> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final titleColor = PrayerCastTokens.panelTitle(context);
+    final actionColor = PrayerCastTokens.isForest(context)
+        ? PrayerCastColors.mist
+        : PrayerCastColors.canopy;
+    return AlertDialog(
+      key: const ValueKey('household_election_import_dialog'),
+      backgroundColor: PrayerCastTokens.panel(context),
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: PrayerCastTokens.panelRule(context)),
+      ),
+      title: Text(
+        l10n.householdCodeImportTitle,
+        style: TextStyle(
+          color: titleColor,
+          fontSize: 22,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      content: TextField(
+        key: const ValueKey('household_election_import_field'),
+        controller: _controller,
+        autofocus: true,
+        style: TextStyle(color: titleColor),
+        decoration: InputDecoration(
+          hintText: l10n.householdCodeImportHint,
+          hintStyle: TextStyle(
+            color: PrayerCastTokens.isForest(context)
+                ? PrayerCastColors.mist.withValues(alpha: 0.55)
+                : PrayerCastColors.quiet,
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          style: TextButton.styleFrom(foregroundColor: actionColor),
+          child: Text(
+            l10n.removeHomeSpeakerCancel,
+            style: TextStyle(color: actionColor),
+          ),
+        ),
+        TextButton(
+          key: const ValueKey('household_election_import_confirm'),
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          style: TextButton.styleFrom(foregroundColor: actionColor),
+          child: Text(
+            l10n.householdCodeImportConfirm,
+            style: TextStyle(color: actionColor),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _CircleIconButton extends StatelessWidget {
   const _CircleIconButton({
     required this.tooltip,
@@ -680,7 +724,7 @@ class _CircleIconButton extends StatelessWidget {
       message: tooltip,
       child: Material(
         key: buttonKey,
-        color: PrayerCastColors.canopy,
+        color: PrayerCastTokens.mark(context),
         shape: const CircleBorder(),
         child: InkWell(
           customBorder: const CircleBorder(),
@@ -788,10 +832,15 @@ class _ScanningState extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.guidance, required this.onRetry});
+  const _EmptyState({
+    required this.guidance,
+    required this.onRetry,
+    this.onUsePhoneAudio,
+  });
 
   final String guidance;
   final VoidCallback onRetry;
+  final VoidCallback? onUsePhoneAudio;
 
   @override
   Widget build(BuildContext context) {
@@ -812,7 +861,7 @@ class _EmptyState extends StatelessWidget {
                 radius: 16,
                 child: PremiumIcons.speakerSlash(
                   size: 28,
-                  color: PrayerCastColors.mistDeep,
+                  color: PrayerCastTokens.onMark(context),
                 ),
               ),
               const SizedBox(height: 16),
@@ -833,6 +882,12 @@ class _EmptyState extends StatelessWidget {
                 onPressed: onRetry,
                 child: Text(l10n.speakerScanRetry),
               ),
+              if (onUsePhoneAudio != null)
+                TextButton(
+                  key: const ValueKey('onboarding_use_phone_audio'),
+                  onPressed: onUsePhoneAudio,
+                  child: Text(l10n.onboardingUsePhoneAudio),
+                ),
             ],
           ),
         ),
@@ -871,7 +926,7 @@ class _ErrorState extends StatelessWidget {
                 radius: 16,
                 child: PremiumIcons.wifiSlash(
                   size: 28,
-                  color: PrayerCastColors.mistDeep,
+                  color: PrayerCastTokens.onMark(context),
                 ),
               ),
               const SizedBox(height: 16),
@@ -1033,7 +1088,7 @@ class _SpeakerTile extends StatelessWidget {
                 radius: 12,
                 child: PremiumIcons.speaker(
                   size: 24,
-                  color: PrayerCastColors.mist,
+                  color: PrayerCastTokens.onMark(context),
                 ),
               ),
               const SizedBox(width: 14),

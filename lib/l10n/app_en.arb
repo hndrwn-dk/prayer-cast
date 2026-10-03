@@ -408,5 +408,6 @@
   "onboardingAudioPhone": "This phone",
   "onboardingPhoneTitle": "How should this phone play it?",
   "onboardingPhoneAdhan": "Adhan on this phone",
-  "onboardingPhoneBeep": "Beep on this phone"
+  "onboardingPhoneBeep": "Beep on this phone",
+  "onboardingUsePhoneAudio": "Use this phone instead"
 }

@@ -857,4 +857,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingPhoneBeep => 'Beep on this phone';
+
+  @override
+  String get onboardingUsePhoneAudio => 'Use this phone instead';
 }

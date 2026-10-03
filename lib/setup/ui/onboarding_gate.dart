@@ -1,13 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:prayer_cast/home_delivery/ui/home_setup_providers.dart';
+import 'package:prayer_cast/home_delivery/ui/speaker_setup_page.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_tokens.dart';
+import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 import 'package:prayer_cast/setup/onboarding_controller.dart';
 import 'package:prayer_cast/setup/onboarding_store.dart';
 import 'package:prayer_cast/setup/ui/onboarding_audio_step.dart';
 import 'package:prayer_cast/setup/ui/onboarding_phone_step.dart';
 
-/// Resolves onboarding once, then shows home, the phone step, or the audio
-/// step.
+/// Resolves onboarding once, then shows home or the current onboarding step.
 class OnboardingGate extends ConsumerStatefulWidget {
   const OnboardingGate({super.key, required this.home});
 
@@ -54,13 +58,42 @@ class _OnboardingResolved extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final live = ref.watch(onboardingStepProvider).valueOrNull;
     final record = live != null && live.step != null ? live : resolved;
+    if (record.step == OnboardingStep.speaker) {
+      ref.listen(savedHomeSpeakerProvider, (previous, next) {
+        final nextSpeaker = next.asData?.value;
+        if (nextSpeaker == null) return;
+        final previousWasEmpty =
+            previous != null && previous.hasValue && previous.value == null;
+        if (!previousWasEmpty) return;
+        OnboardingController.setDelivery(ref, PrayerDeliveryMode.cast).then((
+          _,
+        ) {
+          return OnboardingController.go(
+            ref,
+            OnboardingStep.prayer,
+            back: OnboardingStep.speaker,
+          );
+        }).ignore();
+      });
+    }
+    final back = record.back;
     return switch (record.step) {
       OnboardingStep.completed => home,
       OnboardingStep.phone => OnboardingPhoneStep(record: record),
-      // speaker stays here until Task 5.
-      OnboardingStep.audio ||
-      OnboardingStep.speaker => const OnboardingAudioStep(),
-      _ => const OnboardingAudioStep(),
+      OnboardingStep.speaker => SpeakerSetupPage(
+        onboarding: true,
+        onUsePhoneAudio: () {
+          OnboardingController.go(
+            ref,
+            OnboardingStep.phone,
+            back: OnboardingStep.speaker,
+          ).ignore();
+        },
+        onBack: back == null
+            ? null
+            : () => OnboardingController.go(ref, back, back: null).ignore(),
+      ),
+      OnboardingStep.audio || _ => const OnboardingAudioStep(),
     };
   }
 }
