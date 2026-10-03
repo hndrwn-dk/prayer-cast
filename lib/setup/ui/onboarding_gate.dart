@@ -31,19 +31,36 @@ class _OnboardingGateState extends ConsumerState<OnboardingGate> {
     return FutureBuilder<OnboardingRecord>(
       future: _resolved,
       builder: (context, snapshot) {
-        final record = snapshot.data;
-        if (record == null) {
+        final resolved = snapshot.data;
+        if (resolved == null) {
           return Scaffold(backgroundColor: PrayerCastTokens.surface(context));
         }
-        return switch (record.step) {
-          OnboardingStep.completed => widget.home,
-          OnboardingStep.phone => OnboardingPhoneStep(record: record),
-          // speaker stays here until Task 5.
-          OnboardingStep.audio ||
-          OnboardingStep.speaker => const OnboardingAudioStep(),
-          _ => const OnboardingAudioStep(),
-        };
+        return _OnboardingResolved(resolved: resolved, home: widget.home);
       },
     );
+  }
+}
+
+/// After [OnboardingController.resolve], follow [onboardingStepProvider] when
+/// its record has a step. A null step keeps the resolved record so a fresh
+/// install still opens on the written audio step.
+class _OnboardingResolved extends ConsumerWidget {
+  const _OnboardingResolved({required this.resolved, required this.home});
+
+  final OnboardingRecord resolved;
+  final Widget home;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final live = ref.watch(onboardingStepProvider).asData?.value;
+    final record = live != null && live.step != null ? live : resolved;
+    return switch (record.step) {
+      OnboardingStep.completed => home,
+      OnboardingStep.phone => OnboardingPhoneStep(record: record),
+      // speaker stays here until Task 5.
+      OnboardingStep.audio ||
+      OnboardingStep.speaker => const OnboardingAudioStep(),
+      _ => const OnboardingAudioStep(),
+    };
   }
 }

@@ -24,8 +24,8 @@ class OnboardingPhoneStep extends ConsumerWidget {
         backButtonKey: const ValueKey('onboarding_back'),
         onBack: back == null
             ? null
-            : () {
-                OnboardingController.go(ref, back, back: null);
+            : () async {
+                await OnboardingController.go(ref, back, back: null);
               },
       ),
       body: Padding(
