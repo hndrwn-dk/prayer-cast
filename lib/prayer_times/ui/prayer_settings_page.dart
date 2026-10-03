@@ -1504,8 +1504,8 @@ class PrayerScheduleTile extends StatelessWidget {
                     backgroundColor: PrayerCastTokens.slab(context),
                     builder: (context) {
                       return SafeArea(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                        child: ListView(
+                          shrinkWrap: true,
                           children: [
                             for (final voice in AdzanVoices.all)
                               ListTile(

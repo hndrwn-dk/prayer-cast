@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:prayer_cast/home_delivery/coordinator/adzan_cast_tester.dart';
 import 'package:prayer_cast/l10n/app_localizations.dart';
+import 'package:prayer_cast/prayer_times/adzan_voices.dart';
 import 'package:prayer_cast/prayer_times/location_resolver.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 
@@ -28,7 +29,7 @@ String voiceDisplayName(AppLocalizations l10n, String voiceId) {
     'fajr_adhan' => l10n.voiceFajr,
     'standard_adhan' => l10n.voiceStandard,
     'makkah' => l10n.voiceTestTone,
-    _ => voiceId,
+    _ => AdzanVoices.byId(voiceId)?.displayName ?? voiceId,
   };
 }
 

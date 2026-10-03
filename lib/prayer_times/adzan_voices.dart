@@ -26,9 +26,51 @@ abstract final class AdzanVoices {
     displayName: 'Test tone',
   );
 
+  static const ahmedAlHaddad = AdzanVoiceOption(
+    id: 'ahmed_al_haddad',
+    displayName: 'Ahmed Al-Haddad',
+  );
+
+  static const mansurAlZahrane = AdzanVoiceOption(
+    id: 'mansur_al_zahrane',
+    displayName: 'Mansur Al Zahrane',
+  );
+
+  static const misharyRashidAlafasy = AdzanVoiceOption(
+    id: 'mishary_rashid_alafasy',
+    displayName: 'Mishary Rashid Alafasy',
+  );
+
+  static const misharyRashidAlafasyFajr = AdzanVoiceOption(
+    id: 'mishary_rashid_alafasy_fajr',
+    displayName: 'Mishary Rashid Alafasy - Fajr',
+  );
+
+  static const muhammadRamadanSaad = AdzanVoiceOption(
+    id: 'muhammad_ramadan_saad',
+    displayName: 'Muhammad Ramadan Saad',
+  );
+
+  static const nurdinHamzaAlMaghriby = AdzanVoiceOption(
+    id: 'nurdin_hamza_al_maghriby',
+    displayName: 'NurDin Hamza Al Maghriby',
+  );
+
+  static const aliIbnAhmadMala = AdzanVoiceOption(
+    id: 'ali_ibn_ahmad_mala',
+    displayName: 'Ali ibn Ahmad Mala',
+  );
+
   static const List<AdzanVoiceOption> all = [
     fajr,
     standard,
+    ahmedAlHaddad,
+    mansurAlZahrane,
+    misharyRashidAlafasyFajr,
+    misharyRashidAlafasy,
+    muhammadRamadanSaad,
+    nurdinHamzaAlMaghriby,
+    aliIbnAhmadMala,
     makkahTone,
   ];
 
