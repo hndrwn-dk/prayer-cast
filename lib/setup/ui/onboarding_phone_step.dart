@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
@@ -24,9 +26,7 @@ class OnboardingPhoneStep extends ConsumerWidget {
         backButtonKey: const ValueKey('onboarding_back'),
         onBack: back == null
             ? null
-            : () async {
-                await OnboardingController.go(ref, back, back: null);
-              },
+            : () => OnboardingController.go(ref, back, back: null).ignore(),
       ),
       body: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -38,16 +38,17 @@ class OnboardingPhoneStep extends ConsumerWidget {
               height: PrayerCastTheme.minTap,
               child: FilledButton(
                 key: const ValueKey('onboarding_phone_adhan'),
-                onPressed: () async {
-                  await OnboardingController.setDelivery(
+                onPressed: () {
+                  OnboardingController.setDelivery(
                     ref,
                     PrayerDeliveryMode.adhanPhone,
-                  );
-                  await OnboardingController.go(
-                    ref,
-                    OnboardingStep.prayer,
-                    back: OnboardingStep.phone,
-                  );
+                  ).then((_) {
+                    return OnboardingController.go(
+                      ref,
+                      OnboardingStep.prayer,
+                      back: OnboardingStep.phone,
+                    );
+                  }).ignore();
                 },
                 child: Text(l10n.onboardingPhoneAdhan),
               ),
@@ -58,16 +59,17 @@ class OnboardingPhoneStep extends ConsumerWidget {
               height: PrayerCastTheme.minTap,
               child: TextButton(
                 key: const ValueKey('onboarding_phone_beep'),
-                onPressed: () async {
-                  await OnboardingController.setDelivery(
+                onPressed: () {
+                  OnboardingController.setDelivery(
                     ref,
                     PrayerDeliveryMode.beep,
-                  );
-                  await OnboardingController.go(
-                    ref,
-                    OnboardingStep.prayer,
-                    back: OnboardingStep.phone,
-                  );
+                  ).then((_) {
+                    return OnboardingController.go(
+                      ref,
+                      OnboardingStep.prayer,
+                      back: OnboardingStep.phone,
+                    );
+                  }).ignore();
                 },
                 child: Text(l10n.onboardingPhoneBeep),
               ),

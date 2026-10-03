@@ -52,7 +52,7 @@ class _OnboardingResolved extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final live = ref.watch(onboardingStepProvider).asData?.value;
+    final live = ref.watch(onboardingStepProvider).valueOrNull;
     final record = live != null && live.step != null ? live : resolved;
     return switch (record.step) {
       OnboardingStep.completed => home,
