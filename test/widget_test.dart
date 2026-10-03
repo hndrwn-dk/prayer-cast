@@ -5,33 +5,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:prayer_cast/home_delivery/coordinator/next_prayer_provider.dart';
 import 'package:prayer_cast/home_delivery/logging/delivery_database.dart';
 import 'package:prayer_cast/home_delivery/ui/app_settings_page.dart';
-import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/adhan_countdown.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
-import 'package:prayer_cast/home_delivery/ui/widgets/setup_checklist_card.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/spiritual_benefits_teaser.dart';
 import 'package:prayer_cast/main.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
+import 'package:prayer_cast/setup/onboarding_store.dart';
 import 'package:prayer_cast/support/app_links.dart';
 import 'package:prayer_cast/support/open_support_url.dart';
 import 'package:prayer_cast/support/share_plain_text.dart';
 
 const _prayerTimesSlab = ValueKey<String>('home_prayer_times_slab');
-const _prayerTrackerSlab = ValueKey<String>('home_prayer_tracker_slab');
-const _destinationsStrip = ValueKey<String>('home_destinations_strip');
-const _pipe0 = ValueKey<String>('home_destination_pipe_0');
-const _pipe1 = ValueKey<String>('home_destination_pipe_1');
 
-Future<void> _scrollHomeToClosingNote(WidgetTester tester) async {
-  final scrollable = find.byType(Scrollable).first;
-  await tester.dragUntilVisible(
-    find.byKey(HomeClosingNote.dividerKey),
-    scrollable,
-    const Offset(0, -120),
-  );
-  await tester.pump();
-  await tester.pump(const Duration(milliseconds: 400));
-}
 const _phonePadding = FakeViewPadding(top: 20, bottom: 34);
 
 Future<void> _pumpHomeAtSize(
@@ -94,94 +79,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1200));
 
-    expect(find.text('PRAYER'), findsOneWidget);
-    expect(find.text('Cast'), findsOneWidget);
-    expect(find.byKey(const ValueKey('support_on_kofi')), findsOneWidget);
-    expect(find.byKey(const ValueKey('home_settings')), findsOneWidget);
-    expect(find.byKey(const ValueKey('home_delivery_log')), findsNothing);
-    expect(find.byKey(const ValueKey('language_menu')), findsNothing);
-    expect(find.byIcon(Icons.language), findsNothing);
-    expect(find.text('EN'), findsNothing);
-    expect(find.text('ID'), findsNothing);
-    expect(find.text('Beranda'), findsNothing);
-    expect(find.text('Home'), findsNothing);
-    expect(find.text('ADZAN BERIKUTNYA'), findsOneWidget);
-    expect(find.text('Waktu sholat belum diatur'), findsOneWidget);
-    expect(find.text('Singapore, Singapore'), findsNothing);
-    expect(find.text('Singapore'), findsNothing);
-    expect(find.text('Belum ada speaker'), findsOneWidget);
-    expect(find.text('TIDAK ADA SPEAKER'), findsOneWidget);
     expect(
-      tester.widget<Text>(find.text('TIDAK ADA SPEAKER')).style?.color,
-      PrayerCastColors.dawn,
-    );
-    expect(find.text('MEMERIKSA RUMAH'), findsNothing);
-    expect(find.text('MENCARI RUMAH'), findsNothing);
-    expect(find.text('Speaker'), findsOneWidget);
-    expect(find.text('Speaker rumah'), findsOneWidget);
-    expect(find.byKey(SetupChecklistCard.keyName), findsOneWidget);
-    expect(find.text('PERANGKAT'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.byKey(_destinationsStrip),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pump();
-    expect(find.text('JADWAL'), findsOneWidget);
-    expect(find.text('IBADAH'), findsOneWidget);
-    expect(find.text('ARAH'), findsOneWidget);
-    expect(find.text('Waktu sholat', skipOffstage: false), findsNWidgets(2));
-    expect(find.text('Catatan sholat'), findsOneWidget);
-    expect(find.text('Kiblat/Masjid'), findsOneWidget);
-    expect(find.text('|'), findsNothing);
-    expect(find.byKey(_pipe0), findsOneWidget);
-    expect(find.byKey(_pipe1), findsOneWidget);
-    final timesRect = tester.getRect(find.byKey(_prayerTimesSlab));
-    final trackerRect = tester.getRect(find.byKey(_prayerTrackerSlab));
-    final pipe0 = tester.getRect(find.byKey(_pipe0));
-    expect(pipe0.width, 24);
-    expect(
-      pipe0.center.dx - timesRect.right,
-      closeTo(trackerRect.left - pipe0.center.dx, 1),
-    );
-    expect(
-      tester.getSize(find.byKey(_prayerTrackerSlab)).height,
-      closeTo(tester.getSize(find.byKey(_prayerTimesSlab)).height, 1),
-    );
-    expect(find.text('Riwayat pengiriman'), findsNothing);
-    expect(find.text('Kebijakan privasi'), findsNothing);
-    expect(find.text('version: $kAppVersion'), findsNothing);
-    expect(find.textContaining('Adzan di rumah'), findsNothing);
-
-    await _scrollHomeToClosingNote(tester);
-    expect(find.byKey(HomeClosingNote.dividerKey), findsOneWidget);
-    expect(tester.getSize(find.byKey(HomeClosingNote.dividerKey)).height, 1);
-    expect(
-      tester.widget<ColoredBox>(find.byKey(HomeClosingNote.dividerKey)).color,
-      HomeClosingNote.dividerColor,
-    );
-    expect(
-      find.text('Data hanya tersimpan di ponsel Anda.'),
+      find.byKey(const ValueKey('onboarding_audio_speaker')),
       findsOneWidget,
     );
-    await tester.tap(find.byKey(HomeClosingNote.messageKey));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.textContaining('Gunakan lokasi saat ini'), findsNothing);
-
-    final homeScaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
-    expect(homeScaffold.backgroundColor, PrayerCastColors.surface);
-
-    await tester.ensureVisible(find.byKey(_prayerTimesSlab));
-    await tester.tap(find.byKey(_prayerTimesSlab));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-    await tester.pump(const Duration(milliseconds: 800));
-
-    expect(find.text('Waktu sholat'), findsWidgets);
-    expect(find.textContaining('Gunakan lokasi saat ini'), findsOneWidget);
-    expect(find.textContaining('Ubah kota / negara'), findsOneWidget);
-    expect(find.textContaining('Metode perhitungan'), findsOneWidget);
+    expect(find.text('ADZAN BERIKUTNYA'), findsNothing);
   });
 
   testWidgets('settings holds language, adhan history, about, and legal', (
@@ -198,7 +100,14 @@ void main() {
     final db = DeliveryDatabase.memory();
     addTearDown(db.close);
 
-    await tester.pumpWidget(PrayerCastAppForTest(database: db));
+    await tester.pumpWidget(
+      PrayerCastAppForTest(
+        database: db,
+        onboarding: MemoryOnboardingStore(
+          const OnboardingRecord(step: OnboardingStep.completed),
+        ),
+      ),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1200));
 

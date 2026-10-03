@@ -401,5 +401,9 @@
   "setupCardNoSpeaker": "Use this phone",
   "setupCardPrayer": "Prayer times",
   "setupCardDelivery": "Adhan on this phone",
-  "setupCardReminders": "Reminders"
+  "setupCardReminders": "Reminders",
+  "onboardingAudioEyebrow": "Setup",
+  "onboardingAudioTitle": "Where should the adhan play?",
+  "onboardingAudioSpeaker": "Home speaker",
+  "onboardingAudioPhone": "This phone"
 }

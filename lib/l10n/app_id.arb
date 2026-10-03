@@ -246,5 +246,9 @@
   "setupCardNoSpeaker": "Pakai HP ini",
   "setupCardPrayer": "Waktu sholat",
   "setupCardDelivery": "Adzan di HP ini",
-  "setupCardReminders": "Pengingat"
+  "setupCardReminders": "Pengingat",
+  "onboardingAudioEyebrow": "Pengaturan",
+  "onboardingAudioTitle": "Adzan diputar di mana?",
+  "onboardingAudioSpeaker": "Speaker rumah",
+  "onboardingAudioPhone": "HP ini"
 }

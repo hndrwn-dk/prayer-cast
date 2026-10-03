@@ -836,4 +836,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupCardReminders => 'Reminders';
+
+  @override
+  String get onboardingAudioEyebrow => 'Setup';
+
+  @override
+  String get onboardingAudioTitle => 'Where should the adhan play?';
+
+  @override
+  String get onboardingAudioSpeaker => 'Home speaker';
+
+  @override
+  String get onboardingAudioPhone => 'This phone';
 }

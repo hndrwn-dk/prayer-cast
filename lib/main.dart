@@ -56,7 +56,9 @@ import 'package:prayer_cast/qibla/compass_heading.dart';
 import 'package:prayer_cast/qibla/mosque_cache.dart';
 import 'package:prayer_cast/qibla/qibla_providers.dart';
 import 'package:prayer_cast/qibla/ui/qibla_page.dart';
+import 'package:prayer_cast/setup/onboarding_store.dart';
 import 'package:prayer_cast/setup/setup_card_store.dart';
+import 'package:prayer_cast/setup/ui/onboarding_gate.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
@@ -96,6 +98,9 @@ Future<void> main() async {
     final setupCardStore = FileSetupCardStore(
       File(p.join(docs.path, 'setup_card.txt')),
     );
+    final onboardingStore = FileOnboardingStore(
+      File(p.join(docs.path, 'onboarding.txt')),
+    );
 
     const logger = ConsoleLogger();
     final nextPrayer = AdhanNextPrayerProvider(
@@ -118,6 +123,7 @@ Future<void> main() async {
         prayerTrackerStoreProvider.overrideWithValue(prayerTrackerStore),
         mosqueCacheStoreProvider.overrideWithValue(mosqueCacheStore),
         setupCardStoreProvider.overrideWithValue(setupCardStore),
+        onboardingStoreProvider.overrideWithValue(onboardingStore),
         adhanNextPrayerProvider.overrideWithValue(nextPrayer),
         activeDeliveryHeroProvider.overrideWith((ref) {
           final hero = activeHeroHolder.value;
@@ -297,7 +303,9 @@ class PrayerCastApp extends ConsumerWidget {
       theme: PrayerCastTheme.light(),
       darkTheme: PrayerCastTheme.forest(),
       themeMode: themeModeFor(themeChoice),
-      home: _HomeShell(exactAlarm: exactAlarm, coordinator: coordinator),
+      home: OnboardingGate(
+        home: _HomeShell(exactAlarm: exactAlarm, coordinator: coordinator),
+      ),
     );
   }
 }
@@ -1174,7 +1182,7 @@ class _SpeakerBand extends StatelessWidget {
                         IconWell(
                           child: PremiumIcons.speaker(
                             size: 18,
-                            color: PrayerCastColors.mist,
+                            color: PrayerCastTokens.onMark(context),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -1295,7 +1303,7 @@ class _PipeDivider extends StatelessWidget {
         child: ColoredBox(
           color: PrayerCastTokens.isForest(context)
               ? PrayerCastColors.mistDeep.withValues(alpha: 0.55)
-              : PrayerCastColors.ink.withValues(alpha: 0.22),
+              : PrayerCastColors.dawn,
           child: const SizedBox(width: 1, height: 20),
         ),
       ),
@@ -1578,11 +1586,13 @@ class PrayerCastAppForTest extends StatelessWidget {
     required this.database,
     this.prayerPrefs,
     this.nextPrayer,
+    this.onboarding,
   });
 
   final DeliveryDatabase database;
   final PrayerPrefs? prayerPrefs;
   final NextPrayer? nextPrayer;
+  final OnboardingStore? onboarding;
 
   @override
   Widget build(BuildContext context) {
@@ -1627,6 +1637,9 @@ class PrayerCastAppForTest extends StatelessWidget {
           StreamCompassHeadingSource.headings(Stream<double?>.value(0)),
         ),
         setupCardStoreProvider.overrideWithValue(MemorySetupCardStore()),
+        onboardingStoreProvider.overrideWithValue(
+          onboarding ?? MemoryOnboardingStore(),
+        ),
       ],
       child: const PrayerCastApp(),
     );

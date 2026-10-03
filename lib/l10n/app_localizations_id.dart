@@ -838,4 +838,16 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get setupCardReminders => 'Pengingat';
+
+  @override
+  String get onboardingAudioEyebrow => 'Pengaturan';
+
+  @override
+  String get onboardingAudioTitle => 'Adzan diputar di mana?';
+
+  @override
+  String get onboardingAudioSpeaker => 'Speaker rumah';
+
+  @override
+  String get onboardingAudioPhone => 'HP ini';
 }

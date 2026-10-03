@@ -1579,6 +1579,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reminders'**
   String get setupCardReminders;
+
+  /// No description provided for @onboardingAudioEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup'**
+  String get onboardingAudioEyebrow;
+
+  /// No description provided for @onboardingAudioTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Where should the adhan play?'**
+  String get onboardingAudioTitle;
+
+  /// No description provided for @onboardingAudioSpeaker.
+  ///
+  /// In en, this message translates to:
+  /// **'Home speaker'**
+  String get onboardingAudioSpeaker;
+
+  /// No description provided for @onboardingAudioPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'This phone'**
+  String get onboardingAudioPhone;
 }
 
 class _AppLocalizationsDelegate
