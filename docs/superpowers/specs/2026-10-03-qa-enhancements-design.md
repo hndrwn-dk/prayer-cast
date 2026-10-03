@@ -44,32 +44,7 @@ QA found no crashes. They asked for four product improvements:
 
 ## 1. First-run checklist card
 
-Place one card on home, below the next-adhan hero and above the speaker band. Forest chrome, same family as the exact-alarm / notification banners.
-
-### Visibility
-
-On each home build:
-
-1. If `setupCardDismissed` is set → hide.
-2. Else if this install has never written setup-card flags, and `configured == true` → treat as an existing user: set `setupCardDismissed` and hide (no retroactive nag).
-3. Else show the card.
-
-Hide without Dismiss once required rows are done: prayer `configured`, and speaker saved **or** `setupCardNoSpeaker`. Reminders row can stay unticked; it does not keep the card visible.
-
-**Dismiss:** sets `setupCardDismissed` and hides immediately.
-
-Persist flags in a small on-device file next to locale (not Android SharedPreferences from Dart), same pattern as `FileLocaleStore`.
-
-### Rows
-
-1. **Home speaker** — opens `SpeakerSetupPage`. Done when `savedHomeSpeaker != null`. Secondary: **Use this phone** sets `setupCardNoSpeaker` and completes this row without a Cast device.
-2. **Prayer times** — opens `PrayerSettingsPage`. Done when `configured == true`.
-3. **No speaker: phone or beep** — visible only if `setupCardNoSpeaker` and no saved speaker. Opens Prayer settings focused on delivery mode. Done when `defaultDeliveryMode` is `adhanPhone` or `beep` (or `takbir`) after save. Hidden if a speaker is saved.
-4. **Reminders** — one row. Opens Prayer settings scrolled to pre-prayer + iqamah. Done when `setupCardRemindersSeen` is set after a successful save of Prayer settings opened from this row. Leaving a reminder off is allowed.
-
-Tapping a row does not auto-advance to the next page. The user returns to home and sees ticks.
-
-Copy: English and Indonesian (`l10n`).
+Replaced by `docs/superpowers/specs/2026-10-04-first-run-onboarding-design.md`. Do not build the home checklist card.
 
 ## 2. Theme (Light / Forest / System)
 
