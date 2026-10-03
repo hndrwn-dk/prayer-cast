@@ -70,6 +70,43 @@ abstract final class PrayerCastTokens {
         Brightness.dark || Brightness.light => PrayerCastColors.dawn,
       };
 
+  /// Icon well and round actions. Forest keeps canopy; light uses leaf
+  /// so the chip sits on mist instead of a near-black forest fill.
+  static Color mark(BuildContext context) =>
+      isForest(context) ? PrayerCastColors.canopy : PrayerCastColors.leaf;
+
+  /// Glyph on [mark].
+  static Color onMark(BuildContext context) => isForest(context)
+      ? PrayerCastColors.mist
+      : PrayerCastColors.surfaceRaised;
+
+  /// Dialog panel. Forest keeps canopyDeep; light uses the raised mist slab.
+  static Color panel(BuildContext context) => isForest(context)
+      ? PrayerCastColors.canopyDeep
+      : PrayerCastColors.surfaceRaised;
+
+  static Color panelTitle(BuildContext context) => isForest(context)
+      ? PrayerCastColors.surfaceRaised
+      : PrayerCastColors.ink;
+
+  static Color panelBody(BuildContext context) => isForest(context)
+      ? PrayerCastColors.mist
+      : PrayerCastColors.inkSoft;
+
+  /// Edge of a dialog. Forest keeps a mist stroke; light uses dawn.
+  static Color panelRule(BuildContext context) => isForest(context)
+      ? PrayerCastColors.mist.withValues(alpha: 0.28)
+      : PrayerCastColors.dawn;
+
+  /// Page hairline. Mist on ink in Forest; ink on mist in Light.
+  static Color rule(BuildContext context) => isForest(context)
+      ? PrayerCastColors.mist.withValues(alpha: 0.22)
+      : PrayerCastColors.ink.withValues(alpha: 0.28);
+
+  static Color scrim(BuildContext context) => PrayerCastColors.ink.withValues(
+    alpha: isForest(context) ? 0.72 : 0.38,
+  );
+
   static SystemUiOverlayStyle systemUi(BuildContext context) =>
       isForest(context)
       ? PrayerCastTheme.forestSystemUi

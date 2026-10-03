@@ -19,7 +19,6 @@ import '../presence/fingerprint_store.dart';
 import '../presence/mdns_browser.dart';
 import '../presence/presence_service.dart';
 import '../presence/lan_fingerprint.dart';
-import '../../prayer_times/adhan_next_prayer_provider.dart';
 import '../../prayer_times/prayer_prefs.dart';
 import 'adzan_audio_loader.dart';
 import 'adzan_cast_tester.dart';
