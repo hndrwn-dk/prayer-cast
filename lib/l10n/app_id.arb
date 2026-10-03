@@ -259,5 +259,8 @@
   "onboardingPrayerAction": "Pilih kota dan metode",
   "onboardingBatteryTitle": "Agar adzan tetap jalan saat HP tidur",
   "onboardingBatteryOpen": "Buka pengaturan baterai",
-  "onboardingBatterySkip": "Nanti"
+  "onboardingBatterySkip": "Nanti",
+  "onboardingRecoveryNotifications": "Izinkan notifikasi untuk adzan",
+  "onboardingRecoveryAlarm": "Izinkan alarm tepat waktu untuk adzan",
+  "onboardingRecoveryBattery": "Matikan batasan baterai untuk adzan"
 }

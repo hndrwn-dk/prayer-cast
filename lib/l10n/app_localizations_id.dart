@@ -877,4 +877,14 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get onboardingBatterySkip => 'Nanti';
+
+  @override
+  String get onboardingRecoveryNotifications =>
+      'Izinkan notifikasi untuk adzan';
+
+  @override
+  String get onboardingRecoveryAlarm => 'Izinkan alarm tepat waktu untuk adzan';
+
+  @override
+  String get onboardingRecoveryBattery => 'Matikan batasan baterai untuk adzan';
 }

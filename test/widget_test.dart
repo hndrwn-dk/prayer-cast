@@ -177,6 +177,41 @@ void main() {
     expect(find.textContaining('Gunakan lokasi saat ini'), findsNothing);
   });
 
+  testWidgets('home shows one permission recovery line, not three banners', (
+    tester,
+  ) async {
+    final db = DeliveryDatabase.memory();
+    addTearDown(db.close);
+
+    await tester.pumpWidget(
+      PrayerCastAppForTest(
+        database: db,
+        prayerPrefs: PrayerPrefs.defaults.copyWith(configured: true),
+        nextPrayer: NextPrayer(
+          name: 'isha',
+          scheduledAt: DateTime(2026, 8, 13, 20, 25),
+          voiceId: 'standard_adhan',
+        ),
+        notificationsGranted: false,
+        exactAlarmGranted: false,
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1200));
+
+    expect(find.text('ADZAN BERIKUTNYA'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('home_permission_recovery')),
+      findsOneWidget,
+    );
+    // HomeShell refreshes the real notification grant after the first frame,
+    // so the recovery line may be notifications or exact-alarm. Never both
+    // banner cards, and never the old exact-alarm title card.
+    expect(find.text('Izin alarm tepat waktu diperlukan'), findsNothing);
+    expect(find.text('Notifikasi diblokir'), findsNothing);
+    expect(find.byKey(const ValueKey('oem_battery_banner')), findsNothing);
+  });
+
   testWidgets('home next-adhan chip shows city and country', (tester) async {
     final db = DeliveryDatabase.memory();
     addTearDown(db.close);

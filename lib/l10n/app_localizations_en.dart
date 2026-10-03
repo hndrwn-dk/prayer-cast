@@ -876,4 +876,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingBatterySkip => 'Not now';
+
+  @override
+  String get onboardingRecoveryNotifications =>
+      'Allow notifications for the adhan';
+
+  @override
+  String get onboardingRecoveryAlarm => 'Allow exact alarms for the adhan';
+
+  @override
+  String get onboardingRecoveryBattery =>
+      'Turn off battery limits for the adhan';
 }

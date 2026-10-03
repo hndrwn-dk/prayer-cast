@@ -38,8 +38,6 @@ import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_tokens.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/adhan_countdown.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
-import 'package:prayer_cast/home_delivery/ui/widgets/oem_battery_banner.dart';
-import 'package:prayer_cast/home_delivery/ui/widgets/setup_checklist_card.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/spiritual_benefits_teaser.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
 import 'package:prayer_cast/l10n/locale_controller.dart';
@@ -57,7 +55,7 @@ import 'package:prayer_cast/qibla/mosque_cache.dart';
 import 'package:prayer_cast/qibla/qibla_providers.dart';
 import 'package:prayer_cast/qibla/ui/qibla_page.dart';
 import 'package:prayer_cast/setup/onboarding_store.dart';
-import 'package:prayer_cast/setup/setup_card_store.dart';
+import 'package:prayer_cast/setup/ui/home_permission_line.dart';
 import 'package:prayer_cast/setup/ui/onboarding_gate.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
 
@@ -95,9 +93,6 @@ Future<void> main() async {
     final mosqueCacheStore = FileMosqueCacheStore(
       File(p.join(docs.path, 'mosque_cache.json')),
     );
-    final setupCardStore = FileSetupCardStore(
-      File(p.join(docs.path, 'setup_card.txt')),
-    );
     final onboardingStore = FileOnboardingStore(
       File(p.join(docs.path, 'onboarding.txt')),
     );
@@ -122,7 +117,6 @@ Future<void> main() async {
         appThemeStoreProvider.overrideWithValue(themeStore),
         prayerTrackerStoreProvider.overrideWithValue(prayerTrackerStore),
         mosqueCacheStoreProvider.overrideWithValue(mosqueCacheStore),
-        setupCardStoreProvider.overrideWithValue(setupCardStore),
         onboardingStoreProvider.overrideWithValue(onboardingStore),
         adhanNextPrayerProvider.overrideWithValue(nextPrayer),
         activeDeliveryHeroProvider.overrideWith((ref) {
@@ -471,28 +465,11 @@ class _HomeShellState extends ConsumerState<_HomeShell>
   }) async {
     await Navigator.of(context).push(
       _fadeRoute(
-        PrayerSettingsPage(
-          coordinator: widget.coordinator,
-          focus: focus,
-          onSaved: focus == PrayerSettingsFocus.reminders
-              ? () {
-                  unawaited(_markRemindersSeen());
-                }
-              : null,
-        ),
+        PrayerSettingsPage(coordinator: widget.coordinator, focus: focus),
       ),
     );
     ref.invalidate(prayerPrefsProvider);
     ref.invalidate(nextPrayerSnapshotProvider);
-    ref.invalidate(setupCardFlagsProvider);
-  }
-
-  Future<void> _markRemindersSeen() async {
-    final store = ref.read(setupCardStoreProvider);
-    final flags = await store.read();
-    if (flags.remindersSeen) return;
-    await store.write(flags.copyWith(remindersSeen: true));
-    ref.invalidate(setupCardFlagsProvider);
   }
 
   Future<void> _openPrayerTracker() async {
@@ -626,7 +603,7 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                 child: _HomeHero(
                   canSchedule: canSchedule,
                   notificationsGranted: notificationsGranted,
-                  showOemBatteryBanner:
+                  showBattery:
                       !batteryUnrestricted &&
                       (nextHeroConfigured || speakerName != null),
                   dryRunArmedLabel: _dryRunArmedLabel,
@@ -666,18 +643,6 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                   onSpiritualBenefitsTap: nextPrayerKey == null
                       ? null
                       : () => _openSpiritualBenefits(nextPrayerKey),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: SetupChecklistCard(
-                  onOpenSpeaker: () => unawaited(_openSpeakerSetup()),
-                  onOpenPrayerTimes: () => unawaited(_openPrayerSettings()),
-                  onOpenDelivery: () => unawaited(
-                    _openPrayerSettings(focus: PrayerSettingsFocus.delivery),
-                  ),
-                  onOpenReminders: () => unawaited(
-                    _openPrayerSettings(focus: PrayerSettingsFocus.reminders),
-                  ),
                 ),
               ),
               SliverToBoxAdapter(
@@ -769,7 +734,7 @@ class _HomeHero extends StatelessWidget {
     required this.onOpenSettings,
     required this.onRequestExactAlarm,
     required this.onRequestNotifications,
-    required this.showOemBatteryBanner,
+    required this.showBattery,
     required this.onOpenBatterySettings,
     this.dryRunArmedLabel,
     this.onCancelDryRun,
@@ -779,7 +744,7 @@ class _HomeHero extends StatelessWidget {
 
   final bool canSchedule;
   final bool notificationsGranted;
-  final bool showOemBatteryBanner;
+  final bool showBattery;
   final VoidCallback onOpenBatterySettings;
   final String? dryRunArmedLabel;
   final VoidCallback? onCancelDryRun;
@@ -828,20 +793,14 @@ class _HomeHero extends StatelessWidget {
                   delay: const Duration(milliseconds: 40),
                   child: _HomeMasthead(onOpenSettings: onOpenSettings),
                 ),
-                if (!canSchedule) ...[
-                  const SizedBox(height: 16),
-                  _ExactAlarmPermissionBanner(onRequest: onRequestExactAlarm),
-                ],
-                if (!notificationsGranted) ...[
-                  const SizedBox(height: 16),
-                  _NotificationPermissionBanner(
-                    onRequest: onRequestNotifications,
-                  ),
-                ],
-                if (showOemBatteryBanner) ...[
-                  const SizedBox(height: 16),
-                  OemBatteryBanner(onOpen: onOpenBatterySettings),
-                ],
+                HomePermissionLine(
+                  canSchedule: canSchedule,
+                  notificationsGranted: notificationsGranted,
+                  showBattery: showBattery,
+                  onRequestNotifications: onRequestNotifications,
+                  onRequestExactAlarm: onRequestExactAlarm,
+                  onOpenBatterySettings: onOpenBatterySettings,
+                ),
                 if (dryRunArmedLabel != null) ...[
                   const SizedBox(height: 16),
                   _DryRunArmedBanner(
@@ -1408,57 +1367,6 @@ String _presenceLabel(
   );
 }
 
-class _ExactAlarmPermissionBanner extends StatelessWidget {
-  const _ExactAlarmPermissionBanner({required this.onRequest});
-
-  final VoidCallback onRequest;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return Material(
-      color: PrayerCastColors.dawnSoft,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.exactAlarmTitle,
-              style: const TextStyle(
-                fontFamily: PrayerCastTheme.bodyFont,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: PrayerCastColors.ink,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              l10n.exactAlarmBody,
-              style: const TextStyle(
-                fontFamily: PrayerCastTheme.bodyFont,
-                fontSize: 16,
-                height: 1.4,
-                color: PrayerCastColors.inkSoft,
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              height: PrayerCastTheme.minTap,
-              child: FilledButton(
-                onPressed: onRequest,
-                child: Text(l10n.exactAlarmOpenSettings),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _DryRunArmedBanner extends StatelessWidget {
   const _DryRunArmedBanner({required this.label, this.onCancel});
 
@@ -1492,57 +1400,6 @@ class _DryRunArmedBanner extends StatelessWidget {
                 child: Text(isId ? 'Batalkan tes' : 'Cancel test'),
               ),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NotificationPermissionBanner extends StatelessWidget {
-  const _NotificationPermissionBanner({required this.onRequest});
-
-  final VoidCallback onRequest;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return Material(
-      color: PrayerCastColors.dawnSoft,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.notificationsBlockedTitle,
-              style: const TextStyle(
-                fontFamily: PrayerCastTheme.bodyFont,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: PrayerCastColors.ink,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              l10n.notificationsBlockedBody,
-              style: const TextStyle(
-                fontFamily: PrayerCastTheme.bodyFont,
-                fontSize: 16,
-                height: 1.4,
-                color: PrayerCastColors.inkSoft,
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              height: PrayerCastTheme.minTap,
-              child: FilledButton(
-                onPressed: onRequest,
-                child: Text(l10n.notificationsBlockedAllow),
-              ),
-            ),
           ],
         ),
       ),
@@ -1588,12 +1445,16 @@ class PrayerCastAppForTest extends StatelessWidget {
     this.prayerPrefs,
     this.nextPrayer,
     this.onboarding,
+    this.notificationsGranted = true,
+    this.exactAlarmGranted = true,
   });
 
   final DeliveryDatabase database;
   final PrayerPrefs? prayerPrefs;
   final NextPrayer? nextPrayer;
   final OnboardingStore? onboarding;
+  final bool notificationsGranted;
+  final bool exactAlarmGranted;
 
   @override
   Widget build(BuildContext context) {
@@ -1637,9 +1498,14 @@ class PrayerCastAppForTest extends StatelessWidget {
         compassHeadingSourceProvider.overrideWithValue(
           StreamCompassHeadingSource.headings(Stream<double?>.value(0)),
         ),
-        setupCardStoreProvider.overrideWithValue(MemorySetupCardStore()),
         onboardingStoreProvider.overrideWithValue(
           onboarding ?? MemoryOnboardingStore(),
+        ),
+        postNotificationsGrantedProvider.overrideWith(
+          (ref) => notificationsGranted,
+        ),
+        exactAlarmPermissionGrantedProvider.overrideWith(
+          (ref) => exactAlarmGranted,
         ),
       ],
       child: const PrayerCastApp(),

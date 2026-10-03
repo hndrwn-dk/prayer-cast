@@ -1657,6 +1657,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not now'**
   String get onboardingBatterySkip;
+
+  /// No description provided for @onboardingRecoveryNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow notifications for the adhan'**
+  String get onboardingRecoveryNotifications;
+
+  /// No description provided for @onboardingRecoveryAlarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow exact alarms for the adhan'**
+  String get onboardingRecoveryAlarm;
+
+  /// No description provided for @onboardingRecoveryBattery.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off battery limits for the adhan'**
+  String get onboardingRecoveryBattery;
 }
 
 class _AppLocalizationsDelegate

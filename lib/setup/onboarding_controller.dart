@@ -13,6 +13,7 @@ abstract final class OnboardingController {
       step: prefs.configured ? OnboardingStep.completed : OnboardingStep.audio,
     );
     await store.write(next);
+    ref.invalidate(onboardingStepProvider);
     return next;
   }
 

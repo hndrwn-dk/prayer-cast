@@ -414,5 +414,8 @@
   "onboardingPrayerAction": "Choose city and method",
   "onboardingBatteryTitle": "Keep the adhan on while the phone sleeps",
   "onboardingBatteryOpen": "Open battery settings",
-  "onboardingBatterySkip": "Not now"
+  "onboardingBatterySkip": "Not now",
+  "onboardingRecoveryNotifications": "Allow notifications for the adhan",
+  "onboardingRecoveryAlarm": "Allow exact alarms for the adhan",
+  "onboardingRecoveryBattery": "Turn off battery limits for the adhan"
 }
