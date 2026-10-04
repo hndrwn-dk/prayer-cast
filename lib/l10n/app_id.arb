@@ -257,7 +257,29 @@
   "onboardingPhoneBeep": "Beep di HP",
   "onboardingUsePhoneAudio": "Pakai audio di HP aja",
   "onboardingPrayerTitle": "Atur waktu sholat",
-  "onboardingPrayerAction": "Pilih kota dan metode",
+  "onboardingPrayerAction": "Gunakan lokasi saat ini",
+  "onboardingPrayerBody": "Ketuk tombol untuk izinkan lokasi. Kota dan metode diisi otomatis — bisa diubah nanti di Waktu sholat.",
+  "onboardingPrayerContinue": "Lanjut",
+  "onboardingSwipeNext": "Lanjut",
+  "onboardingPrayerRetry": "Deteksi lagi",
+  "onboardingPrayerResultCity": "Kota: {city}",
+  "@onboardingPrayerResultCity": {
+    "placeholders": {
+      "city": {"type": "String"}
+    }
+  },
+  "onboardingPrayerResultCountry": "Negara: {country}",
+  "@onboardingPrayerResultCountry": {
+    "placeholders": {
+      "country": {"type": "String"}
+    }
+  },
+  "onboardingPrayerResultMethod": "Metode: {method}",
+  "@onboardingPrayerResultMethod": {
+    "placeholders": {
+      "method": {"type": "String"}
+    }
+  },
   "onboardingBatteryTitle": "Agar adzan tetap jalan saat HP tidur",
   "onboardingBatteryOpen": "Buka pengaturan baterai",
   "onboardingBatterySkip": "Nanti",

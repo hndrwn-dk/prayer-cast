@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prayer_cast/home_delivery/platform/exact_alarm.dart';
 import 'package:prayer_cast/home_delivery/platform/post_notifications_permission.dart';
 import 'package:prayer_cast/home_delivery/ui/home_setup_providers.dart';
-import 'package:prayer_cast/home_delivery/ui/speaker_setup_page.dart';
+import 'package:prayer_cast/home_delivery/ui/icons/premium_icons.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_tokens.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
@@ -13,9 +13,11 @@ import 'package:prayer_cast/setup/onboarding_controller.dart';
 import 'package:prayer_cast/setup/onboarding_store.dart';
 import 'package:prayer_cast/setup/ui/onboarding_audio_step.dart';
 import 'package:prayer_cast/setup/ui/onboarding_battery_step.dart';
-import 'package:prayer_cast/setup/ui/onboarding_phone_step.dart';
 import 'package:prayer_cast/setup/ui/onboarding_permission_step.dart';
+import 'package:prayer_cast/setup/ui/onboarding_phone_step.dart';
 import 'package:prayer_cast/setup/ui/onboarding_prayer_step.dart';
+import 'package:prayer_cast/setup/ui/onboarding_shell.dart';
+import 'package:prayer_cast/setup/ui/onboarding_speaker_step.dart';
 
 /// Resolves onboarding once, then shows home or the current onboarding step.
 class OnboardingGate extends ConsumerStatefulWidget {
@@ -109,7 +111,13 @@ class _OnboardingResolved extends ConsumerWidget {
       await ask();
       return;
     }
-    await exactAlarm?.requestExactAlarmPermission();
+    final alarm = exactAlarm;
+    if (alarm == null) {
+      // Fall back to the platform bridge even if the gate lost its inject.
+      await ExactAlarm().requestExactAlarmPermission();
+      return;
+    }
+    await alarm.requestExactAlarmPermission();
   }
 
   @override
@@ -135,18 +143,23 @@ class _OnboardingResolved extends ConsumerWidget {
       });
     }
     final l10n = context.l10n;
-    final back = record.back;
     return switch (record.step) {
       OnboardingStep.completed => home,
       OnboardingStep.phone => OnboardingPhoneStep(record: record),
       OnboardingStep.prayer => OnboardingPrayerStep(record: record),
       OnboardingStep.battery => OnboardingBatteryStep(record: record),
       OnboardingStep.notifications => OnboardingPermissionStep(
+        // Distinct key: notifications sets busy=true; without a key Flutter
+        // reuses that State on the alarm step and every CTA stays disabled.
+        key: const ValueKey('onboarding_step_notifications'),
+        stage: OnboardingStage.notifications,
         title: l10n.notificationsBlockedTitle,
         body: l10n.notificationsBlockedBody,
         action: l10n.notificationsBlockedAllow,
         actionKey: const ValueKey('onboarding_notifications_continue'),
+        mark: PremiumIcons.alertCircle(size: 40),
         onRequest: _askNotifications,
+        awaitRequest: true,
         onBack: _back(ref, record),
         onFinished: () {
           OnboardingController.go(
@@ -157,11 +170,16 @@ class _OnboardingResolved extends ConsumerWidget {
         },
       ),
       OnboardingStep.alarm => OnboardingPermissionStep(
+        key: const ValueKey('onboarding_step_alarm'),
+        stage: OnboardingStage.alarm,
         title: l10n.exactAlarmTitle,
         body: l10n.exactAlarmBody,
         action: l10n.exactAlarmOpenSettings,
         actionKey: const ValueKey('onboarding_alarm_continue'),
+        mark: PremiumIcons.clock(size: 40),
         onRequest: _askExactAlarm,
+        // Settings activity — finish without awaiting or the step can stick.
+        awaitRequest: false,
         onBack: _back(ref, record),
         onFinished: () {
           OnboardingController.go(
@@ -171,19 +189,7 @@ class _OnboardingResolved extends ConsumerWidget {
           ).ignore();
         },
       ),
-      OnboardingStep.speaker => SpeakerSetupPage(
-        onboarding: true,
-        onUsePhoneAudio: () {
-          OnboardingController.go(
-            ref,
-            OnboardingStep.phone,
-            back: OnboardingStep.speaker,
-          ).ignore();
-        },
-        onBack: back == null
-            ? null
-            : () => OnboardingController.go(ref, back, back: null).ignore(),
-      ),
+      OnboardingStep.speaker => OnboardingSpeakerStep(record: record),
       OnboardingStep.audio || _ => const OnboardingAudioStep(),
     };
   }

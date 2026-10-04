@@ -868,7 +868,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingPrayerTitle => 'Set prayer times';
 
   @override
-  String get onboardingPrayerAction => 'Choose city and method';
+  String get onboardingPrayerAction => 'Use current location';
+
+  @override
+  String get onboardingPrayerBody =>
+      'Tap the button to allow location. We fill city and method for you — change them later in Prayer times if needed.';
+
+  @override
+  String get onboardingPrayerContinue => 'Continue';
+
+  @override
+  String get onboardingSwipeNext => 'Continue';
+
+  @override
+  String get onboardingPrayerRetry => 'Detect again';
+
+  @override
+  String onboardingPrayerResultCity(String city) {
+    return 'City: $city';
+  }
+
+  @override
+  String onboardingPrayerResultCountry(String country) {
+    return 'Country: $country';
+  }
+
+  @override
+  String onboardingPrayerResultMethod(String method) {
+    return 'Method: $method';
+  }
 
   @override
   String get onboardingBatteryTitle =>

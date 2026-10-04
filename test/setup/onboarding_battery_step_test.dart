@@ -64,7 +64,7 @@ void main() {
     );
     await pumpGate(tester, store: store);
 
-    await tester.tap(find.byKey(const ValueKey('onboarding_battery_skip')));
+    await tester.tap(find.byKey(const ValueKey('onboarding_swipe_hint')));
     await tester.pump();
     await tester.pump();
 
@@ -73,7 +73,9 @@ void main() {
     expect(find.text('ADZAN BERIKUTNYA'), findsOneWidget);
   });
 
-  testWidgets('open battery settings then finishes onboarding', (tester) async {
+  testWidgets('open battery settings stays on step until continue', (
+    tester,
+  ) async {
     final store = MemoryOnboardingStore(
       const OnboardingRecord(
         step: OnboardingStep.battery,
@@ -88,6 +90,12 @@ void main() {
     await tester.pump();
 
     expect(oem.openCalls, 1);
+    expect((await store.read()).step, OnboardingStep.battery);
+
+    await tester.tap(find.byKey(const ValueKey('onboarding_swipe_hint')));
+    await tester.pump();
+    await tester.pump();
+
     expect((await store.read()).step, OnboardingStep.completed);
     expect(find.text('ADZAN BERIKUTNYA'), findsOneWidget);
   });

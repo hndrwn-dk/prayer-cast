@@ -1377,7 +1377,7 @@ class _DryRunArmedBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final isId = Localizations.localeOf(context).languageCode == 'id';
     return Material(
-      color: PrayerCastColors.dawnSoft,
+      color: PrayerCastTokens.dawnWash(context),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -1386,11 +1386,11 @@ class _DryRunArmedBanner extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: PrayerCastTheme.bodyFont,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: PrayerCastColors.ink,
+                color: PrayerCastTokens.onDawnWash(context),
               ),
             ),
             if (onCancel != null) ...[

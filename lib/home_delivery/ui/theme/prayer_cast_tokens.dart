@@ -103,6 +103,26 @@ abstract final class PrayerCastTokens {
       ? PrayerCastColors.mist.withValues(alpha: 0.22)
       : PrayerCastColors.ink.withValues(alpha: 0.28);
 
+  /// Soft dawn panel (recovery banners, accent wells). Not raw dawnSoft —
+  /// that disappears on forest.
+  static Color dawnWash(BuildContext context) => isForest(context)
+      ? PrayerCastColors.dawn.withValues(alpha: 0.18)
+      : PrayerCastColors.dawnSoft;
+
+  /// Primary label on [dawnWash].
+  static Color onDawnWash(BuildContext context) =>
+      isForest(context) ? PrayerCastColors.mist : PrayerCastColors.ink;
+
+  /// Secondary label on [dawnWash].
+  static Color onDawnWashMuted(BuildContext context) => isForest(context)
+      ? PrayerCastColors.mistDeep
+      : PrayerCastColors.inkSoft;
+
+  /// Spinner / icon track that stays visible on both themes.
+  static Color track(BuildContext context) => isForest(context)
+      ? PrayerCastColors.mist.withValues(alpha: 0.28)
+      : PrayerCastColors.ink.withValues(alpha: 0.16);
+
   static Color scrim(BuildContext context) => PrayerCastColors.ink.withValues(
     alpha: isForest(context) ? 0.72 : 0.38,
   );

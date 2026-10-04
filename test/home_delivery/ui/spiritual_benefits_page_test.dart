@@ -57,17 +57,21 @@ void main() {
     );
   });
 
-  testWidgets('page shows Dhuhr sections in English', (tester) async {
+  Future<void> pumpPage(WidgetTester tester, {required ThemeData theme}) async {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('en'),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
-        theme: PrayerCastTheme.forest(),
+        theme: theme,
         home: const SpiritualBenefitsPage(prayer: 'dhuhr'),
       ),
     );
     await tester.pump();
+  }
+
+  testWidgets('page shows Dhuhr sections in English (forest)', (tester) async {
+    await pumpPage(tester, theme: PrayerCastTheme.forest());
 
     expect(find.byKey(SpiritualBenefitsPage.keyName), findsOneWidget);
     expect(find.text('Dhuhr'), findsOneWidget);
@@ -78,6 +82,20 @@ void main() {
     expect(find.text('Break from worldly activities'), findsOneWidget);
     expect(find.text('Midday spiritual recharge'), findsOneWidget);
     expect(find.text('Pray 4 Sunnah rakats before Dhuhr'), findsOneWidget);
+    expect(
+      find.text(
+        'The middle prayer that brings balance to our day and reminds us of our purpose.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('page shows Dhuhr sections in English (light)', (tester) async {
+    await pumpPage(tester, theme: PrayerCastTheme.light());
+
+    expect(find.byKey(SpiritualBenefitsPage.keyName), findsOneWidget);
+    expect(find.text('SPIRITUAL BENEFITS'), findsWidgets);
+    expect(find.text('Break from worldly activities'), findsOneWidget);
     expect(
       find.text(
         'The middle prayer that brings balance to our day and reminds us of our purpose.',

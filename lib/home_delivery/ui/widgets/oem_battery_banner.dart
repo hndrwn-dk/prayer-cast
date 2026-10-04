@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../theme/prayer_cast_colors.dart';
 import '../theme/prayer_cast_theme.dart';
+import '../theme/prayer_cast_tokens.dart';
 
 /// Prompt to open battery-unrestricted settings when optimisation is on.
 class OemBatteryBanner extends StatelessWidget {
@@ -16,7 +16,7 @@ class OemBatteryBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       key: bannerKey,
-      color: PrayerCastColors.dawnSoft,
+      color: PrayerCastTokens.dawnWash(context),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -25,21 +25,21 @@ class OemBatteryBanner extends StatelessWidget {
           children: [
             Text(
               _title(context),
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: PrayerCastTheme.bodyFont,
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: PrayerCastColors.ink,
+                color: PrayerCastTokens.onDawnWash(context),
               ),
             ),
             const SizedBox(height: 6),
             Text(
               _body(context),
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: PrayerCastTheme.bodyFont,
                 fontSize: 16,
                 height: 1.4,
-                color: PrayerCastColors.inkSoft,
+                color: PrayerCastTokens.onDawnWashMuted(context),
               ),
             ),
             const SizedBox(height: 10),

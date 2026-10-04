@@ -1643,8 +1643,50 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingPrayerAction.
   ///
   /// In en, this message translates to:
-  /// **'Choose city and method'**
+  /// **'Use current location'**
   String get onboardingPrayerAction;
+
+  /// No description provided for @onboardingPrayerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the button to allow location. We fill city and method for you — change them later in Prayer times if needed.'**
+  String get onboardingPrayerBody;
+
+  /// No description provided for @onboardingPrayerContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get onboardingPrayerContinue;
+
+  /// No description provided for @onboardingSwipeNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get onboardingSwipeNext;
+
+  /// No description provided for @onboardingPrayerRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Detect again'**
+  String get onboardingPrayerRetry;
+
+  /// No description provided for @onboardingPrayerResultCity.
+  ///
+  /// In en, this message translates to:
+  /// **'City: {city}'**
+  String onboardingPrayerResultCity(String city);
+
+  /// No description provided for @onboardingPrayerResultCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Country: {country}'**
+  String onboardingPrayerResultCountry(String country);
+
+  /// No description provided for @onboardingPrayerResultMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Method: {method}'**
+  String onboardingPrayerResultMethod(String method);
 
   /// No description provided for @onboardingBatteryTitle.
   ///

@@ -1,5 +1,6 @@
 package com.tursinalabs.prayer_cast
 
+import android.app.Activity
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
@@ -14,6 +15,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.lang.ref.WeakReference
 
 /**
  * MethodChannel bridge for AlarmManager.setAlarmClock (spec §5.5).
@@ -30,10 +32,17 @@ class ExactAlarmPlugin(
 
     private var eventSink: EventChannel.EventSink? = null
     private var channel: MethodChannel? = null
+    private var activityRef: WeakReference<Activity>? = null
 
     fun attachChannel(methodChannel: MethodChannel) {
         channel = methodChannel
     }
+
+    fun attachActivity(activity: Activity?) {
+        activityRef = activity?.let { WeakReference(it) }
+    }
+
+    fun hostActivity(): Activity? = activityRef?.get()
 
     fun notifyStopLocalPlayback() {
         channel?.invokeMethod("stopLocalPlayback", null)
@@ -70,8 +79,15 @@ class ExactAlarmPlugin(
                 result.success(canScheduleExactAlarms(context))
             }
             "requestExactAlarmPermission" -> {
-                requestExactAlarmPermission(context)
-                result.success(null)
+                try {
+                    requestExactAlarmPermission(
+                        context,
+                        hostActivity(),
+                    )
+                    result.success(null)
+                } catch (e: Exception) {
+                    result.error("request_failed", e.message, null)
+                }
             }
             "stopForegroundService" -> {
                 val intent = Intent(context, AdzanForegroundService::class.java)
@@ -296,8 +312,14 @@ class ExactAlarmPlugin(
             return plugin
         }
 
+        /** Keep a live Activity for Settings intents (BAL-safe). */
+        fun attachActivity(activity: Activity?) {
+            instance?.attachActivity(activity)
+        }
+
         /** Drop the live plugin when its FlutterEngine is destroyed. */
         fun detachInstance() {
+            instance?.attachActivity(null)
             instance = null
             pendingFire = null
         }
@@ -642,13 +664,42 @@ class ExactAlarmPlugin(
         }
 
         @JvmStatic
-        fun requestExactAlarmPermission(context: Context) {
+        @JvmOverloads
+        fun requestExactAlarmPermission(
+            context: Context,
+            activity: Activity? = instance?.hostActivity(),
+        ) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
-            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+            val host = activity ?: instance?.hostActivity()
+            val packaged = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
                 data = Uri.parse("package:${context.packageName}")
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            context.startActivity(intent)
+            val bare = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+            val details = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${context.packageName}")
+            }
+            // Prefer live Activity (Android 14+ BAL blocks app-context starts).
+            for (intent in listOf(packaged, bare, details)) {
+                try {
+                    startSettings(host, context, intent)
+                    return
+                } catch (_: Exception) {
+                    // try next candidate
+                }
+            }
+        }
+
+        private fun startSettings(
+            activity: Activity?,
+            context: Context,
+            intent: Intent,
+        ) {
+            if (activity != null && !activity.isFinishing && !activity.isDestroyed) {
+                activity.startActivity(intent)
+            } else {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+            }
         }
 
         private fun pendingFlags(): Int {

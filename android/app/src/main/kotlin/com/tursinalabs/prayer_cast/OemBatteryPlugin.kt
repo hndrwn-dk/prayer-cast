@@ -1,5 +1,6 @@
 package com.tursinalabs.prayer_cast
 
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -10,26 +11,35 @@ import android.provider.Settings
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.lang.ref.WeakReference
 
 /**
  * Opens OEM battery-optimisation and autostart settings (spec §6.3).
  *
- * Battery (`open`) and autostart (`openAutostartSettings`) are separate
- * screens. ColorOS Auto-launch can drop BOOT_COMPLETED even when battery
- * optimisation is already unrestricted.
+ * Battery (`open`) prefers a package-scoped screen so the user does not
+ * search an all-apps list. Stock Android: system
+ * [Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS] dialog for this
+ * package, then App info. OEM list intents stay for restrictive brands.
+ *
+ * Autostart (`openAutostartSettings`) is separate — ColorOS Auto-launch
+ * can drop BOOT_COMPLETED even when battery optimisation is unrestricted.
  *
  * OEM component names are version-fragile and not official. None of the
  * autostart activities below were verified on a physical Oppo / Realme /
  * Xiaomi / Vivo in this change — they are community-documented candidates.
  * [tryStart] walks the list; a missing activity just falls through.
- *
- * Manual QA (required before trusting production copy that names a brand):
- * on each OEM, tap the in-app "Open auto-launch settings" button and
- * confirm the Auto-launch / Startup Manager screen actually opens.
  */
 class OemBatteryPlugin(
     private val context: Context,
 ) : MethodChannel.MethodCallHandler {
+
+    private var activityRef: WeakReference<Activity>? = null
+
+    fun attachActivity(activity: Activity?) {
+        activityRef = activity?.let { WeakReference(it) }
+    }
+
+    private fun hostActivity(): Activity? = activityRef?.get()
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
@@ -43,16 +53,33 @@ class OemBatteryPlugin(
     }
 
     private fun openBatterySettings(): Boolean {
-        val candidates = batteryOemIntents() + listOf(
-            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
-            Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS).takeIf {
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1
-            },
-            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                data = Uri.parse("package:${context.packageName}")
-            },
-            Intent(Settings.ACTION_SETTINGS),
-        ).filterNotNull()
+        val pkg = context.packageName
+        val candidates = mutableListOf<Intent>()
+
+        // Stock / Pixel: system Allow dialog for THIS app (no search list).
+        // Never fall through to ACTION_SETTINGS (Settings home) — that looks
+        // like a broken handoff.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            !isBatteryUnrestricted()
+        ) {
+            candidates += Intent(
+                Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+            ).apply {
+                data = Uri.parse("package:$pkg")
+            }
+        }
+
+        // Restrictive OEMs when present (brand-specific battery UI).
+        candidates += batteryOemIntents()
+
+        // App info for this package — Battery / Unrestricted is one tap.
+        candidates += Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.parse("package:$pkg")
+        }
+
+        // All-apps battery list only as last package-scoped fallback.
+        candidates += Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+
         return tryStart(candidates)
     }
 
@@ -116,19 +143,6 @@ class OemBatteryPlugin(
      * NONE of these OEM activities were opened on a physical Oppo / Realme /
      * Xiaomi / Vivo in this change. [tryStart] must keep walking on
      * ActivityNotFound / SecurityException (OPPO_COMPONENT_SAFE).
-     *
-     * ColorOS current (Oppo/Realme, ColorOS 6+): Auto-launch is a toggle on
-     * the app-info page in Settings (`com.android.settings`), not a public
-     * app-specific Auto-launch activity. Tried first. Then the Auto-launch
-     * list in oplus/coloros safecenter (often signature-protected).
-     * ColorOS older: com.coloros.safecenter / com.oppo.safe StartupAppList.
-     * OnePlus: ChainLaunch list (judemanutd/AutoStarter).
-     * MIUI: AutoStartManagementActivity (widely cited; not device-verified).
-     * Vivo: BgStartUpManager* (widely cited; not device-verified).
-     *
-     * Manual QA (required on Oppo/Realme before trusting production copy):
-     * tap "Open auto-launch settings" and confirm Auto-launch / Startup
-     * Manager actually opens — not a generic Settings home.
      */
     private fun autostartOemIntents(): List<Intent> {
         val manufacturer = Build.MANUFACTURER.lowercase()
@@ -147,7 +161,6 @@ class OemBatteryPlugin(
             manufacturer.contains("oppo") ||
                 manufacturer.contains("realme") ||
                 manufacturer.contains("oneplus") -> {
-                // Current ColorOS: Auto-launch lives on App info in Settings.
                 intents += colorOsSettingsAppInfoIntent()
                 intents += componentIntent(
                     "com.oplus.safecenter",
@@ -210,10 +223,15 @@ class OemBatteryPlugin(
     }
 
     private fun tryStart(intents: List<Intent>): Boolean {
+        val activity = hostActivity()
         for (intent in intents) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             try {
-                context.startActivity(intent)
+                if (activity != null && !activity.isFinishing && !activity.isDestroyed) {
+                    activity.startActivity(intent)
+                } else {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                }
                 return true
             } catch (_: Exception) {
                 // Wrong or removed OEM component — try the next candidate.
@@ -252,11 +270,25 @@ class OemBatteryPlugin(
             "iqoo",
         )
 
+        @Volatile
+        private var instance: OemBatteryPlugin? = null
+
+        fun attachActivity(activity: Activity?) {
+            instance?.attachActivity(activity)
+        }
+
+        fun detachInstance() {
+            instance?.attachActivity(null)
+            instance = null
+        }
+
         fun registerWith(flutterEngine: FlutterEngine, context: Context) {
+            val plugin = OemBatteryPlugin(context.applicationContext)
+            instance = plugin
             MethodChannel(
                 flutterEngine.dartExecutor.binaryMessenger,
                 CHANNEL,
-            ).setMethodCallHandler(OemBatteryPlugin(context.applicationContext))
+            ).setMethodCallHandler(plugin)
         }
     }
 }

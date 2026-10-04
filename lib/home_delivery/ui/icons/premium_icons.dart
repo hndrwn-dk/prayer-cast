@@ -46,6 +46,10 @@ abstract final class PremiumIcons {
   static Widget devices({double size = 24, Color? color}) =>
       _Icon(size: size, color: color, paint: _paintDevices);
 
+  /// Single handset — phone delivery / onboarding audio choice.
+  static Widget phone({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintPhone);
+
   static Widget speakerSlash({double size = 24, Color? color}) =>
       _Icon(size: size, color: color, paint: _paintSpeakerSlash);
 
@@ -364,6 +368,39 @@ void _paintDevices(Canvas canvas, Size size, Color color) {
       Rect.fromLTWH(s * 0.48, s * 0.34, s * 0.36, s * 0.44),
       const Radius.circular(4),
     ),
+    p,
+  );
+}
+
+void _paintPhone(Canvas canvas, Size size, Color color) {
+  final s = size.shortestSide;
+  final p = _stroke(color);
+  // Handset proportions closer to a modern phone (not a tall oval).
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(s * 0.5, s * 0.5),
+        width: s * 0.50,
+        height: s * 0.72,
+      ),
+      Radius.circular(s * 0.11),
+    ),
+    p,
+  );
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(s * 0.5, s * 0.24),
+        width: s * 0.20,
+        height: s * 0.045,
+      ),
+      Radius.circular(s * 0.02),
+    ),
+    p,
+  );
+  canvas.drawLine(
+    Offset(s * 0.40, s * 0.78),
+    Offset(s * 0.60, s * 0.78),
     p,
   );
 }

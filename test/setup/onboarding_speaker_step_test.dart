@@ -109,6 +109,9 @@ void main() {
       overrides: [savedHomeSpeakerProvider.overrideWith((ref) async => null)],
     );
 
+    expect(find.byKey(const ValueKey('household_code_menu')), findsNothing);
+    expect(find.byKey(const ValueKey('onboarding_progress')), findsOneWidget);
+
     await tester.tap(find.byKey(const ValueKey('onboarding_use_phone_audio')));
     await tester.pump();
 

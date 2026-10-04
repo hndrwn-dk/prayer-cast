@@ -30,6 +30,8 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     override fun onDestroy() {
+        ExactAlarmPlugin.attachActivity(null)
+        OemBatteryPlugin.attachActivity(null)
         // Before super, so the hang restart is posted after Flutter detaches
         // the view. Destroying the engine while the view is still in layout
         // is the setViewportMetrics crash.
@@ -53,15 +55,24 @@ class MainActivity : FlutterFragmentActivity() {
         return DeliveryEnginePolicy.destroyEngineWithHost()
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Re-bind after Settings / OEM screens return (BAL-safe startActivity).
+        ExactAlarmPlugin.attachActivity(this)
+        OemBatteryPlugin.attachActivity(this)
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         // Always bind: a cached FGS engine would otherwise skip this channel.
         LaunchPrayerPlugin.bind(flutterEngine, this)
         ShareTextPlugin.bind(flutterEngine, this)
-        if (PrayerCastFlutter.cached() === flutterEngine) {
-            return
+        if (PrayerCastFlutter.cached() !== flutterEngine) {
+            PrayerCastFlutter.registerAppPlugins(flutterEngine, applicationContext)
+            PrayerCastFlutter.cacheIfAbsent(flutterEngine)
         }
-        PrayerCastFlutter.registerAppPlugins(flutterEngine, applicationContext)
-        PrayerCastFlutter.cacheIfAbsent(flutterEngine)
+        // After register: attachActivity is a no-op if instance is still null.
+        ExactAlarmPlugin.attachActivity(this)
+        OemBatteryPlugin.attachActivity(this)
     }
 }

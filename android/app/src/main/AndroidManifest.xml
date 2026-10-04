@@ -31,6 +31,10 @@
     <!-- Exact alarm — request at runtime. Do NOT add USE_EXACT_ALARM (spec §5.5). -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
+    <!-- Opens the system Allow dialog for THIS package (adhan while asleep).
+         Prefer over the all-apps "App battery usage" list. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
     <!-- Foreground service wake path for adzan delivery.
          AdzanForegroundService is connectedDevice (Wi-Fi lock + Dart
          start for Cast / LAN coordination; it does not play media).

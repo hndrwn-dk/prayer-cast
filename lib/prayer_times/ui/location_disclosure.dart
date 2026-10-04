@@ -101,16 +101,16 @@ class LocationDisclosureDialog extends StatelessWidget {
             style: TextStyle(color: actionColor),
           ),
         ),
-        FilledButton(
+        TextButton(
           key: continueKey,
           onPressed: () => Navigator.of(context).pop(true),
-          style: FilledButton.styleFrom(
-            backgroundColor: PrayerCastColors.canopy,
-            foregroundColor: PrayerCastColors.surfaceRaised,
-          ),
+          style: TextButton.styleFrom(foregroundColor: actionColor),
           child: Text(
             l10n.locationDisclosureContinue,
-            style: const TextStyle(color: PrayerCastColors.surfaceRaised),
+            style: TextStyle(
+              color: actionColor,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ],

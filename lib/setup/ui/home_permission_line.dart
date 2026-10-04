@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
+import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_tokens.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
 
 /// One recovery action on home. Only mounted after onboarding finishes.
@@ -43,7 +43,7 @@ class HomePermissionLine extends StatelessWidget {
       padding: const EdgeInsets.only(top: 16),
       child: Material(
         key: const ValueKey('home_permission_recovery'),
-        color: PrayerCastColors.dawnSoft,
+        color: PrayerCastTokens.dawnWash(context),
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: onTap,
@@ -52,11 +52,11 @@ class HomePermissionLine extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: PrayerCastTheme.bodyFont,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: PrayerCastColors.ink,
+                color: PrayerCastTokens.onDawnWash(context),
               ),
             ),
           ),

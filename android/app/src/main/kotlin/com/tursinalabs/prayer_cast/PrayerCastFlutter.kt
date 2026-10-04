@@ -113,6 +113,7 @@ object PrayerCastFlutter {
         FlutterEngineCache.getInstance().remove(ENGINE_ID)
         deliveryReady = false
         ExactAlarmPlugin.detachInstance()
+        OemBatteryPlugin.detachInstance()
         if (isDestroyed(engine)) return
         try {
             engine.destroy()
@@ -190,6 +191,7 @@ object PrayerCastFlutter {
         }
         deliveryReady = false
         ExactAlarmPlugin.detachInstance()
+        OemBatteryPlugin.detachInstance()
         Log.w(TAG, "Delivery engine destroyed; cache cleared")
     }
 

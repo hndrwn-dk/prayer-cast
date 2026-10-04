@@ -412,7 +412,29 @@
   "onboardingPhoneBeep": "Beep on this phone",
   "onboardingUsePhoneAudio": "Use this phone instead",
   "onboardingPrayerTitle": "Set prayer times",
-  "onboardingPrayerAction": "Choose city and method",
+  "onboardingPrayerAction": "Use current location",
+  "onboardingPrayerBody": "Tap the button to allow location. We fill city and method for you — change them later in Prayer times if needed.",
+  "onboardingPrayerContinue": "Continue",
+  "onboardingSwipeNext": "Continue",
+  "onboardingPrayerRetry": "Detect again",
+  "onboardingPrayerResultCity": "City: {city}",
+  "@onboardingPrayerResultCity": {
+    "placeholders": {
+      "city": {"type": "String"}
+    }
+  },
+  "onboardingPrayerResultCountry": "Country: {country}",
+  "@onboardingPrayerResultCountry": {
+    "placeholders": {
+      "country": {"type": "String"}
+    }
+  },
+  "onboardingPrayerResultMethod": "Method: {method}",
+  "@onboardingPrayerResultMethod": {
+    "placeholders": {
+      "method": {"type": "String"}
+    }
+  },
   "onboardingBatteryTitle": "Keep the adhan on while the phone sleeps",
   "onboardingBatteryOpen": "Open battery settings",
   "onboardingBatterySkip": "Not now",

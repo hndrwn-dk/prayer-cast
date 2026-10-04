@@ -870,7 +870,35 @@ class AppLocalizationsId extends AppLocalizations {
   String get onboardingPrayerTitle => 'Atur waktu sholat';
 
   @override
-  String get onboardingPrayerAction => 'Pilih kota dan metode';
+  String get onboardingPrayerAction => 'Gunakan lokasi saat ini';
+
+  @override
+  String get onboardingPrayerBody =>
+      'Ketuk tombol untuk izinkan lokasi. Kota dan metode diisi otomatis — bisa diubah nanti di Waktu sholat.';
+
+  @override
+  String get onboardingPrayerContinue => 'Lanjut';
+
+  @override
+  String get onboardingSwipeNext => 'Lanjut';
+
+  @override
+  String get onboardingPrayerRetry => 'Deteksi lagi';
+
+  @override
+  String onboardingPrayerResultCity(String city) {
+    return 'Kota: $city';
+  }
+
+  @override
+  String onboardingPrayerResultCountry(String country) {
+    return 'Negara: $country';
+  }
+
+  @override
+  String onboardingPrayerResultMethod(String method) {
+    return 'Metode: $method';
+  }
 
   @override
   String get onboardingBatteryTitle => 'Agar adzan tetap jalan saat HP tidur';

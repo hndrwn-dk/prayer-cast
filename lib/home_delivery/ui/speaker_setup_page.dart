@@ -91,6 +91,8 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.speakerSaved(receiver.friendlyName))),
       );
+      // First-run onboarding advances from the gate; skip household code there.
+      if (widget.onboarding) return;
       await _showHouseholdCodeDialog();
       if (!mounted) return;
       Navigator.of(context).maybePop(receiver);
@@ -520,7 +522,7 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                         child: PremiumIcons.trash(
                           size: 22,
                           color: _selecting
-                              ? PrayerCastColors.dawnSoft
+                              ? PrayerCastColors.dawn
                               : PrayerCastTokens.onMark(context),
                         ),
                       ),
@@ -540,7 +542,7 @@ class _SpeakerSetupPageState extends ConsumerState<SpeakerSetupPage> {
                               size: 18,
                               strokeWidth: 2.2,
                               color: PrayerCastTokens.onMark(context),
-                              trackColor: PrayerCastColors.inkSoft,
+                              trackColor: PrayerCastTokens.track(context),
                               pulse: false,
                             )
                           : Opacity(
@@ -758,7 +760,7 @@ class _SelectActionBar extends StatelessWidget {
       child: InkSurface(
         key: const ValueKey('speaker_select_bar'),
         color: PrayerCastColors.canopyDeep,
-        borderColor: PrayerCastColors.inkSoft,
+        borderColor: PrayerCastTokens.rule(context),
         borderRadius: 14,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         child: Column(
@@ -852,7 +854,7 @@ class _EmptyState extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 28),
         child: InkSurface(
           padding: const EdgeInsets.fromLTRB(22, 28, 22, 22),
-          borderColor: PrayerCastColors.inkSoft,
+          borderColor: PrayerCastTokens.rule(context),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -917,7 +919,7 @@ class _ErrorState extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 28),
         child: InkSurface(
           padding: const EdgeInsets.fromLTRB(22, 28, 22, 22),
-          borderColor: PrayerCastColors.inkSoft,
+          borderColor: PrayerCastTokens.rule(context),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1102,8 +1104,9 @@ class _SpeakerTile extends StatelessWidget {
                       statusText,
                       style: text.bodyMedium?.copyWith(
                         color: saving
-                            ? PrayerCastColors.dawnSoft
+                            ? PrayerCastColors.dawn
                             : PrayerCastTokens.glyphMuted(context),
+                        fontWeight: saving ? FontWeight.w600 : null,
                       ),
                     ),
                   ],
@@ -1116,7 +1119,7 @@ class _SpeakerTile extends StatelessWidget {
                   size: 22,
                   strokeWidth: 2.4,
                   color: PrayerCastTokens.glyph(context),
-                  trackColor: PrayerCastColors.inkSoft,
+                  trackColor: PrayerCastTokens.track(context),
                   pulse: false,
                 )
               else if (savedJustNow || selected)
