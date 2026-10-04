@@ -596,11 +596,17 @@ abstract class AppLocalizations {
   /// **'Standard adhan'**
   String get voiceStandard;
 
-  /// No description provided for @voiceTestTone.
+  /// No description provided for @voiceBeep.
   ///
   /// In en, this message translates to:
-  /// **'Test tone'**
-  String get voiceTestTone;
+  /// **'Beep'**
+  String get voiceBeep;
+
+  /// No description provided for @voiceLongBeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Long beep'**
+  String get voiceLongBeep;
 
   /// No description provided for @pillGps.
   ///

@@ -1389,7 +1389,14 @@ class PrayerScheduleTile extends StatelessWidget {
     final hh = t.hour.toString().padLeft(2, '0');
     final mm = t.minute.toString().padLeft(2, '0');
     final isFajr = prayer.name == 'fajr';
-    final showVoice = deliveryMode.usesVoice;
+    final resolvedDelivery = deliveryMode == PrayerDeliveryMode.takbir
+        ? PrayerDeliveryMode.beep
+        : deliveryMode;
+    final showVoice = resolvedDelivery.usesVoice;
+    final voices = AdzanVoices.forPrayer(prayer.name);
+    final resolvedVoiceId = voices.any((v) => v.id == voiceId)
+        ? voiceId
+        : AdzanVoices.resolve(voiceId, prayerName: prayer.name);
 
     final scheme = Theme.of(context).colorScheme;
 
@@ -1426,32 +1433,32 @@ class PrayerScheduleTile extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _PickerTile(
-                key: ValueKey('delivery-${prayer.name}-${deliveryMode.name}'),
-                label: deliveryDisplayName(l10n, deliveryMode),
-                enabled: enabled,
-                onTap: () async {
-                  final mode = await showModalBottomSheet<PrayerDeliveryMode>(
-                    context: context,
-                    backgroundColor: PrayerCastTokens.slab(context),
-                    builder: (context) {
-                      return SafeArea(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (final mode in PrayerDeliveryMode.values)
-                              ListTile(
-                                title: Text(deliveryDisplayName(l10n, mode)),
-                                selected: mode == deliveryMode,
-                                onTap: () => Navigator.pop(context, mode),
-                              ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                  if (mode != null) onDeliveryChanged(mode);
-                },
+              child: DropdownButtonFormField<PrayerDeliveryMode>(
+                key: ValueKey(
+                  'delivery-${prayer.name}-${resolvedDelivery.name}',
+                ),
+                initialValue: resolvedDelivery,
+                isExpanded: true,
+                style: PrayerCastTokens.fieldValue(context),
+                items: [
+                  for (final mode in PrayerDeliveryMode.choices)
+                    DropdownMenuItem(
+                      value: mode,
+                      child: Text(
+                        deliveryDisplayName(l10n, mode),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: enabled
+                    ? (mode) {
+                        if (mode != null) onDeliveryChanged(mode);
+                      }
+                    : null,
+                decoration: _PrayerSettingsPageState._fieldDecoration(
+                  context,
+                  null,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -1491,32 +1498,30 @@ class PrayerScheduleTile extends StatelessWidget {
           Stack(
             alignment: Alignment.centerRight,
             children: [
-              _PickerTile(
-                key: ValueKey('voice-${prayer.name}-$voiceId'),
-                label: voiceDisplayName(l10n, voiceId),
-                enabled: enabled,
-                onTap: () async {
-                  final id = await showModalBottomSheet<String>(
-                    context: context,
-                    backgroundColor: PrayerCastTokens.slab(context),
-                    builder: (context) {
-                      return SafeArea(
-                        child: ListView(
-                          shrinkWrap: true,
-                          children: [
-                            for (final voice in AdzanVoices.all)
-                              ListTile(
-                                title: Text(voiceDisplayName(l10n, voice.id)),
-                                selected: voice.id == voiceId,
-                                onTap: () => Navigator.pop(context, voice.id),
-                              ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                  if (id != null) onVoiceChanged(id);
-                },
+              DropdownButtonFormField<String>(
+                key: ValueKey('voice-${prayer.name}-$resolvedVoiceId'),
+                initialValue: resolvedVoiceId,
+                isExpanded: true,
+                style: PrayerCastTokens.fieldValue(context),
+                items: [
+                  for (final voice in voices)
+                    DropdownMenuItem(
+                      value: voice.id,
+                      child: Text(
+                        voiceDisplayName(l10n, voice.id),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: enabled
+                    ? (id) {
+                        if (id != null) onVoiceChanged(id);
+                      }
+                    : null,
+                decoration: _PrayerSettingsPageState._fieldDecoration(
+                  context,
+                  null,
+                ),
               ),
               if (isFajr)
                 Padding(
@@ -1542,54 +1547,6 @@ class PrayerScheduleTile extends StatelessWidget {
           ),
         ],
       ],
-    );
-  }
-}
-
-class _PickerTile extends StatelessWidget {
-  const _PickerTile({
-    super.key,
-    required this.label,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: PrayerCastTokens.isForest(context)
-          ? scheme.surfaceContainerHighest.withValues(alpha: 0.35)
-          : PrayerCastColors.ink.withValues(alpha: 0.06),
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: PrayerCastTokens.fieldValue(context),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Icon(
-                Icons.expand_more,
-                color: enabled
-                    ? scheme.onSurfaceVariant
-                    : scheme.onSurface.withValues(alpha: 0.38),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

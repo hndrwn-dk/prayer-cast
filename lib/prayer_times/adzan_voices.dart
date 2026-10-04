@@ -16,14 +16,29 @@ abstract final class AdzanVoices {
     displayName: 'Fajr adhan',
   );
 
+  static const fajrMansurAlZahrane = AdzanVoiceOption(
+    id: 'fajr_mansur_al_zahrane',
+    displayName: 'Mansur Al Zahrane - Fajr',
+  );
+
+  static const fajrMisharyRashidAlafasy = AdzanVoiceOption(
+    id: 'fajr_mishary_rashid_alafasy',
+    displayName: 'Mishary Rashid Alafasy - Fajr',
+  );
+
+  static const beep = AdzanVoiceOption(
+    id: 'beep',
+    displayName: 'Beep',
+  );
+
+  static const longBeep = AdzanVoiceOption(
+    id: 'long_beep',
+    displayName: 'Long beep',
+  );
+
   static const standard = AdzanVoiceOption(
     id: 'standard_adhan',
     displayName: 'Standard adhan',
-  );
-
-  static const makkahTone = AdzanVoiceOption(
-    id: 'makkah',
-    displayName: 'Test tone',
   );
 
   static const ahmedAlHaddad = AdzanVoiceOption(
@@ -31,19 +46,9 @@ abstract final class AdzanVoices {
     displayName: 'Ahmed Al-Haddad',
   );
 
-  static const mansurAlZahrane = AdzanVoiceOption(
-    id: 'mansur_al_zahrane',
-    displayName: 'Mansur Al Zahrane',
-  );
-
   static const misharyRashidAlafasy = AdzanVoiceOption(
     id: 'mishary_rashid_alafasy',
     displayName: 'Mishary Rashid Alafasy',
-  );
-
-  static const misharyRashidAlafasyFajr = AdzanVoiceOption(
-    id: 'mishary_rashid_alafasy_fajr',
-    displayName: 'Mishary Rashid Alafasy - Fajr',
   );
 
   static const muhammadRamadanSaad = AdzanVoiceOption(
@@ -61,18 +66,46 @@ abstract final class AdzanVoices {
     displayName: 'Ali ibn Ahmad Mala',
   );
 
-  static const List<AdzanVoiceOption> all = [
+  /// Subuh: fajr recordings, then short/long beep.
+  static const List<AdzanVoiceOption> fajrVoices = [
     fajr,
+    fajrMansurAlZahrane,
+    fajrMisharyRashidAlafasy,
+    beep,
+    longBeep,
+  ];
+
+  /// Dzuhur / Asar / Maghrib / Isya: non-fajr recordings, then short/long beep.
+  static const List<AdzanVoiceOption> standardVoices = [
     standard,
     ahmedAlHaddad,
-    mansurAlZahrane,
-    misharyRashidAlafasyFajr,
     misharyRashidAlafasy,
     muhammadRamadanSaad,
     nurdinHamzaAlMaghriby,
     aliIbnAhmadMala,
-    makkahTone,
+    beep,
+    longBeep,
   ];
+
+  /// Union of every selectable voice (for lookups / tests).
+  static const List<AdzanVoiceOption> all = [
+    fajr,
+    fajrMansurAlZahrane,
+    fajrMisharyRashidAlafasy,
+    standard,
+    ahmedAlHaddad,
+    misharyRashidAlafasy,
+    muhammadRamadanSaad,
+    nurdinHamzaAlMaghriby,
+    aliIbnAhmadMala,
+    beep,
+    longBeep,
+  ];
+
+  static List<AdzanVoiceOption> forPrayer(String prayerName) {
+    if (prayerName == 'fajr') return fajrVoices;
+    return standardVoices;
+  }
 
   static AdzanVoiceOption? byId(String id) {
     for (final voice in all) {
@@ -85,6 +118,21 @@ abstract final class AdzanVoices {
   static String defaultForPrayer(String prayerName) {
     if (prayerName == 'fajr') return fajr.id;
     return standard.id;
+  }
+
+  /// Maps legacy / wrong-slot ids onto a voice that exists for [prayerName].
+  static String resolve(String voiceId, {required String prayerName}) {
+    final mapped = switch (voiceId) {
+      'mishary_rashid_alafasy_fajr' => fajrMisharyRashidAlafasy.id,
+      'mansur_al_zahrane' || 'mansur_al_zahrane_fajr' => fajrMansurAlZahrane.id,
+      'makkah' => defaultForPrayer(prayerName),
+      _ => voiceId,
+    };
+    final allowed = forPrayer(prayerName);
+    for (final voice in allowed) {
+      if (voice.id == mapped) return mapped;
+    }
+    return defaultForPrayer(prayerName);
   }
 
   static const AdzanVoiceOption defaultVoice = standard;

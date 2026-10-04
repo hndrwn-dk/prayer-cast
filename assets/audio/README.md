@@ -7,20 +7,28 @@ assets/audio/{voiceId}.mp3
 assets/audio/{voiceId}.wav
 ```
 
-Bundled voices:
+## Subuh (`fajr`)
 
-| voiceId | File | Used for |
-|---------|------|----------|
-| `fajr_adhan` | `fajr_adhan.mp3` | Subuh (default) |
-| `standard_adhan` | `standard_adhan.mp3` | Dzuhur, Asar, Maghrib, Isya (default) |
-| `ahmed_al_haddad` | `ahmed_al_haddad.mp3` | Standard |
-| `mansur_al_zahrane` | `mansur_al_zahrane.mp3` | Standard |
-| `mishary_rashid_alafasy_fajr` | `mishary_rashid_alafasy_fajr.mp3` | Fajr |
-| `mishary_rashid_alafasy` | `mishary_rashid_alafasy.mp3` | Standard |
-| `muhammad_ramadan_saad` | `muhammad_ramadan_saad.mp3` | Standard |
-| `nurdin_hamza_al_maghriby` | `nurdin_hamza_al_maghriby.mp3` | Standard |
-| `ali_ibn_ahmad_mala` | `ali_ibn_ahmad_mala.mp3` | Standard |
-| `makkah` | `makkah.wav` | Short test tone (optional) |
+| voiceId | File |
+|---------|------|
+| `fajr_adhan` | `fajr_adhan.mp3` (default) |
+| `fajr_mansur_al_zahrane` | `fajr_mansur_al_zahrane.mp3` |
+| `fajr_mishary_rashid_alafasy` | `fajr_mishary_rashid_alafasy.mp3` |
+| `beep` | `beep.wav` |
+| `long_beep` | `long_beep.wav` |
+
+## Dzuhur / Asar / Maghrib / Isya
+
+| voiceId | File |
+|---------|------|
+| `standard_adhan` | `standard_adhan.mp3` (default) |
+| `ahmed_al_haddad` | `ahmed_al_haddad.mp3` |
+| `mishary_rashid_alafasy` | `mishary_rashid_alafasy.mp3` |
+| `muhammad_ramadan_saad` | `muhammad_ramadan_saad.mp3` |
+| `nurdin_hamza_al_maghriby` | `nurdin_hamza_al_maghriby.mp3` |
+| `ali_ibn_ahmad_mala` | `ali_ibn_ahmad_mala.mp3` |
+| `beep` | `beep.wav` |
+| `long_beep` | `long_beep.wav` |
 
 Defaults: Subuh → `fajr_adhan`; other prayers → `standard_adhan`.
-Every id in this table appears in the Prayer settings voice dropdown.
+The prayer settings voice picker only lists the table that matches the prayer.

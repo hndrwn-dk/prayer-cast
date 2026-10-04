@@ -8,11 +8,21 @@ import 'indonesia_location.dart';
 ///
 /// Missing / unknown prefs values resolve to [cast] so existing installs
 /// keep speaker playback unchanged.
+///
+/// [takbir] is legacy wire only — parse maps it to [beep]. The settings UI
+/// offers [choices] alone: beep, adhan on phone, cast.
 enum PrayerDeliveryMode {
   beep,
   takbir,
   adhanPhone,
-  cast,
+  cast;
+
+  /// Modes shown in prayer settings (no takbir).
+  static const List<PrayerDeliveryMode> choices = [
+    beep,
+    adhanPhone,
+    cast,
+  ];
 }
 
 extension PrayerDeliveryModeX on PrayerDeliveryMode {
@@ -21,16 +31,14 @@ extension PrayerDeliveryModeX on PrayerDeliveryMode {
 
   static PrayerDeliveryMode parse(String? raw) {
     return switch (raw) {
-      'beep' => PrayerDeliveryMode.beep,
-      'takbir' => PrayerDeliveryMode.takbir,
+      'beep' || 'takbir' => PrayerDeliveryMode.beep,
       'adhanPhone' => PrayerDeliveryMode.adhanPhone,
       _ => PrayerDeliveryMode.cast,
     };
   }
 
-  /// Voice selection applies to Cast and phone Adhan, not beep/takbir.
-  bool get usesVoice =>
-      this != PrayerDeliveryMode.beep && this != PrayerDeliveryMode.takbir;
+  /// Voice selection applies to Cast and phone Adhan, not beep.
+  bool get usesVoice => this != PrayerDeliveryMode.beep;
 }
 
 enum PrePrayerAlertSound {
@@ -197,8 +205,12 @@ final class PrayerPrefs {
 
   String voiceFor(String prayerName) {
     final override = voicesByPrayer[prayerName];
-    if (override != null && override.isNotEmpty) return override;
-    if (voiceId.isNotEmpty) return voiceId;
+    if (override != null && override.isNotEmpty) {
+      return AdzanVoices.resolve(override, prayerName: prayerName);
+    }
+    if (voiceId.isNotEmpty) {
+      return AdzanVoices.resolve(voiceId, prayerName: prayerName);
+    }
     return AdzanVoices.defaultForPrayer(prayerName);
   }
 

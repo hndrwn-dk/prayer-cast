@@ -66,19 +66,36 @@ void main() {
     expect(find.byKey(const ValueKey('prayer-icon-fajr')), findsOneWidget);
   });
 
-  testWidgets('voice sheet lists reciter recordings', (tester) async {
+  testWidgets('fajr voice dropdown lists fajr recordings and beeps only', (
+    tester,
+  ) async {
     await pumpTile(tester, mode: PrayerDeliveryMode.cast);
     await tester.tap(find.byKey(const ValueKey('voice-fajr-fajr_adhan')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Ahmed Al-Haddad'), findsOneWidget);
-    expect(find.text('Mishary Rashid Alafasy - Fajr'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('NurDin Hamza Al Maghriby'),
-      48,
-      scrollable: find.byType(Scrollable).last,
+    expect(find.text('Mansur Al Zahrane - Fajr').hitTestable(), findsOneWidget);
+    expect(
+      find.text('Mishary Rashid Alafasy - Fajr').hitTestable(),
+      findsOneWidget,
     );
-    expect(find.text('NurDin Hamza Al Maghriby'), findsOneWidget);
+    expect(find.text('Beep').hitTestable(), findsWidgets);
+    expect(find.text('Long beep').hitTestable(), findsOneWidget);
+    expect(find.text('Ahmed Al-Haddad'), findsNothing);
+    expect(find.text('Test tone'), findsNothing);
+    expect(find.text('Takbir on phone'), findsNothing);
+  });
+
+  testWidgets('delivery dropdown offers beep, adhan phone, cast only', (
+    tester,
+  ) async {
+    await pumpTile(tester, mode: PrayerDeliveryMode.cast);
+    await tester.tap(find.byKey(const ValueKey('delivery-fajr-cast')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Beep on phone').hitTestable(), findsOneWidget);
+    expect(find.text('Adhan on phone').hitTestable(), findsOneWidget);
+    expect(find.text('Cast').hitTestable(), findsWidgets);
+    expect(find.text('Takbir on phone'), findsNothing);
   });
 
   testWidgets('beep mode hides the voice dropdown', (tester) async {

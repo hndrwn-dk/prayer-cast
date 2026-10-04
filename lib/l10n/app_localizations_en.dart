@@ -280,7 +280,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceStandard => 'Standard adhan';
 
   @override
-  String get voiceTestTone => 'Test tone';
+  String get voiceBeep => 'Beep';
+
+  @override
+  String get voiceLongBeep => 'Long beep';
 
   @override
   String get pillGps => 'GPS';

@@ -28,7 +28,8 @@ String voiceDisplayName(AppLocalizations l10n, String voiceId) {
   return switch (voiceId) {
     'fajr_adhan' => l10n.voiceFajr,
     'standard_adhan' => l10n.voiceStandard,
-    'makkah' => l10n.voiceTestTone,
+    'beep' => l10n.voiceBeep,
+    'long_beep' => l10n.voiceLongBeep,
     _ => AdzanVoices.byId(voiceId)?.displayName ?? voiceId,
   };
 }

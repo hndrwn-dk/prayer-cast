@@ -243,7 +243,8 @@ void main() {
     final read = await store.read();
     expect(read.travelScheduleUpdates, isFalse);
     expect(read.prePrayerAlertSound, PrePrayerAlertSound.longBeep);
-    expect(read.deliveryFor('fajr'), PrayerDeliveryMode.takbir);
+    // Removed delivery mode: legacy takbir wire maps to beep.
+    expect(read.deliveryFor('fajr'), PrayerDeliveryMode.beep);
     expect(read.prePrayerAlertMinutes, 10);
   });
 
@@ -324,7 +325,8 @@ void main() {
       expect(before.hasDeliveryOverride(p), isTrue, reason: p);
     }
     expect(before.deliveryFor('fajr'), PrayerDeliveryMode.beep);
-    expect(before.deliveryFor('maghrib'), PrayerDeliveryMode.takbir);
-    expect(before.voiceFor('dhuhr'), 'makkah');
+    expect(before.deliveryFor('maghrib'), PrayerDeliveryMode.beep);
+    // Removed test-tone id resolves to the standard default for that prayer.
+    expect(before.voiceFor('dhuhr'), 'standard_adhan');
   });
 }

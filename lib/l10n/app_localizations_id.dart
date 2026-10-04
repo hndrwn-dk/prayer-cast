@@ -282,7 +282,10 @@ class AppLocalizationsId extends AppLocalizations {
   String get voiceStandard => 'Adzan standar';
 
   @override
-  String get voiceTestTone => 'Nada uji';
+  String get voiceBeep => 'Beep';
+
+  @override
+  String get voiceLongBeep => 'Beep panjang';
 
   @override
   String get pillGps => 'GPS';
