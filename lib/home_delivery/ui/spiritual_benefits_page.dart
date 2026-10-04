@@ -39,10 +39,7 @@ class SpiritualBenefitsPage extends StatelessWidget {
               key: keyName,
               padding: const EdgeInsets.fromLTRB(28, 8, 28, 36),
               children: [
-                _EditorialSection(
-                  eyebrow: l10n.spiritualBenefitsSection,
-                  child: _BulletList(copy.benefits),
-                ),
+                _BulletList(copy.benefits),
                 const _SectionRule(),
                 _EditorialSection(
                   eyebrow: l10n.sunnahPracticesSection,

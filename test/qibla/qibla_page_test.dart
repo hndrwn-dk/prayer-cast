@@ -95,17 +95,14 @@ Future<void> _pushHeading(
   await tester.pump();
 }
 
-Color? _actionColor(WidgetTester tester, String key) {
-  return tester
-      .widget<Material>(
-        find
-            .descendant(
-              of: find.byKey(ValueKey<String>(key)),
-              matching: find.byType(Material),
-            )
-            .first,
-      )
-      .color;
+Color? _actionForeground(WidgetTester tester, String key) {
+  final button = tester.widget<TextButton>(
+    find.descendant(
+      of: find.byKey(ValueKey<String>(key)),
+      matching: find.byType(TextButton),
+    ),
+  );
+  return button.style?.foregroundColor?.resolve(const <WidgetState>{});
 }
 
 void main() {
@@ -142,9 +139,11 @@ void main() {
       ),
     );
 
-    final mosques = _actionColor(tester, 'qibla_open_mosques');
-    final settings = _actionColor(tester, 'qibla_open_settings');
+    final mosques = _actionForeground(tester, 'qibla_open_mosques');
+    final settings = _actionForeground(tester, 'qibla_open_settings');
     expect(mosques, settings);
+    expect(mosques, PrayerCastColors.canopyQuiet);
+    expect(mosques, isNot(PrayerCastColors.canopy));
     expect(mosques, isNot(PrayerCastColors.leaf));
   });
 

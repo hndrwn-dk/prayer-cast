@@ -576,16 +576,20 @@ class _ForestAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!filled) {
+      final linkColor = PrayerCastTokens.isForest(context)
+          ? PrayerCastColors.mist
+          : PrayerCastColors.canopyQuiet;
       return Align(
         alignment: Alignment.center,
         child: TextButton(
           onPressed: onTap,
           style: TextButton.styleFrom(
+            foregroundColor: linkColor,
             padding: EdgeInsets.zero,
             minimumSize: const Size(0, 40),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          child: Text(label),
+          child: Text(label, style: TextStyle(color: linkColor)),
         ),
       );
     }

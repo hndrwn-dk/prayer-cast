@@ -45,7 +45,7 @@ void main() {
 
     expect(find.byKey(SpiritualBenefitsPage.keyName), findsOneWidget);
     expect(find.text('Dzuhur'), findsWidgets);
-    expect(find.text('MANFAAT SPIRITUAL'), findsWidgets);
+    expect(find.text('MANFAAT SPIRITUAL'), findsOneWidget);
     expect(find.text('AMALAN SUNNAH'), findsOneWidget);
     expect(find.text('CATATAN'), findsOneWidget);
     expect(find.text('Isi ulang spiritual di tengah hari'), findsWidgets);
@@ -75,7 +75,7 @@ void main() {
 
     expect(find.byKey(SpiritualBenefitsPage.keyName), findsOneWidget);
     expect(find.text('Dhuhr'), findsOneWidget);
-    expect(find.text('SPIRITUAL BENEFITS'), findsWidgets);
+    expect(find.text('SPIRITUAL BENEFITS'), findsOneWidget);
     expect(find.text('SUNNAH PRACTICES'), findsOneWidget);
     expect(find.text('NOTE'), findsOneWidget);
     expect(find.text('SAYING'), findsNothing);
@@ -94,7 +94,7 @@ void main() {
     await pumpPage(tester, theme: PrayerCastTheme.light());
 
     expect(find.byKey(SpiritualBenefitsPage.keyName), findsOneWidget);
-    expect(find.text('SPIRITUAL BENEFITS'), findsWidgets);
+    expect(find.text('SPIRITUAL BENEFITS'), findsOneWidget);
     expect(find.text('Break from worldly activities'), findsOneWidget);
     expect(
       find.text(

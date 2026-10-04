@@ -231,7 +231,7 @@ abstract final class PrayerCastTheme {
         style: ButtonStyle(
           minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
           foregroundColor: const WidgetStatePropertyAll(
-            PrayerCastColors.canopy,
+            PrayerCastColors.canopyQuiet,
           ),
           textStyle: const WidgetStatePropertyAll(
             TextStyle(
