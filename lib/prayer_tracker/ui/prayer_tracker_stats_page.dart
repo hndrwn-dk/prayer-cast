@@ -25,7 +25,6 @@ class PrayerTrackerStatsPage extends StatelessWidget {
           sliver: SliverList(
             delegate: SliverChildListDelegate([
               PrayerTrackerInsights(isId: isId),
-              const SizedBox(height: 16),
               PrayerTrackerStatsCard(isId: isId),
             ]),
           ),

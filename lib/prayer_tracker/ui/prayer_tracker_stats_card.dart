@@ -5,6 +5,7 @@ import '../../home_delivery/ui/icons/premium_icons.dart';
 import '../../home_delivery/ui/theme/prayer_cast_colors.dart';
 import '../../home_delivery/ui/theme/prayer_cast_theme.dart';
 import '../../home_delivery/ui/theme/prayer_cast_tokens.dart';
+import '../../home_delivery/ui/widgets/editorial_chrome.dart';
 import '../../l10n/l10n_ext.dart';
 import '../prayer_tracker_providers.dart';
 import '../prayer_tracker_stats.dart';
@@ -32,7 +33,9 @@ class PrayerTrackerStatsCard extends ConsumerWidget {
               isId ? 'Jejak ibadah' : 'Your rhythm',
               style: text.labelLarge?.copyWith(color: PrayerCastColors.dawn),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
+            const EditorialHairline(),
+            const SizedBox(height: 12),
             _PeriodToggle(
               period: period,
               isId: isId,
@@ -212,7 +215,7 @@ class _StatsBody extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SectionRule(top: 16, bottom: 12),
         Text(
           isId ? 'Per sholat' : 'By prayer',
           style: text.labelMedium?.copyWith(
@@ -281,6 +284,7 @@ class _InsightsBody extends StatelessWidget {
           if (i > 0) const SizedBox(height: 8),
           _InsightCard(insight: insights[i]),
         ],
+        const SectionRule(top: 16, bottom: 4),
       ],
     );
   }

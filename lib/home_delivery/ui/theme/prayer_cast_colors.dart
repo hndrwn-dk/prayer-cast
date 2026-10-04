@@ -8,6 +8,9 @@ abstract final class PrayerCastColors {
   static const Color mistDeep = Color(0xFFB7CBBF);
   static const Color canopy = Color(0xFF0F5C45);
   static const Color canopyDeep = Color(0xFF0A3D2E);
+
+  /// Filled actions on a light page. Less chroma than [canopy].
+  static const Color canopyQuiet = Color(0xFF3D6A58);
   static const Color leaf = Color(0xFF2F8F6B);
   static const Color dawn = Color(0xFFC9852A);
   static const Color dawnSoft = Color(0xFFF0D9B0);

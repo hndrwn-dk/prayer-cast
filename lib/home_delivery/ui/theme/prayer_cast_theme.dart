@@ -191,7 +191,7 @@ abstract final class PrayerCastTheme {
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           backgroundColor: const WidgetStatePropertyAll(
-            PrayerCastColors.canopy,
+            PrayerCastColors.canopyQuiet,
           ),
           foregroundColor: const WidgetStatePropertyAll(
             PrayerCastColors.surfaceRaised,
@@ -200,10 +200,31 @@ abstract final class PrayerCastTheme {
             TextStyle(
               fontFamily: bodyFont,
               fontSize: 17,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
           elevation: const WidgetStatePropertyAll(0),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: const WidgetStatePropertyAll(Size(64, minTap)),
+          foregroundColor: const WidgetStatePropertyAll(
+            PrayerCastColors.canopyQuiet,
+          ),
+          side: const WidgetStatePropertyAll(
+            BorderSide(color: PrayerCastColors.mistDeep, width: 1.2),
+          ),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          textStyle: const WidgetStatePropertyAll(
+            TextStyle(
+              fontFamily: bodyFont,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -517,6 +538,26 @@ abstract final class PrayerCastTheme {
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: PrayerCastColors.leaf,
         circularTrackColor: PrayerCastColors.inkSoft,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return PrayerCastColors.surfaceRaised;
+          }
+          return PrayerCastColors.mist;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return PrayerCastColors.leaf;
+          }
+          return PrayerCastColors.mist.withValues(alpha: 0.28);
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return Colors.transparent;
+          }
+          return PrayerCastColors.mist.withValues(alpha: 0.7);
+        }),
       ),
     );
   }

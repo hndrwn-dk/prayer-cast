@@ -68,11 +68,11 @@ class _PrayerTrackerPageState extends ConsumerState<PrayerTrackerPage> {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   _ReflectionCard(log: draft, isId: isId),
-                  const SizedBox(height: 8),
+                  const SectionRule(top: 14, bottom: 14),
                   _StreakCard(isId: isId),
-                  const SizedBox(height: 8),
+                  const SectionRule(top: 14, bottom: 14),
                   _TodaySummaryCard(log: draft, isId: isId),
-                  const SizedBox(height: 16),
+                  const SectionRule(top: 16, bottom: 12),
                   _DawnTitle(isId ? 'Sholat hari ini' : "Today's prayers"),
                   const SizedBox(height: 10),
                   for (var i = 0; i < kTrackedPrayers.length; i++) ...[
@@ -90,7 +90,7 @@ class _PrayerTrackerPageState extends ConsumerState<PrayerTrackerPage> {
                       onClear: () => _clearPrayer(kTrackedPrayers[i], draft),
                     ),
                   ],
-                  const SizedBox(height: 16),
+                  const SectionRule(top: 16, bottom: 12),
                   _QadhaCard(isId: isId),
                 ]),
               ),
@@ -546,6 +546,8 @@ class _ReflectionCard extends StatelessWidget {
           children: [
             _DawnTitle(isId ? 'Renungan' : 'Reflection'),
             const SizedBox(height: 8),
+            const EditorialHairline(),
+            const SizedBox(height: 10),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

@@ -73,17 +73,11 @@ class AppSettingsPage extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             EditorialEyebrow(l10n.language, color: PrayerCastColors.dawn),
-            const SizedBox(height: 6),
-            Text(
-              l10n.languageHint,
-              style: TextStyle(
-                fontFamily: PrayerCastTheme.bodyFont,
-                fontSize: 13,
-                height: 1.35,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
             const SizedBox(height: 8),
+            const EditorialHairline(),
+            const SizedBox(height: 10),
+            Text(l10n.languageHint, style: _hintStyle(context)),
+            const SizedBox(height: 4),
             _LanguageChoice(
               rowKey: languageIdKey,
               label: l10n.languageIndonesian,
@@ -100,19 +94,11 @@ class AppSettingsPage extends ConsumerWidget {
                   .read(appLocaleProvider.notifier)
                   .setLocale(const Locale('en')),
             ),
-            const SizedBox(height: 28),
+            const SectionRule(),
             EditorialEyebrow(l10n.themeEyebrow, color: PrayerCastColors.dawn),
             const SizedBox(height: 6),
-            Text(
-              l10n.themeHint,
-              style: TextStyle(
-                fontFamily: PrayerCastTheme.bodyFont,
-                fontSize: 13,
-                height: 1.35,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
+            Text(l10n.themeHint, style: _hintStyle(context)),
+            const SizedBox(height: 4),
             _LanguageChoice(
               rowKey: themeSystemKey,
               label: l10n.themeSystem,
@@ -137,7 +123,7 @@ class AppSettingsPage extends ConsumerWidget {
                   .read(appThemeProvider.notifier)
                   .setChoice(AppThemeChoice.light),
             ),
-            const SizedBox(height: 28),
+            const SectionRule(),
             _SettingsLink(
               rowKey: deliveryLogKey,
               title: l10n.deliveryLog,
@@ -155,9 +141,9 @@ class AppSettingsPage extends ConsumerWidget {
                 );
               },
             ),
-            const SizedBox(height: 28),
+            const SectionRule(top: 4, bottom: 18),
             EditorialEyebrow(l10n.aboutEyebrow, color: PrayerCastColors.dawn),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             _SettingsFact(
               rowKey: versionKey,
               title: l10n.appVersion,
@@ -176,9 +162,9 @@ class AppSettingsPage extends ConsumerWidget {
               onTap: () =>
                   sharePlainText(l10n.shareAppMessage(AppLinks.playStoreUrl)),
             ),
-            const SizedBox(height: 28),
+            const SectionRule(top: 4, bottom: 18),
             EditorialEyebrow(l10n.legalEyebrow, color: PrayerCastColors.dawn),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             _SettingsLink(
               rowKey: privacyKey,
               title: l10n.privacyPolicy,
@@ -196,6 +182,15 @@ class AppSettingsPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+TextStyle _hintStyle(BuildContext context) {
+  return TextStyle(
+    fontFamily: PrayerCastTheme.bodyFont,
+    fontSize: 13,
+    height: 1.35,
+    color: Theme.of(context).colorScheme.onSurfaceVariant,
+  );
 }
 
 class _LanguageChoice extends StatelessWidget {

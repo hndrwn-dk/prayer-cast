@@ -11,6 +11,39 @@ import 'package:prayer_cast/l10n/locale_controller.dart';
 import 'package:prayer_cast/theme/app_theme_store.dart';
 
 void main() {
+  testWidgets('forest switch stays visible when off', (tester) async {
+    late SwitchThemeData theme;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PrayerCastTheme.forest(),
+        home: Builder(
+          builder: (context) {
+            theme = Theme.of(context).switchTheme;
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+
+    expect(theme.thumbColor!.resolve({}), PrayerCastColors.mist);
+    expect(
+      theme.thumbColor!.resolve({}),
+      isNot(PrayerCastColors.inkSoft),
+    );
+    expect(
+      theme.trackColor!.resolve({}),
+      isNot(PrayerCastColors.canopyDeep),
+    );
+    expect(
+      theme.trackOutlineColor!.resolve({}),
+      PrayerCastColors.mist.withValues(alpha: 0.7),
+    );
+    expect(
+      theme.trackColor!.resolve({WidgetState.selected}),
+      PrayerCastColors.leaf,
+    );
+  });
+
   testWidgets('forest brightness uses ink surface', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

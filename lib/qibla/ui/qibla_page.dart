@@ -291,9 +291,15 @@ class _QiblaBodyState extends ConsumerState<_QiblaBody> {
           '${_qibla.round()}\u00B0 $cardinal',
           key: const ValueKey<String>('qibla_bearing_label'),
           textAlign: TextAlign.center,
-          style: text.headlineMedium,
+          style: text.headlineMedium?.copyWith(
+            fontFamily: PrayerCastTheme.displayFont,
+            fontWeight: FontWeight.w500,
+            letterSpacing: -0.4,
+          ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 10),
+        const Center(child: EditorialHairline()),
+        const SizedBox(height: 12),
         Text(
           _alignLabel(
             aligned: aligned,
@@ -325,14 +331,13 @@ class _QiblaBodyState extends ConsumerState<_QiblaBody> {
             style: text.bodySmall,
           ),
         ],
-        const SizedBox(height: 22),
+        const SizedBox(height: 8),
         _ForestAction(
           key: const ValueKey<String>('qibla_open_mosques'),
           label: isId ? 'Masjid terdekat' : 'Nearby mosques',
           filled: false,
           onTap: widget.onOpenMosques,
         ),
-        const SizedBox(height: 10),
         _ForestAction(
           key: const ValueKey<String>('qibla_open_settings'),
           label: isId ? 'Ubah lokasi' : 'Change location',
@@ -564,47 +569,29 @@ class _ForestAction extends StatelessWidget {
 
   final String label;
 
-  /// Solid leaf primary. False draws an outline, for actions that should not
-  /// compete with the compass.
+  /// Solid save-style action. False is a quiet text link under the dial.
   final bool filled;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(12);
-    return Material(
-      color: filled ? PrayerCastColors.leaf : Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: radius,
-        side: filled
-            ? BorderSide.none
-            : BorderSide(
-                color: PrayerCastTokens.isForest(context)
-                    ? PrayerCastColors.mistDeep
-                    : PrayerCastColors.inkSoft,
-                width: PrayerCastTheme.cardHairline,
-              ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: radius,
-        child: SizedBox(
-          height: PrayerCastTheme.minTap,
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontFamily: PrayerCastTheme.bodyFont,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: filled
-                    ? PrayerCastColors.surfaceRaised
-                    : PrayerCastTokens.glyph(context),
-              ),
-            ),
+    if (!filled) {
+      return Align(
+        alignment: Alignment.center,
+        child: TextButton(
+          onPressed: onTap,
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+            minimumSize: const Size(0, 40),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
+          child: Text(label),
         ),
-      ),
+      );
+    }
+    return SizedBox(
+      height: PrayerCastTheme.minTap,
+      child: FilledButton(onPressed: onTap, child: Text(label)),
     );
   }
 }

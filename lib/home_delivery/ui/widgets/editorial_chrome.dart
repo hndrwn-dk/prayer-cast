@@ -139,6 +139,25 @@ class EditorialPageHeader extends StatelessWidget {
   }
 }
 
+/// Full-width break between chapters. Not for rows inside a list.
+class SectionRule extends StatelessWidget {
+  const SectionRule({super.key, this.top = 18, this.bottom = 18});
+
+  final double top;
+  final double bottom;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(top: top, bottom: bottom),
+      child: ColoredBox(
+        color: PrayerCastTokens.rule(context),
+        child: const SizedBox(width: double.infinity, height: 1),
+      ),
+    );
+  }
+}
+
 /// Dark canopy/ink slab with optional hairline border — replaces mint SoftCard.
 class InkSurface extends StatelessWidget {
   const InkSurface({
@@ -203,13 +222,13 @@ class IconWell extends StatelessWidget {
     super.key,
     required this.child,
     this.size = 36,
-    this.color = PrayerCastColors.canopy,
+    this.color,
     this.radius = 10,
   });
 
   final Widget child;
   final double size;
-  final Color color;
+  final Color? color;
   final double radius;
 
   @override
@@ -219,7 +238,7 @@ class IconWell extends StatelessWidget {
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: color,
+        color: color ?? PrayerCastTokens.mark(context),
         borderRadius: BorderRadius.circular(radius),
       ),
       child: child,
@@ -236,9 +255,6 @@ class HomeClosingNote extends StatelessWidget {
   static const Key dividerKey = ValueKey<String>('home_colophon_divider');
   static const Key messageKey = ValueKey<String>('home_closing_note');
 
-  static Color get dividerColor =>
-      PrayerCastColors.mist.withValues(alpha: 0.22);
-
   @override
   Widget build(BuildContext context) {
     final noteColor = PrayerCastTokens.isForest(context)
@@ -252,7 +268,7 @@ class HomeClosingNote extends StatelessWidget {
         children: [
           ColoredBox(
             key: dividerKey,
-            color: dividerColor,
+            color: PrayerCastTokens.rule(context),
             child: const SizedBox(height: 1),
           ),
           Padding(
@@ -293,10 +309,6 @@ class ColophonFootnote extends StatelessWidget {
   static const Key dividerKey = ValueKey<String>('home_colophon_divider');
   static const Key privacyLinkKey = ValueKey<String>('privacy_policy_link');
 
-  /// Mist hairline on ink — visible pembatas without a light strip.
-  static Color get dividerColor =>
-      PrayerCastColors.mist.withValues(alpha: 0.22);
-
   @override
   Widget build(BuildContext context) {
     final noteColor = PrayerCastTokens.isForest(context)
@@ -310,7 +322,7 @@ class ColophonFootnote extends StatelessWidget {
         children: [
           ColoredBox(
             key: dividerKey,
-            color: dividerColor,
+            color: PrayerCastTokens.rule(context),
             child: const SizedBox(height: 1),
           ),
           Padding(
@@ -364,19 +376,27 @@ class CrescentField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const IgnorePointer(
-      child: CustomPaint(painter: _CrescentPainter(), child: SizedBox.expand()),
+    final stroke = PrayerCastTokens.isForest(context)
+        ? PrayerCastColors.mist.withValues(alpha: 0.16)
+        : PrayerCastColors.ink.withValues(alpha: 0.22);
+    return IgnorePointer(
+      child: CustomPaint(
+        painter: _CrescentPainter(stroke),
+        child: const SizedBox.expand(),
+      ),
     );
   }
 }
 
 class _CrescentPainter extends CustomPainter {
-  const _CrescentPainter();
+  const _CrescentPainter(this.stroke);
+
+  final Color stroke;
 
   @override
   void paint(Canvas canvas, Size size) {
     final origin = Offset(size.width - 72, 36);
-    final mist = PrayerCastColors.mist.withValues(alpha: 0.16);
+    final mist = stroke;
     final outer = Paint()
       ..color = mist
       ..style = PaintingStyle.stroke
@@ -402,7 +422,8 @@ class _CrescentPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _CrescentPainter oldDelegate) =>
+      oldDelegate.stroke != stroke;
 }
 
 /// Forest page with a pinned [SliverAppBar] so scrolled cards clip under the title.

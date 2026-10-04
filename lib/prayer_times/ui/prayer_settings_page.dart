@@ -295,27 +295,9 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                           : 1000000,
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                       children: [
-                        InkSurface(
-                          borderColor: PrayerCastColors.inkSoft,
-                          borderWidth: PrayerCastTheme.cardHairline,
-                          child: Column(
+                        Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              SizedBox(
-                                height: PrayerCastTheme.minTap,
-                                child: FilledButton(
-                                  onPressed:
-                                      (_detectingLocation || _loadingSchedule)
-                                      ? null
-                                      : () => _detectLocation(draft),
-                                  child: Text(
-                                    _detectingLocation
-                                        ? l10n.detectingLocation
-                                        : l10n.useCurrentLocation,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
@@ -336,8 +318,10 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                     label: draft.hasCoordinates
                                         ? l10n.pillGps
                                         : l10n.pillManual,
-                                    backgroundColor: PrayerCastColors.canopy,
-                                    foregroundColor: PrayerCastColors.mist,
+                                    backgroundColor:
+                                        PrayerCastColors.canopyQuiet,
+                                    foregroundColor:
+                                        PrayerCastColors.surfaceRaised,
                                   ),
                                 ],
                               ),
@@ -351,7 +335,27 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                               ],
                               const SizedBox(height: 12),
                               Text(l10n.travelCityHint, style: text.bodySmall),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 8),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton(
+                                  onPressed:
+                                      (_detectingLocation || _loadingSchedule)
+                                      ? null
+                                      : () => _detectLocation(draft),
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: const Size(0, 40),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: Text(
+                                    _detectingLocation
+                                        ? l10n.detectingLocation
+                                        : l10n.useCurrentLocation,
+                                  ),
+                                ),
+                              ),
                               Align(
                                 alignment: Alignment.centerLeft,
                                 child: TextButton(
@@ -438,12 +442,8 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        InkSurface(
-                          borderColor: PrayerCastColors.inkSoft,
-                          borderWidth: PrayerCastTheme.cardHairline,
-                          child: Column(
+                        const SectionRule(),
+                        Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Text(
@@ -490,9 +490,9 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                         child: SoftPill(
                                           label: l10n.pillAuto,
                                           backgroundColor:
-                                              PrayerCastColors.canopy,
+                                              PrayerCastColors.canopyQuiet,
                                           foregroundColor:
-                                              PrayerCastColors.mist,
+                                              PrayerCastColors.surfaceRaised,
                                         ),
                                       ),
                                     ),
@@ -556,14 +556,10 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 14),
+                        const SectionRule(),
                         KeyedSubtree(
                           key: PrayerSettingsPage.deliverySectionKey,
-                          child: InkSurface(
-                            borderColor: PrayerCastColors.inkSoft,
-                            borderWidth: PrayerCastTheme.cardHairline,
-                            child: Column(
+                          child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Row(
@@ -645,9 +641,9 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                                     i++
                                   ) ...[
                                     if (i > 0)
-                                      const Divider(
+                                      Divider(
                                         height: 28,
-                                        color: PrayerCastColors.inkSoft,
+                                        color: PrayerCastTokens.rule(context),
                                       ),
                                     PrayerScheduleTile(
                                       prayer: visibleSlots[i],
@@ -698,8 +694,7 @@ class _PrayerSettingsPageState extends ConsumerState<PrayerSettingsPage> {
                               ],
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 14),
+                        const SectionRule(),
                         if (PrayerPrefs.prayerKeys.any(
                           (p) =>
                               draft.deliveryFor(p) == PrayerDeliveryMode.cast,
@@ -1334,7 +1329,9 @@ class _StickySaveBar extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: PrayerCastTokens.surface(context),
-        border: const Border(top: BorderSide(color: PrayerCastColors.inkSoft)),
+        border: Border(
+          top: BorderSide(color: PrayerCastTokens.rule(context)),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
+import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_tokens.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
 
 /// Short prompt before the Android 13+ notification permission dialog.
@@ -10,7 +11,7 @@ Future<bool> showNotificationDisclosureDialog(BuildContext context) async {
   final proceed = await showDialog<bool>(
     context: context,
     barrierDismissible: false,
-    barrierColor: PrayerCastColors.ink.withValues(alpha: 0.72),
+    barrierColor: PrayerCastTokens.scrim(context),
     builder: (ctx) => const NotificationDisclosureDialog(),
   );
   return proceed ?? false;
@@ -28,23 +29,25 @@ class NotificationDisclosureDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final titleColor = PrayerCastTokens.panelTitle(context);
+    final bodyColor = PrayerCastTokens.panelBody(context);
+    final actionColor = PrayerCastTokens.isForest(context)
+        ? PrayerCastColors.mist
+        : PrayerCastColors.canopy;
     return AlertDialog(
       key: dialogKey,
-      backgroundColor: PrayerCastColors.canopyDeep,
+      backgroundColor: PrayerCastTokens.panel(context),
       surfaceTintColor: Colors.transparent,
       elevation: 12,
       shadowColor: PrayerCastColors.ink.withValues(alpha: 0.55),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: PrayerCastColors.mist.withValues(alpha: 0.28),
-          width: 1,
-        ),
+        side: BorderSide(color: PrayerCastTokens.panelRule(context), width: 1),
       ),
       title: Text(
         l10n.notificationDisclosureTitle,
-        style: const TextStyle(
-          color: PrayerCastColors.surfaceRaised,
+        style: TextStyle(
+          color: titleColor,
           fontSize: 22,
           fontWeight: FontWeight.w500,
           height: 1.25,
@@ -52,8 +55,8 @@ class NotificationDisclosureDialog extends StatelessWidget {
       ),
       content: Text(
         l10n.notificationDisclosureBody,
-        style: const TextStyle(
-          color: PrayerCastColors.mist,
+        style: TextStyle(
+          color: bodyColor,
           fontSize: 16,
           fontWeight: FontWeight.w400,
           height: 1.45,
@@ -63,10 +66,10 @@ class NotificationDisclosureDialog extends StatelessWidget {
         TextButton(
           key: skipKey,
           onPressed: () => Navigator.of(context).pop(false),
-          style: TextButton.styleFrom(foregroundColor: PrayerCastColors.mist),
+          style: TextButton.styleFrom(foregroundColor: actionColor),
           child: Text(
             l10n.notificationDisclosureSkip,
-            style: const TextStyle(color: PrayerCastColors.mist),
+            style: TextStyle(color: actionColor),
           ),
         ),
         FilledButton(

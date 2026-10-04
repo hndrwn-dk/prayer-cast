@@ -3,8 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../home_delivery/ui/theme/prayer_cast_colors.dart';
+import '../../home_delivery/ui/theme/prayer_cast_theme.dart';
+import '../../home_delivery/ui/theme/prayer_cast_tokens.dart';
 
-/// Forest kiblat dial: rose rotates with heading; needle points to Kaaba.
+/// Open kiblat dial: rose rotates with heading; needle points to Kaaba.
 class QiblaCompassDial extends StatelessWidget {
   const QiblaCompassDial({
     super.key,
@@ -27,6 +29,19 @@ class QiblaCompassDial extends StatelessWidget {
     final needleTurn = (qiblaDeg - heading) * math.pi / 180;
     final roseTurn = -heading * math.pi / 180;
     final needleColor = aligned ? PrayerCastColors.leaf : PrayerCastColors.dawn;
+    final forest = PrayerCastTokens.isForest(context);
+    final ring = forest
+        ? PrayerCastColors.mist.withValues(alpha: 0.42)
+        : PrayerCastColors.ink.withValues(alpha: 0.38);
+    final tick = forest
+        ? PrayerCastColors.mist.withValues(alpha: 0.28)
+        : PrayerCastColors.ink.withValues(alpha: 0.22);
+    final tickMajor = forest
+        ? PrayerCastColors.mist.withValues(alpha: 0.72)
+        : PrayerCastColors.ink.withValues(alpha: 0.62);
+    final cardinal = forest
+        ? PrayerCastColors.mist
+        : PrayerCastTokens.onSurface(context);
     return Semantics(
       label: isId ? 'Kompas kiblat' : 'Qibla compass',
       value: '${qiblaDeg.round()}',
@@ -40,7 +55,14 @@ class QiblaCompassDial extends StatelessWidget {
               angle: roseTurn,
               child: CustomPaint(
                 size: Size.square(size),
-                painter: _RosePainter(isId: isId, roseTurn: roseTurn),
+                painter: _RosePainter(
+                  isId: isId,
+                  roseTurn: roseTurn,
+                  ring: ring,
+                  tick: tick,
+                  tickMajor: tickMajor,
+                  cardinal: cardinal,
+                ),
               ),
             ),
             Transform.rotate(
@@ -52,7 +74,7 @@ class QiblaCompassDial extends StatelessWidget {
             ),
             CustomPaint(
               size: Size.square(size),
-              painter: const _FixedNotchPainter(),
+              painter: _FixedNotchPainter(color: needleColor),
             ),
           ],
         ),
@@ -62,45 +84,52 @@ class QiblaCompassDial extends StatelessWidget {
 }
 
 class _RosePainter extends CustomPainter {
-  const _RosePainter({required this.isId, required this.roseTurn});
+  const _RosePainter({
+    required this.isId,
+    required this.roseTurn,
+    required this.ring,
+    required this.tick,
+    required this.tickMajor,
+    required this.cardinal,
+  });
 
   final bool isId;
 
   /// Rotation already applied to the whole rose, in radians. Glyphs are
   /// counter-rotated by it so N/E/S/W stay upright and readable.
   final double roseTurn;
+  final Color ring;
+  final Color tick;
+  final Color tickMajor;
+  final Color cardinal;
 
   @override
   void paint(Canvas canvas, Size size) {
     final s = size.shortestSide;
     final c = Offset(s / 2, s / 2);
     final r = s * 0.46;
-    final ring = Paint()
-      ..color = PrayerCastColors.mist
+    final ringPaint = Paint()
+      ..color = ring
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6;
-    final tick = Paint()
-      ..color = PrayerCastColors.mistDeep
+      ..strokeWidth = 1.2;
+    final tickPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4
       ..strokeCap = StrokeCap.round;
-    final fill = Paint()
-      ..color = PrayerCastColors.canopyDeep
-      ..style = PaintingStyle.fill;
 
-    canvas.drawCircle(c, r, fill);
-    canvas.drawCircle(c, r, ring);
-    canvas.drawCircle(c, r * 0.12, ring);
+    canvas.drawCircle(c, r, ringPaint);
 
-    for (var i = 0; i < 72; i++) {
-      final deg = i * 5.0;
+    for (var i = 0; i < 36; i++) {
+      final deg = i * 10.0;
       final rad = (deg - 90) * math.pi / 180;
-      final major = i % 9 == 0;
+      final major = i % 3 == 0;
       final inner =
           c +
-          Offset(math.cos(rad), math.sin(rad)) * (r * (major ? 0.82 : 0.90));
-      final outer = c + Offset(math.cos(rad), math.sin(rad)) * (r * 0.96);
-      canvas.drawLine(inner, outer, tick..strokeWidth = major ? 2.0 : 1.1);
+          Offset(math.cos(rad), math.sin(rad)) * (r * (major ? 0.86 : 0.92));
+      final outer = c + Offset(math.cos(rad), math.sin(rad)) * (r * 0.98);
+      tickPaint
+        ..color = major ? tickMajor : tick
+        ..strokeWidth = major ? 1.6 : 1.0;
+      canvas.drawLine(inner, outer, tickPaint);
     }
 
     const labelsEn = ['N', 'E', 'S', 'W'];
@@ -110,14 +139,14 @@ class _RosePainter extends CustomPainter {
     for (var i = 0; i < 4; i++) {
       final deg = i * 90.0;
       final rad = (deg - 90) * math.pi / 180;
-      final pos = c + Offset(math.cos(rad), math.sin(rad)) * (r * 0.68);
+      final pos = c + Offset(math.cos(rad), math.sin(rad)) * (r * 0.70);
       tp.text = TextSpan(
         text: labels[i],
         style: TextStyle(
-          fontFamily: 'AtkinsonHyperlegible',
+          fontFamily: PrayerCastTheme.displayFont,
           fontSize: i == 0 ? 18 : 15,
-          fontWeight: FontWeight.w700,
-          color: i == 0 ? PrayerCastColors.dawn : PrayerCastColors.mist,
+          fontWeight: i == 0 ? FontWeight.w600 : FontWeight.w500,
+          color: i == 0 ? PrayerCastColors.dawn : cardinal,
         ),
       );
       tp.layout();
@@ -131,7 +160,12 @@ class _RosePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _RosePainter oldDelegate) =>
-      oldDelegate.isId != isId || oldDelegate.roseTurn != roseTurn;
+      oldDelegate.isId != isId ||
+      oldDelegate.roseTurn != roseTurn ||
+      oldDelegate.ring != ring ||
+      oldDelegate.tick != tick ||
+      oldDelegate.tickMajor != tickMajor ||
+      oldDelegate.cardinal != cardinal;
 }
 
 class _NeedlePainter extends CustomPainter {
@@ -146,28 +180,30 @@ class _NeedlePainter extends CustomPainter {
     final p = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
-    // Thin and dim, with no arrowhead, so only the solid end reads as the
-    // pointer and there is nothing to mistake for a second needle.
     final tail = Paint()
-      ..color = color.withValues(alpha: 0.26)
+      ..color = color.withValues(alpha: 0.28)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4
+      ..strokeWidth = 1.2
       ..strokeCap = StrokeCap.round;
+    final hub = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
 
     canvas.drawLine(
-      Offset(c.dx, c.dy + s * 0.06),
-      Offset(c.dx, c.dy + s * 0.26),
+      Offset(c.dx, c.dy + s * 0.04),
+      Offset(c.dx, c.dy + s * 0.22),
       tail,
     );
 
     final path = Path()
-      ..moveTo(c.dx, c.dy - s * 0.40)
-      ..lineTo(c.dx + s * 0.055, c.dy - s * 0.06)
-      ..lineTo(c.dx, c.dy - s * 0.12)
-      ..lineTo(c.dx - s * 0.055, c.dy - s * 0.06)
+      ..moveTo(c.dx, c.dy - s * 0.36)
+      ..lineTo(c.dx + s * 0.028, c.dy - s * 0.02)
+      ..lineTo(c.dx, c.dy + s * 0.02)
+      ..lineTo(c.dx - s * 0.028, c.dy - s * 0.02)
       ..close();
     canvas.drawPath(path, p);
-    canvas.drawCircle(c, s * 0.035, p);
+    canvas.drawCircle(c, s * 0.028, hub);
   }
 
   @override
@@ -176,22 +212,25 @@ class _NeedlePainter extends CustomPainter {
 }
 
 class _FixedNotchPainter extends CustomPainter {
-  const _FixedNotchPainter();
+  const _FixedNotchPainter({required this.color});
+
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
     final s = size.shortestSide;
     final p = Paint()
-      ..color = PrayerCastColors.surfaceRaised
+      ..color = color
       ..style = PaintingStyle.fill;
     final path = Path()
-      ..moveTo(s * 0.5, s * 0.018)
-      ..lineTo(s * 0.545, s * 0.072)
-      ..lineTo(s * 0.455, s * 0.072)
+      ..moveTo(s * 0.5, s * 0.012)
+      ..lineTo(s * 0.528, s * 0.048)
+      ..lineTo(s * 0.472, s * 0.048)
       ..close();
     canvas.drawPath(path, p);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _FixedNotchPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

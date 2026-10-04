@@ -78,7 +78,7 @@ void main() {
       40,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -48));
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 80));
     await tester.pump();
     expect(find.byKey(const ValueKey('prayer-icon-fajr')), findsOneWidget);
 
@@ -282,6 +282,11 @@ void main() {
   ) async {
     await _pumpTracker(tester, castTheme: true);
 
+    await tester.scrollUntilVisible(
+      find.text('Mosque'),
+      80,
+      scrollable: find.byType(Scrollable).first,
+    );
     final segment = tester.widget<Text>(find.text('Mosque').first);
     expect(segment.style?.color, PrayerCastColors.ink);
     expect(segment.style?.color, isNot(PrayerCastColors.mist));

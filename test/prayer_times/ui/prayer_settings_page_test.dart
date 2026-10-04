@@ -542,23 +542,23 @@ void main() {
     final dialog = tester.widget<AlertDialog>(
       find.byKey(LocationDisclosureDialog.dialogKey),
     );
-    expect(dialog.backgroundColor, PrayerCastColors.canopyDeep);
-    expect(dialog.backgroundColor, isNot(PrayerCastColors.ink));
+    expect(dialog.backgroundColor, PrayerCastColors.surfaceRaised);
+    expect(dialog.backgroundColor, isNot(PrayerCastColors.canopyDeep));
     expect(dialog.elevation, 12);
     final shape = dialog.shape as RoundedRectangleBorder;
     expect(shape.side.width, 1);
-    expect(shape.side.color, PrayerCastColors.mist.withValues(alpha: 0.28));
+    expect(shape.side.color, PrayerCastColors.dawn);
     expect(
       tester.widget<Text>(find.text('Location is optional')).style?.color,
-      PrayerCastColors.surfaceRaised,
+      PrayerCastColors.ink,
     );
     expect(
       tester.widget<Text>(find.text('Type city instead')).style?.color,
-      PrayerCastColors.mist,
+      PrayerCastColors.canopy,
     );
     expect(
       tester.widget<Text>(find.text('Privacy policy')).style?.color,
-      PrayerCastColors.mist,
+      PrayerCastColors.canopy,
     );
   });
 

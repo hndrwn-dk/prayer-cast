@@ -139,3 +139,4 @@ ADZAN_HOME_DELIVERY_SPEC.md
 
 # Internal Play / listing notes — keep on disk, never publish.
 /docs/
+.firecrawl/
