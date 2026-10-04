@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.util.Log
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -22,6 +23,12 @@ import java.lang.ref.WeakReference
  *
  * Schedules only the next alarm. Does NOT use USE_EXACT_ALARM — runtime
  * SCHEDULE_EXACT_ALARM permission is requested via settings intent.
+ *
+ * The AlarmClock operation targets [AdzanForegroundService] directly
+ * ([PendingIntent.getForegroundService]). Routing through a
+ * BroadcastReceiver first can drop delivery when the process is in the
+ * cached-apps freezer (Pixel Maghrib 2026-10-04: Asr OK while warm,
+ * Maghrib silent while frozen until the user opened the app).
  *
  * AlarmManager arming is on the companion so [BootReceiver] can re-arm from
  * SharedPreferences without a live Dart engine.
@@ -282,6 +289,7 @@ class ExactAlarmPlugin(
         private const val RESCHEDULE_RETRY_DELAY_MS = 15_000L
         /** Match Dart DeliveryTiming.graceAfterAzan for overdue catch-up. */
         private const val OVERDUE_DELIVERY_GRACE_MS = 5 * 60 * 1000L
+        private const val TAG = "ExactAlarmPlugin"
         private const val REQ_FIRE = 1001
         private const val REQ_SHOW = 1002
 
@@ -409,6 +417,10 @@ class ExactAlarmPlugin(
         /**
          * Core AlarmManager.setAlarmClock arming — callable without Dart.
          * Persists prayer/epoch/voiceId for [BootReceiver] re-arm.
+         *
+         * Operation is a foreground-service PendingIntent so the OS can
+         * start [AdzanForegroundService] without a BroadcastReceiver hop
+         * into a frozen cached process.
          */
         @JvmStatic
         fun armAlarmClock(
@@ -429,21 +441,16 @@ class ExactAlarmPlugin(
                 pendingFlags(),
             )
 
-            val fireIntent = Intent(context, AdzanAlarmReceiver::class.java).apply {
-                action = AdzanAlarmReceiver.ACTION_FIRE
-                putExtra(EXTRA_PRAYER, prayer)
-                putExtra(EXTRA_SCHEDULED_EPOCH_MS, epochMs)
-                putExtra(EXTRA_VOICE_ID, voiceId)
-            }
-            val operation = PendingIntent.getBroadcast(
+            val operation = fireServicePendingIntent(
                 context,
-                REQ_FIRE,
-                fireIntent,
-                pendingFlags(),
+                prayer = prayer,
+                epochMs = epochMs,
+                voiceId = voiceId,
             )
 
             val info = AlarmManager.AlarmClockInfo(epochMs, showIntent)
             alarmManager.setAlarmClock(info, operation)
+            Log.i(TAG, "Armed AlarmClock for $prayer at $epochMs (FGS PendingIntent)")
 
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
@@ -460,16 +467,11 @@ class ExactAlarmPlugin(
         @JvmStatic
         fun cancelAlarmClock(context: Context, clearPrefs: Boolean = true) {
             val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
-            val fireIntent = Intent(context, AdzanAlarmReceiver::class.java).apply {
-                action = AdzanAlarmReceiver.ACTION_FIRE
-            }
-            val operation = PendingIntent.getBroadcast(
-                context,
-                REQ_FIRE,
-                fireIntent,
-                pendingFlags(),
-            )
-            alarmManager.cancel(operation)
+            // Cancel both the FGS operation and the legacy broadcast hop so
+            // an in-flight Maghrib/Isha armed before the FGS migration is
+            // not left orphaned when Dart re-arms.
+            alarmManager.cancel(fireServicePendingIntent(context))
+            alarmManager.cancel(legacyBroadcastPendingIntent(context))
             if (clearPrefs) {
                 // Drop schedule keys only. A full clear() would wipe an
                 // unacked pending fire (and apply() is async, so a later
@@ -482,6 +484,51 @@ class ExactAlarmPlugin(
                     .apply()
                 NextPrayerWidget.refresh(context)
             }
+        }
+
+        /** AlarmClock → FGS directly (preferred). */
+        private fun fireServicePendingIntent(
+            context: Context,
+            prayer: String = "",
+            epochMs: Long = 0L,
+            voiceId: String = "",
+        ): PendingIntent {
+            val fireIntent = Intent(context, AdzanForegroundService::class.java).apply {
+                action = AdzanForegroundService.ACTION_START
+                if (prayer.isNotEmpty()) {
+                    putExtra(EXTRA_PRAYER, prayer)
+                    putExtra(EXTRA_SCHEDULED_EPOCH_MS, epochMs)
+                    putExtra(EXTRA_VOICE_ID, voiceId)
+                }
+            }
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                PendingIntent.getForegroundService(
+                    context,
+                    REQ_FIRE,
+                    fireIntent,
+                    pendingFlags(),
+                )
+            } else {
+                PendingIntent.getService(
+                    context,
+                    REQ_FIRE,
+                    fireIntent,
+                    pendingFlags(),
+                )
+            }
+        }
+
+        /** Pre-migration AlarmClock → [AdzanAlarmReceiver] broadcast. */
+        private fun legacyBroadcastPendingIntent(context: Context): PendingIntent {
+            val fireIntent = Intent(context, AdzanAlarmReceiver::class.java).apply {
+                action = AdzanAlarmReceiver.ACTION_FIRE
+            }
+            return PendingIntent.getBroadcast(
+                context,
+                REQ_FIRE,
+                fireIntent,
+                pendingFlags(),
+            )
         }
 
         /**

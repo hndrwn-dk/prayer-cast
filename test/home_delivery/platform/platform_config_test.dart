@@ -101,6 +101,15 @@ void main() {
       expect(serviceKt, isNot(contains('MediaPlayer')));
       expect(serviceKt, isNot(contains('AudioTrack')));
       expect(serviceKt, isNot(contains('MediaSession')));
+
+      final exactAlarmKt = File(
+        'android/app/src/main/kotlin/com/tursinalabs/prayer_cast/'
+        'ExactAlarmPlugin.kt',
+      ).readAsStringSync();
+      // AlarmClock must start FGS directly — BroadcastReceiver hop can be
+      // dropped when the process is in the cached-apps freezer.
+      expect(exactAlarmKt, contains('getForegroundService'));
+      expect(exactAlarmKt, contains('legacyBroadcastPendingIntent'));
     },
   );
 

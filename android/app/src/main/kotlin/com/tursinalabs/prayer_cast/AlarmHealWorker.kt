@@ -61,9 +61,11 @@ object AlarmHealScheduler {
                 .setRequiresDeviceIdle(false)
                 .build()
 
+            // 30m: Asr→Maghrib is ~2–3h; a 4h heal can miss the Maghrib arm
+            // entirely if AlarmManager lost the wake while the app was frozen.
             val request = PeriodicWorkRequestBuilder<AlarmHealWorker>(
-                4,
-                TimeUnit.HOURS,
+                30,
+                TimeUnit.MINUTES,
             )
                 .setConstraints(constraints)
                 .build()

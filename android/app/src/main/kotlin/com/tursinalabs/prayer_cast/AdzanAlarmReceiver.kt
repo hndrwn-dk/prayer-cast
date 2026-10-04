@@ -6,8 +6,12 @@ import android.content.Intent
 import androidx.core.content.ContextCompat
 
 /**
- * Receives [AlarmManager.setAlarmClock] fires and starts the foreground
- * service that holds wake/Wi-Fi locks (spec §5.5).
+ * Legacy AlarmClock → FGS hop.
+ *
+ * New arms use [PendingIntent.getForegroundService] straight to
+ * [AdzanForegroundService] (cached-apps freezer can drop this broadcast
+ * when the process has been frozen for hours). Kept so an alarm armed
+ * before that migration can still start delivery.
  */
 class AdzanAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
