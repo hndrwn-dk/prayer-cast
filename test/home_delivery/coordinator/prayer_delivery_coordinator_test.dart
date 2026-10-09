@@ -1033,50 +1033,121 @@ void main() {
     expect(afterMaghrib.name, 'isha');
   });
 
-  test(
-    'cast mode still calls orchestrator (away suppression stays there)',
-    () async {
-      final local = _FakeLocalPlayer();
-      final deliveryDone = Completer<void>();
-      final coordinator = PrayerDeliveryCoordinator(
-        exactAlarm: alarm,
-        nextPrayer: _FakeNextPrayer([maghrib, isha]),
-        deviceConditions: _FakeConditions(),
-        settings: _FakeSettings(),
-        audioLoader: _FakeAudio(),
-        deliveryModes: _FakeModes(PrayerDeliveryMode.cast),
-        localPlayer: local,
-        runDelivery: (request) async {
-          deliveries.add(request);
-          deliveryDone.complete();
-          return const DeliveryAttemptResult(
-            sessionId: 'sess',
-            outcome: Outcome.suppressedAway,
-            role: null,
-          );
-        },
-        clock: clock,
-      );
-      await coordinator.start();
-      final wakeMs = alarm.scheduled.single.epochMs;
-      clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
-      alarm.emit(
-        AlarmFiredEvent(
-          prayer: 'maghrib',
-          scheduledEpochMs: wakeMs,
-          firedAtMs: wakeMs,
-          voiceId: 'makkah',
-        ),
-      );
-      await deliveryDone.future;
-      for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-      }
+  test('cast mode away with fallback plays phone Adhan at azan', () async {
+    final db = DeliveryDatabase.memory();
+    addTearDown(db.close);
+    final dao = DeliveryLogDao(db);
+    final local = _FakeLocalPlayer();
+    final deliveryDone = Completer<void>();
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      deliveryModes: _FakeModes(PrayerDeliveryMode.cast),
+      localPlayer: local,
+      logDao: dao,
+      runDelivery: (request) async {
+        deliveries.add(request);
+        deliveryDone.complete();
+        await dao.insertAttempt(
+          sessionId: 'away-sess',
+          prayer: request.prayerName,
+          scheduledAtMs: request.scheduledAzan.millisecondsSinceEpoch,
+          outcome: Outcome.suppressedAway,
+          presenceState: 'AWAY',
+        );
+        return const DeliveryAttemptResult(
+          sessionId: 'away-sess',
+          outcome: Outcome.suppressedAway,
+          role: null,
+          presenceState: 'AWAY',
+        );
+      },
+      clock: clock,
+    );
+    await coordinator.start();
+    final wakeMs = alarm.scheduled.single.epochMs;
+    final azanAt = DateTime.fromMillisecondsSinceEpoch(
+      wakeMs,
+      isUtc: true,
+    ).subtract(PresenceSchedule.scanOffset);
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
+    );
+    await deliveryDone.future;
+    clock.advanceTo(azanAt);
+    for (var i = 0; i < 80 && local.calls.isEmpty; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
 
-      expect(deliveries, hasLength(1));
-      expect(local.calls, isEmpty);
-    },
-  );
+    expect(deliveries, hasLength(1));
+    expect(local.calls, ['adhan:makkah']);
+    final rows = await dao.latest();
+    expect(rows, hasLength(1));
+    expect(rows.single.outcome, Outcome.playedPhoneFallback.code);
+    expect(rows.single.detail, contains('away'));
+  });
+
+  test('cast mode away with fallback off stays silent', () async {
+    final local = _FakeLocalPlayer();
+    final deliveryDone = Completer<void>();
+    final prefs = MemoryPrayerPrefsStore(
+      PrayerPrefs.defaults.copyWith(
+        configured: true,
+        castFallbackToPhone: false,
+      ),
+    );
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      deliveryModes: _FakeModes(PrayerDeliveryMode.cast),
+      localPlayer: local,
+      prayerPrefs: prefs,
+      runDelivery: (request) async {
+        deliveries.add(request);
+        deliveryDone.complete();
+        return const DeliveryAttemptResult(
+          sessionId: 'sess',
+          outcome: Outcome.suppressedAway,
+          role: null,
+          presenceState: 'AWAY',
+        );
+      },
+      clock: clock,
+    );
+    await coordinator.start();
+    final wakeMs = alarm.scheduled.single.epochMs;
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
+    );
+    await deliveryDone.future;
+    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+
+    expect(deliveries, hasLength(1));
+    expect(local.calls, isEmpty);
+  });
 
   test('beep mode waits until azan then plays locally', () async {
     final local = _FakeLocalPlayer();

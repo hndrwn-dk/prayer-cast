@@ -509,8 +509,8 @@ final class PrayerDeliveryCoordinator {
 
   /// Branch on per-prayer mode before the Cast orchestrator.
   ///
-  /// Beep / phone Adhan skip presence and election. Cast keeps the existing
-  /// away → SUPPRESSED_AWAY path with no phone fallback.
+  /// Beep / phone Adhan skip presence and election. Cast skips home speaker
+  /// when away; [PrayerPrefs.castFallbackToPhone] can still play on this phone.
   Future<void> _deliver(
     AlarmFiredEvent event, {
     required DateTime azanEpoch,
@@ -709,12 +709,45 @@ final class PrayerDeliveryCoordinator {
     required DeliveryAttemptResult result,
     required String voiceId,
   }) async {
-    if (!_castFailureOutcomes.contains(result.outcome)) return false;
     final prefs = await _prayerPrefs?.read();
     if (!(prefs?.castFallbackToPhone ?? true)) return false;
     // Fallback is only for Cast households. No saved speaker → never this path.
     final castId = await _settings.homeCastDeviceId();
     if (castId == null || castId.trim().isEmpty) return false;
+
+    if (result.outcome == Outcome.suppressedAway) {
+      if (DeliveryTiming.isTooLate(scheduledAzan: azanEpoch, now: _clock.now())) {
+        return false;
+      }
+      _logger.info(
+        'Away from home; skipping Cast — phone Adhan fallback',
+        tag: 'PrayerDeliveryCoordinator',
+      );
+      await _waitUntilAzan(azanEpoch);
+      if (DeliveryTiming.isTooLate(scheduledAzan: azanEpoch, now: _clock.now())) {
+        return false;
+      }
+      await _playPhoneAdhanForFallback(
+        event: event,
+        azanEpoch: azanEpoch,
+        voiceId: voiceId,
+      );
+      await _replaceCastLogWithFallback(
+        sessionId: result.sessionId,
+        event: event,
+        azanEpoch: azanEpoch,
+        detail: 'full_adhan; away; no_cast',
+        presenceState: result.presenceState ?? 'AWAY',
+      );
+      await _notifyPhoneFallback(
+        prayerName: event.prayer,
+        castOutcome: Outcome.suppressedAway,
+        fullAdhan: true,
+      );
+      return true;
+    }
+
+    if (!_castFailureOutcomes.contains(result.outcome)) return false;
 
     final confidentHome = result.presenceState == 'HOME';
     final castDetail =
@@ -728,23 +761,11 @@ final class PrayerDeliveryCoordinator {
         'Cast failed (${result.outcome.code}); falling back to phone Adhan',
         tag: 'PrayerDeliveryCoordinator',
       );
-      await _exactAlarm.showPhonePlaybackControls(prayer: event.prayer);
-      final stopSub = _exactAlarm.onStopLocalPlayback.listen((_) {
-        unawaited(_localPlayer.stop());
-      });
-      final prayerName = canonicalPrayerName(event.prayer);
-      final hold = NextPrayer(
-        name: prayerName,
-        scheduledAt: azanEpoch.toLocal(),
+      await _playPhoneAdhanForFallback(
+        event: event,
+        azanEpoch: azanEpoch,
         voiceId: voiceId,
       );
-      _activeHero?.begin(hold);
-      try {
-        await _localPlayer.playAdhan(voiceId: voiceId);
-      } finally {
-        await stopSub.cancel();
-        _activeHero?.clear();
-      }
       await _replaceCastLogWithFallback(
         sessionId: result.sessionId,
         event: event,
@@ -778,6 +799,30 @@ final class PrayerDeliveryCoordinator {
       );
     }
     return true;
+  }
+
+  Future<void> _playPhoneAdhanForFallback({
+    required AlarmFiredEvent event,
+    required DateTime azanEpoch,
+    required String voiceId,
+  }) async {
+    await _exactAlarm.showPhonePlaybackControls(prayer: event.prayer);
+    final stopSub = _exactAlarm.onStopLocalPlayback.listen((_) {
+      unawaited(_localPlayer.stop());
+    });
+    final prayerName = canonicalPrayerName(event.prayer);
+    final hold = NextPrayer(
+      name: prayerName,
+      scheduledAt: azanEpoch.toLocal(),
+      voiceId: voiceId,
+    );
+    _activeHero?.begin(hold);
+    try {
+      await _localPlayer.playAdhan(voiceId: voiceId);
+    } finally {
+      await stopSub.cancel();
+      _activeHero?.clear();
+    }
   }
 
   Future<void> _notifyPhoneFallback({

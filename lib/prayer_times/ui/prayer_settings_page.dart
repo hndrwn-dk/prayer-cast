@@ -998,8 +998,8 @@ class _CastFallbackCard extends StatelessWidget {
             padding: const EdgeInsets.only(top: 6),
             child: Text(
               isId
-                  ? 'Hanya bila speaker rumah sudah disimpan. Putar Adhan di ponsel jika Cast gagal (atau nada singkat jika lokasi rumah belum yakin).'
-                  : 'Only when a home speaker is saved. Play Adhan on this phone if Cast fails (or a short chime if home presence is uncertain).',
+                  ? 'Hanya bila speaker rumah sudah disimpan. Putar Adhan di ponsel jika Cast gagal, tidak di rumah, atau speaker mati (nada singkat jika lokasi rumah belum yakin).'
+                  : 'Only when a home speaker is saved. Play Adhan on this phone if Cast fails, you are away from home, or the speaker is off (short chime if home presence is uncertain).',
               style: text.bodySmall?.copyWith(
                 color: PrayerCastTokens.glyphMuted(context),
               ),

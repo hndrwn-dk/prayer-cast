@@ -26,6 +26,9 @@ final class _RecordingOem implements OemBatterySettingsPlatform {
   Future<bool> isRestrictiveOem() async => false;
 
   @override
+  Future<bool> isSamsungOem() async => false;
+
+  @override
   Future<bool> isBatteryUnrestricted() async => false;
 }
 

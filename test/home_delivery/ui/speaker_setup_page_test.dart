@@ -924,6 +924,9 @@ final class _RestrictiveOem implements OemBatterySettingsPlatform {
   Future<bool> isRestrictiveOem() async => true;
 
   @override
+  Future<bool> isSamsungOem() async => false;
+
+  @override
   Future<bool> isBatteryUnrestricted() async => false;
 }
 

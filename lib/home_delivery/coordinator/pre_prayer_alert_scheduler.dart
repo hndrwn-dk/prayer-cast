@@ -132,20 +132,26 @@ abstract final class CastFailureNotificationCopy {
       final action = fullAdhan
           ? 'diputar di ponsel'
           : 'nada singkat (lokasi rumah belum yakin)';
+      final away = outcomeCode == 'SUPPRESSED_AWAY';
       return (
         title: '$prayer · $reason — $action',
         body: fullAdhan
-            ? 'Speaker tidak siap. Adhan $prayer diputar di ponsel.'
+            ? (away
+                ? 'Tidak di rumah — Adhan $prayer diputar di ponsel.'
+                : 'Speaker tidak siap. Adhan $prayer diputar di ponsel.')
             : 'Speaker tidak siap dan lokasi rumah belum yakin — hanya nada singkat.',
       );
     }
     final action = fullAdhan
         ? 'played on phone'
         : 'short chime (home presence uncertain)';
+    final away = outcomeCode == 'SUPPRESSED_AWAY';
     return (
       title: '$prayer · $reason — $action',
       body: fullAdhan
-          ? 'Speaker was unavailable. $prayer Adhan played on this phone.'
+          ? (away
+              ? 'Not at home — $prayer Adhan played on this phone.'
+              : 'Speaker was unavailable. $prayer Adhan played on this phone.')
           : 'Speaker was unavailable and home presence was uncertain — short chime only.',
     );
   }
@@ -157,6 +163,7 @@ abstract final class CastFailureNotificationCopy {
         'FAILED_NO_ROUTE' => 'tidak ada jalur ke speaker',
         'FAILED_CAST_CONNECT' => 'gagal hubung speaker',
         'FAILED_LOAD_MEDIA' => 'speaker menolak audio',
+        'SUPPRESSED_AWAY' => 'tidak di rumah',
         _ => 'speaker tidak siap',
       };
     }
@@ -165,6 +172,7 @@ abstract final class CastFailureNotificationCopy {
       'FAILED_NO_ROUTE' => 'no route to speaker',
       'FAILED_CAST_CONNECT' => 'could not connect',
       'FAILED_LOAD_MEDIA' => 'speaker rejected audio',
+      'SUPPRESSED_AWAY' => 'away from home',
       _ => 'speaker unavailable',
     };
   }
