@@ -71,7 +71,7 @@ final class FileAdhkarPrefs implements AdhkarPrefs {
         final value = parts[1].trim();
 
         if (key.endsWith('_enabled')) {
-          final typeName = key.replaceAll('_enabled', '');
+          final typeName = key.substring(0, key.length - '_enabled'.length);
           try {
             final type = AdhkarType.fromString(typeName);
             _enabled[type] = value.toLowerCase() == 'true';
@@ -79,11 +79,14 @@ final class FileAdhkarPrefs implements AdhkarPrefs {
             // Invalid type, skip
           }
         } else if (key.endsWith('_delay_minutes')) {
-          final typeName = key.replaceAll('_delay_minutes', '');
+          final typeName =
+              key.substring(0, key.length - '_delay_minutes'.length);
           try {
             final type = AdhkarType.fromString(typeName);
-            final minutes = int.tryParse(value) ?? 10;
-            _delayMinutes[type] = minutes;
+            final minutes = int.tryParse(value);
+            if (minutes != null && minutes >= 0 && minutes <= 120) {
+              _delayMinutes[type] = minutes;
+            }
           } catch (_) {
             // Invalid type or number, skip
           }
