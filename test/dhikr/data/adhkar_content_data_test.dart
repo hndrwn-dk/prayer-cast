@@ -55,5 +55,18 @@ void main() {
       );
       expect(hasAyatAlKursi, true);
     });
+
+    test('Indonesian locale differs from English', () async {
+      final id = await AppLocalizations.delegate.load(const Locale('id'));
+      final en = AdhkarContentData.morning(l10n);
+      final idc = AdhkarContentData.morning(id);
+      expect(idc.length, en.length);
+      expect(idc.any((a) => a.translation.isNotEmpty), true);
+      final differing = [
+        for (var i = 0; i < en.length; i++)
+          if (en[i].translation != idc[i].translation) i
+      ];
+      expect(differing, isNotEmpty);
+    });
   });
 }
