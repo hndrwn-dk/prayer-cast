@@ -6,6 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:prayer_cast/dhikr/scheduling/adhkar_audio_loader.dart';
+import 'package:prayer_cast/dhikr/scheduling/adhkar_delivery_coordinator.dart';
+import 'package:prayer_cast/dhikr/storage/adhkar_prefs.dart';
+import 'package:prayer_cast/dhikr/storage/dhikr_counter_store.dart';
+import 'package:prayer_cast/dhikr/ui/adhkar_providers.dart';
+import 'package:prayer_cast/dhikr/ui/dhikr_counter_providers.dart';
+import 'package:prayer_cast/dhikr/ui/home_dhikr_section.dart';
 import 'package:prayer_cast/home_delivery/common/console_logger.dart';
 import 'package:prayer_cast/home_delivery/coordinator/active_delivery_hero.dart';
 import 'package:prayer_cast/home_delivery/coordinator/adzan_audio_loader.dart';
@@ -97,6 +104,14 @@ Future<void> main() async {
       File(p.join(docs.path, 'onboarding.txt')),
     );
 
+    final adhkarPrefs = FileAdhkarPrefs(
+      File(p.join(docs.path, 'adhkar_prefs.txt')),
+    );
+    await adhkarPrefs.load();
+    final dhikrCounterStore = FileDhikrCounterStore(
+      File(p.join(docs.path, 'dhikr_counter.json')),
+    );
+
     const logger = ConsoleLogger();
     final nextPrayer = AdhanNextPrayerProvider(
       store: prayerPrefsStore,
@@ -108,6 +123,7 @@ Future<void> main() async {
     final presenceHolder = _PresenceHolder();
     final fingerprintHolder = _FingerprintHolder();
     final activeHeroHolder = _ActiveHeroHolder();
+    final adhkarCoordinatorHolder = _AdhkarCoordinatorHolder();
 
     final appContainer = ProviderContainer(
       overrides: [
@@ -118,6 +134,11 @@ Future<void> main() async {
         prayerTrackerStoreProvider.overrideWithValue(prayerTrackerStore),
         mosqueCacheStoreProvider.overrideWithValue(mosqueCacheStore),
         onboardingStoreProvider.overrideWithValue(onboardingStore),
+        adhkarPrefsProvider.overrideWithValue(adhkarPrefs),
+        dhikrCounterStoreProvider.overrideWithValue(dhikrCounterStore),
+        adhkarDeliveryCoordinatorProvider.overrideWith(
+          (ref) => adhkarCoordinatorHolder.value,
+        ),
         adhanNextPrayerProvider.overrideWithValue(nextPrayer),
         activeDeliveryHeroProvider.overrideWith((ref) {
           final hero = activeHeroHolder.value;
@@ -174,6 +195,11 @@ Future<void> main() async {
     presenceHolder.value = runtime.presence;
     fingerprintHolder.value = runtime.fingerprintStore;
     activeHeroHolder.value = runtime.activeHero;
+    adhkarCoordinatorHolder.value = AdhkarDeliveryCoordinator(
+      audioLoader: AdhkarAudioLoader(),
+      castClient: runtime.castClient,
+    );
+    appContainer.invalidate(adhkarDeliveryCoordinatorProvider);
 
     // Listen before the real shell so buffered pendingFire is not missed.
     // Mark delivery ready only after listen is armed — MainActivity may then
@@ -266,6 +292,10 @@ final class _FingerprintHolder {
 
 final class _ActiveHeroHolder {
   ActiveDeliveryHero? value;
+}
+
+final class _AdhkarCoordinatorHolder {
+  AdhkarDeliveryCoordinator? value;
 }
 
 /// App shell with speaker setup, prayer times, and delivery log.
@@ -665,6 +695,12 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                     onPrayerTracker: _openPrayerTracker,
                     onQibla: _openQibla,
                   ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: FadeSlideIn(
+                  delay: const Duration(milliseconds: 300),
+                  child: const HomeDhikrSection(),
                 ),
               ),
               SliverFillRemaining(
@@ -1492,6 +1528,8 @@ class PrayerCastAppForTest extends StatelessWidget {
         ),
         localeStoreProvider.overrideWithValue(MemoryLocaleStore('id')),
         appThemeStoreProvider.overrideWithValue(MemoryAppThemeStore()),
+        adhkarPrefsProvider.overrideWithValue(MemoryAdhkarPrefs()),
+        dhikrCounterStoreProvider.overrideWithValue(MemoryDhikrCounterStore()),
         prayerTrackerStoreProvider.overrideWithValue(
           MemoryPrayerTrackerStore(),
         ),
