@@ -23,6 +23,7 @@ Future<void> pumpCell(
           translation: 'Glory be to Allah',
           onTap: onTap ?? () {},
           onReset: onReset ?? () {},
+          resetLabel: 'Reset',
         ),
       ),
     ),
@@ -62,11 +63,7 @@ void main() {
     testWidgets('calls onReset on long press without tapping', (tester) async {
       var resets = 0;
       var taps = 0;
-      await pumpCell(
-        tester,
-        onTap: () => taps++,
-        onReset: () => resets++,
-      );
+      await pumpCell(tester, onTap: () => taps++, onReset: () => resets++);
       await tester.longPress(find.text('Glory be to Allah'));
       expect(resets, 1);
       expect(taps, 0);
@@ -85,6 +82,18 @@ void main() {
       final size = tester.getSize(find.byType(IconButton));
       expect(size.width, greaterThanOrEqualTo(48));
       expect(size.height, greaterThanOrEqualTo(48));
+    });
+
+    testWidgets('exposes merged semantics label and long-press hint', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      await pumpCell(tester, count: 3, target: 33);
+      expect(
+        find.bySemanticsLabel('Glory be to Allah, 3 of 33'),
+        findsOneWidget,
+      );
+      handle.dispose();
     });
   });
 }
