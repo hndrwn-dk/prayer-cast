@@ -35,8 +35,17 @@ final class AdhkarDeliveryCoordinator {
   final Future<InternetAddress> Function(InternetAddress) _resolveHost;
 
   MediaServer? _server;
+  Future<void> _tail = Future<void>.value();
 
-  Future<AdhkarDeliveryResult> playAdhkar(AdhkarType type) async {
+  /// Calls are serialized so a second request never tears down the server
+  /// of a play that is still starting.
+  Future<AdhkarDeliveryResult> playAdhkar(AdhkarType type) {
+    final result = _tail.then((_) => _play(type));
+    _tail = result.then<void>((_) {}, onError: (_) {});
+    return result;
+  }
+
+  Future<AdhkarDeliveryResult> _play(AdhkarType type) async {
     final receiver = _castClient.connected;
     if (receiver == null) return AdhkarDeliveryResult.speakerOffline;
 
@@ -51,7 +60,7 @@ final class AdhkarDeliveryCoordinator {
       final server = MediaServer(
         audioBytes: audio,
         voiceId: voiceId,
-        fileExtension: 'mpeg',
+        fileExtension: 'mp3',
       );
       await server.start();
       _server = server;

@@ -102,7 +102,7 @@ void main() {
       verify(() => audioLoader.load(AdhkarType.morning)).called(1);
       expect(platform.loadedType, 'audio/mpeg');
       expect(platform.loadedUrl!.scheme, 'http');
-      expect(platform.loadedUrl!.path, endsWith('adhkar_morning.mpeg'));
+      expect(platform.loadedUrl!.path, endsWith('adhkar_morning.mp3'));
     });
 
     test('returns speakerOffline when no Cast session', () async {

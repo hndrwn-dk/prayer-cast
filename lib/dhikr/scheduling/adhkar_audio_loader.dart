@@ -2,7 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:prayer_cast/dhikr/models/adhkar_type.dart';
 
 /// Loads adhkar audio from assets/audio/Adhkar/adhkar_{morning,evening}.mpeg.
-final class AdhkarAudioLoader {
+class AdhkarAudioLoader {
   AdhkarAudioLoader({AssetBundle? bundle}) : _bundle = bundle ?? rootBundle;
 
   static const String _assetPath = 'assets/audio/Adhkar';
