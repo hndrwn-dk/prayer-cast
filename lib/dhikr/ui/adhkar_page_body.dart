@@ -141,9 +141,13 @@ class AdhkarPageBody extends ConsumerWidget {
     final l10n = context.l10n;
     final result = await coordinator.testAdhkar(type);
     if (result == AdhkarDeliveryResult.success) return;
-    messenger.showSnackBar(
-      SnackBar(content: Text(l10n.castFailed(result.name))),
-    );
+    final message = switch (result) {
+      AdhkarDeliveryResult.success => '',
+      AdhkarDeliveryResult.speakerOffline => l10n.adhkarSpeakerOffline,
+      AdhkarDeliveryResult.audioMissing => l10n.adhkarAudioMissing,
+      AdhkarDeliveryResult.castFailed => l10n.adhkarPlayFailed,
+    };
+    messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

@@ -451,6 +451,16 @@ class AppLocalizationsId extends AppLocalizations {
       'Speaker tidak mengambil audio dari HP (0 request). Cek Wi‑Fi yang sama, matikan VPN, dan pilih ulang speaker rumah.';
 
   @override
+  String get adhkarSpeakerOffline =>
+      'Speaker rumah tidak terhubung. Pastikan menyala dan satu Wi‑Fi.';
+
+  @override
+  String get adhkarAudioMissing => 'Audio adzkar belum tersedia.';
+
+  @override
+  String get adhkarPlayFailed => 'Gagal memutar adzkar di speaker.';
+
+  @override
   String castFailed(String error) {
     return 'Gagal cast ke speaker: $error';
   }

@@ -449,6 +449,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Speaker did not fetch audio from the phone (0 requests). Check same Wi‑Fi, turn off VPN, and reselect the home speaker.';
 
   @override
+  String get adhkarSpeakerOffline =>
+      'Home speaker is offline. Check it is on and on the same Wi‑Fi.';
+
+  @override
+  String get adhkarAudioMissing => 'Adhkar audio is not available yet.';
+
+  @override
+  String get adhkarPlayFailed => 'Could not play adhkar on the speaker.';
+
+  @override
   String castFailed(String error) {
     return 'Failed to cast to speaker: $error';
   }
