@@ -918,4 +918,139 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get onboardingRecoveryBattery => 'Matikan batasan baterai untuk adzan';
+
+  @override
+  String get dhikrSectionTitle => 'Dzikir & Wirid';
+
+  @override
+  String get morningAdhkar => 'Dzikir Pagi';
+
+  @override
+  String get eveningAdhkar => 'Dzikir Petang';
+
+  @override
+  String get generalDhikr => 'Counter Dzikir';
+
+  @override
+  String get afterFajr => 'Setelah Subuh';
+
+  @override
+  String get afterAsr => 'Setelah Ashar';
+
+  @override
+  String get adhkarEnabled => 'Aktif';
+
+  @override
+  String get adhkarDisabled => 'Nonaktif';
+
+  @override
+  String get enableAdhkar => 'Aktifkan dzikir ini';
+
+  @override
+  String get delayMinutes => 'Tunda (menit)';
+
+  @override
+  String get timingGuidanceMorning =>
+      'Waktu utama: Setelah Subuh hingga terbit matahari. Bisa dibaca hingga Zuhur.';
+
+  @override
+  String get timingGuidanceEvening =>
+      'Waktu utama: Setelah Ashar hingga Maghrib. Bisa dibaca hingga Isya.';
+
+  @override
+  String get testAdhkarNow => 'Tes sekarang';
+
+  @override
+  String get adhkarContentSection => 'Dzikir untuk Dibaca';
+
+  @override
+  String get dhikrCount => 'Hitungan';
+
+  @override
+  String get dhikrTarget => 'Target';
+
+  @override
+  String get dhikrReset => 'Reset';
+
+  @override
+  String get tapToCount => 'Ketuk untuk hitung';
+
+  @override
+  String get dhikrSubhanallah => 'SubhanAllah';
+
+  @override
+  String get dhikrSubhanallahArabic => 'سُبْحَانَ اللهِ';
+
+  @override
+  String get dhikrSubhanallahTranslation => 'Maha Suci Allah';
+
+  @override
+  String get dhikrAlhamdulillah => 'Alhamdulillah';
+
+  @override
+  String get dhikrAlhamdulillahArabic => 'اَلْحَمْدُ لِلَّه';
+
+  @override
+  String get dhikrAlhamdulillahTranslation => 'Segala puji bagi Allah';
+
+  @override
+  String get dhikrAllahuAkbar => 'Allahu Akbar';
+
+  @override
+  String get dhikrAllahuAkbarArabic => 'اَللهُ أَكْبَرُ';
+
+  @override
+  String get dhikrAllahuAkbarTranslation => 'Allah Maha Besar';
+
+  @override
+  String get dhikrLaIlahaIllallah => 'La ilaha illallah';
+
+  @override
+  String get dhikrLaIlahaIllallahArabic => 'لَا إِلٰهَ إِلَّا اللهُ';
+
+  @override
+  String get dhikrLaIlahaIllallahTranslation => 'Tiada tuhan selain Allah';
+
+  @override
+  String get dhikrSubhanallahWabihamdihi => 'Subhanallah wa bihamdihi';
+
+  @override
+  String get dhikrSubhanallahWabihamdihiArabic =>
+      'سُبْحَانَ اللهِ وَبِحَمْدِهِ';
+
+  @override
+  String get dhikrSubhanallahWabihamdihiTranslation =>
+      'Maha Suci Allah dengan segala pujian-Nya';
+
+  @override
+  String get dhikrSubhanallahWabihamdihiAdzim =>
+      'Subhanallah wabihamdihi, subhanallahil \'adzim';
+
+  @override
+  String get dhikrSubhanallahWabihamdihiAdzimArabic =>
+      'سُبْحَانَ اللهِ وَبِحَمْدِهِ ، سُبْحَانَ اللهِ الْعَظِيْم';
+
+  @override
+  String get dhikrSubhanallahWabihamdihiAdzimTranslation =>
+      'Maha Suci Allah dengan segala pujian-Nya, Maha Suci Allah Yang Maha Agung';
+
+  @override
+  String get dhikrAstaghfirullah => 'Astaghfirullah';
+
+  @override
+  String get dhikrAstaghfirullahArabic => 'أَسْتَغْفِرُ اللهَ';
+
+  @override
+  String get dhikrAstaghfirullahTranslation => 'Aku memohon ampun kepada Allah';
+
+  @override
+  String dhikrSuggestedTarget(int count) {
+    return 'Saran: ${count}x';
+  }
+
+  @override
+  String get dhikrCustom => 'Dzikir Kustom';
+
+  @override
+  String get countYourRemembrance => 'Hitung dzikirmu';
 }

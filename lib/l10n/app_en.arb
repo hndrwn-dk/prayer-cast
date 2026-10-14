@@ -440,5 +440,113 @@
   "onboardingBatterySkip": "Not now",
   "onboardingRecoveryNotifications": "Allow notifications for the adhan",
   "onboardingRecoveryAlarm": "Allow exact alarms for the adhan",
-  "onboardingRecoveryBattery": "Turn off battery limits for the adhan"
+  "onboardingRecoveryBattery": "Turn off battery limits for the adhan",
+  "dhikrSectionTitle": "Dhikr & Remembrance",
+  "@dhikrSectionTitle": {
+    "description": "Section title for dhikr features on home screen"
+  },
+  "morningAdhkar": "Morning Adhkar",
+  "@morningAdhkar": {
+    "description": "Title for morning adhkar after Fajr"
+  },
+  "eveningAdhkar": "Evening Adhkar",
+  "@eveningAdhkar": {
+    "description": "Title for evening adhkar after Asr"
+  },
+  "generalDhikr": "Dhikr Counter",
+  "@generalDhikr": {
+    "description": "Title for general dhikr counter page"
+  },
+  "afterFajr": "After Fajr",
+  "@afterFajr": {
+    "description": "Subtitle indicating timing after Fajr prayer"
+  },
+  "afterAsr": "After Asr",
+  "@afterAsr": {
+    "description": "Subtitle indicating timing after Asr prayer"
+  },
+  "adhkarEnabled": "Enabled",
+  "@adhkarEnabled": {
+    "description": "Status when adhkar reminder is enabled"
+  },
+  "adhkarDisabled": "Disabled",
+  "@adhkarDisabled": {
+    "description": "Status when adhkar reminder is disabled"
+  },
+  "enableAdhkar": "Enable this adhkar",
+  "@enableAdhkar": {
+    "description": "Toggle label to enable adhkar reminder"
+  },
+  "delayMinutes": "Delay (minutes)",
+  "@delayMinutes": {
+    "description": "Label for delay timing configuration"
+  },
+  "timingGuidanceMorning": "Best time: After Fajr until sunrise. Can be read until Dhuhr.",
+  "@timingGuidanceMorning": {
+    "description": "Guidance for optimal morning adhkar timing"
+  },
+  "timingGuidanceEvening": "Best time: After Asr until Maghrib. Can be read until Isha.",
+  "@timingGuidanceEvening": {
+    "description": "Guidance for optimal evening adhkar timing"
+  },
+  "testAdhkarNow": "Test now",
+  "@testAdhkarNow": {
+    "description": "Button to test adhkar playback immediately"
+  },
+  "adhkarContentSection": "Adhkar to Recite",
+  "@adhkarContentSection": {
+    "description": "Section title for adhkar reading content"
+  },
+  "dhikrCount": "Count",
+  "@dhikrCount": {
+    "description": "Label for current dhikr count"
+  },
+  "dhikrTarget": "Target",
+  "@dhikrTarget": {
+    "description": "Label for target dhikr count"
+  },
+  "dhikrReset": "Reset",
+  "@dhikrReset": {
+    "description": "Button to reset counter"
+  },
+  "tapToCount": "Tap to count",
+  "@tapToCount": {
+    "description": "Instruction to tap counter area"
+  },
+  "dhikrSubhanallah": "SubhanAllah",
+  "dhikrSubhanallahArabic": "سُبْحَانَ اللهِ",
+  "dhikrSubhanallahTranslation": "Glory be to Allah",
+  "dhikrAlhamdulillah": "Alhamdulillah",
+  "dhikrAlhamdulillahArabic": "اَلْحَمْدُ لِلَّه",
+  "dhikrAlhamdulillahTranslation": "All praise is due to Allah",
+  "dhikrAllahuAkbar": "Allahu Akbar",
+  "dhikrAllahuAkbarArabic": "اَللهُ أَكْبَرُ",
+  "dhikrAllahuAkbarTranslation": "Allah is the Greatest",
+  "dhikrLaIlahaIllallah": "La ilaha illallah",
+  "dhikrLaIlahaIllallahArabic": "لَا إِلٰهَ إِلَّا اللهُ",
+  "dhikrLaIlahaIllallahTranslation": "There is no god but Allah",
+  "dhikrSubhanallahWabihamdihi": "Subhanallah wa bihamdihi",
+  "dhikrSubhanallahWabihamdihiArabic": "سُبْحَانَ اللهِ وَبِحَمْدِهِ",
+  "dhikrSubhanallahWabihamdihiTranslation": "Glory be to Allah and praise Him",
+  "dhikrSubhanallahWabihamdihiAdzim": "Subhanallah wabihamdihi, subhanallahil 'adzim",
+  "dhikrSubhanallahWabihamdihiAdzimArabic": "سُبْحَانَ اللهِ وَبِحَمْدِهِ ، سُبْحَانَ اللهِ الْعَظِيْم",
+  "dhikrSubhanallahWabihamdihiAdzimTranslation": "Glory be to Allah and praise Him, Glory be to Allah the Almighty",
+  "dhikrAstaghfirullah": "Astaghfirullah",
+  "dhikrAstaghfirullahArabic": "أَسْتَغْفِرُ اللهَ",
+  "dhikrAstaghfirullahTranslation": "I seek forgiveness from Allah",
+  "dhikrSuggestedTarget": "Suggested: {count}x",
+  "@dhikrSuggestedTarget": {
+    "description": "Suggested target count for dhikr",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "100"
+      }
+    }
+  },
+  "dhikrCustom": "Custom Dhikr",
+  "@dhikrCustom": {
+    "description": "Label for custom user-defined dhikr"
+  },
+  "countYourRemembrance": "Count your remembrance"
 }
