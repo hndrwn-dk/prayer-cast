@@ -92,6 +92,41 @@ void main() {
       expect(evening.any((a) => a.arabic.startsWith('أَصْبَحْنَا')), false);
     });
 
+    test('quranic ayah markers carry Arabic-Indic numbers', () {
+      const expectedCount = {
+        'al-ikhlas': 4,
+        'al-falaq': 5,
+        'an-nas': 6,
+        'ayat-kursi': 1,
+      };
+      const lastMarker = {
+        'al-ikhlas': '۝٤',
+        'al-falaq': '۝٥',
+        'an-nas': '۝٦',
+        'ayat-kursi': '۝٢٥٥',
+      };
+      final bareMarker = RegExp('۝(?![٠-٩])');
+      for (final list in [
+        AdhkarContentData.morning(l10n),
+        AdhkarContentData.evening(l10n),
+      ]) {
+        for (final entry in expectedCount.entries) {
+          final item = list.singleWhere((a) => a.id == entry.key);
+          expect(bareMarker.hasMatch(item.arabic), isFalse, reason: item.id);
+          expect(
+            '۝'.allMatches(item.arabic).length,
+            entry.value,
+            reason: item.id,
+          );
+          expect(item.arabic.endsWith(lastMarker[entry.key]!), isTrue, reason: item.id);
+        }
+        for (final item in list) {
+          if (expectedCount.containsKey(item.id)) continue;
+          expect(item.arabic.contains('۝'), isFalse, reason: item.id);
+        }
+      }
+    });
+
     test('after-prayer 33/33/34 tasbih is not part of evening adhkar', () {
       final evening = AdhkarContentData.evening(l10n);
       expect(evening.where((a) => a.count == 33 || a.count == 34), isEmpty);

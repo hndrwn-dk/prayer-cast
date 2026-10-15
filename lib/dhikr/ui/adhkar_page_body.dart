@@ -243,6 +243,7 @@ class _AdhkarReadingCard extends ConsumerWidget {
               fontFamily: PrayerCastTheme.arabicFont,
               fontSize: 26 * scale,
               height: 2.0,
+              locale: const Locale('ar'),
               color: PrayerCastTokens.onSurface(context),
             ),
           ),
