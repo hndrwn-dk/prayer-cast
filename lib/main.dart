@@ -12,7 +12,6 @@ import 'package:prayer_cast/dhikr/storage/adhkar_prefs.dart';
 import 'package:prayer_cast/dhikr/storage/dhikr_counter_store.dart';
 import 'package:prayer_cast/dhikr/ui/adhkar_providers.dart';
 import 'package:prayer_cast/dhikr/ui/dhikr_counter_providers.dart';
-import 'package:prayer_cast/dhikr/ui/home_dhikr_section.dart';
 import 'package:prayer_cast/home_delivery/common/console_logger.dart';
 import 'package:prayer_cast/home_delivery/coordinator/active_delivery_hero.dart';
 import 'package:prayer_cast/home_delivery/coordinator/adzan_audio_loader.dart';
@@ -44,6 +43,7 @@ import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_tokens.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/adhan_countdown.dart';
+import 'package:prayer_cast/home_delivery/ui/widgets/home_menu_grid.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/spiritual_benefits_teaser.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
@@ -53,6 +53,7 @@ import 'package:prayer_cast/prayer_tracker/prayer_tracker_providers.dart';
 import 'package:prayer_cast/prayer_tracker/prayer_tracker_store.dart';
 import 'package:prayer_cast/prayer_tracker/ui/prayer_tracker_page.dart';
 import 'package:prayer_cast/prayer_times/adhan_next_prayer_provider.dart';
+import 'package:prayer_cast/prayer_times/aladhan_client.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 import 'package:prayer_cast/prayer_times/prayer_times_providers.dart';
 import 'package:prayer_cast/prayer_times/spiritual_benefits.dart';
@@ -690,17 +691,11 @@ class _HomeShellState extends ConsumerState<_HomeShell>
               SliverToBoxAdapter(
                 child: FadeSlideIn(
                   delay: const Duration(milliseconds: 240),
-                  child: _HomeDestinationsStrip(
+                  child: HomeMenuGrid(
                     onPrayerTimes: _openPrayerSettings,
                     onPrayerTracker: _openPrayerTracker,
                     onQibla: _openQibla,
                   ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: FadeSlideIn(
-                  delay: const Duration(milliseconds: 300),
-                  child: const HomeDhikrSection(),
                 ),
               ),
               SliverFillRemaining(
@@ -1229,151 +1224,6 @@ class _SpeakerBand extends StatelessWidget {
   }
 }
 
-class _HomeDestinationsStrip extends StatelessWidget {
-  const _HomeDestinationsStrip({
-    required this.onPrayerTimes,
-    required this.onPrayerTracker,
-    required this.onQibla,
-  });
-
-  final VoidCallback onPrayerTimes;
-  final VoidCallback onPrayerTracker;
-  final VoidCallback onQibla;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return Padding(
-      key: const ValueKey<String>('home_destinations_strip'),
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: _DestinationCell(
-                cellKey: const ValueKey<String>('home_prayer_times_slab'),
-                eyebrow: l10n.scheduleEyebrow,
-                title: l10n.prayerTimes,
-                onTap: onPrayerTimes,
-              ),
-            ),
-            const _PipeDivider(slot: 0),
-            Expanded(
-              child: _DestinationCell(
-                cellKey: const ValueKey<String>('home_prayer_tracker_slab'),
-                eyebrow: l10n.worshipEyebrow,
-                title: l10n.prayerTracker,
-                onTap: onPrayerTracker,
-              ),
-            ),
-            const _PipeDivider(slot: 1),
-            Expanded(
-              child: _DestinationCell(
-                cellKey: const ValueKey<String>('home_qibla_slab'),
-                eyebrow: l10n.directionEyebrow,
-                title: l10n.qibla,
-                onTap: onQibla,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PipeDivider extends StatelessWidget {
-  const _PipeDivider({required this.slot});
-
-  final int slot;
-
-  static const double slotWidth = 24;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      key: ValueKey<String>('home_destination_pipe_$slot'),
-      width: slotWidth,
-      child: Center(
-        child: ColoredBox(
-          color: PrayerCastTokens.isForest(context)
-              ? PrayerCastColors.mistDeep.withValues(alpha: 0.55)
-              : PrayerCastColors.dawn,
-          child: const SizedBox(width: 1, height: 20),
-        ),
-      ),
-    );
-  }
-}
-
-class _DestinationCell extends StatelessWidget {
-  const _DestinationCell({
-    required this.cellKey,
-    required this.eyebrow,
-    required this.title,
-    required this.onTap,
-  });
-
-  final Key cellKey;
-  final String eyebrow;
-  final String title;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: title,
-      child: Material(
-        key: cellKey,
-        color: PrayerCastTokens.surface(context),
-        child: InkWell(
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              minHeight: PrayerCastTheme.minTap,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  EditorialEyebrow(eyebrow, color: PrayerCastColors.dawn),
-                  const SizedBox(height: 4),
-                  // One line on every width — avoid uneven wrap (narrow phones
-                  // used to break "Prayer times" while "Qibla" stayed single).
-                  SizedBox(
-                    width: double.infinity,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        softWrap: false,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: PrayerCastTheme.displayFont,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          height: 1.2,
-                          letterSpacing: -0.2,
-                          color: PrayerCastTokens.onSurface(context),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 String _presenceLabel(
   AppLocalizations l10n,
   AsyncValue<PresenceState> presence, {
@@ -1503,6 +1353,23 @@ class PrayerCastAppForTest extends StatelessWidget {
         adhanNextPrayerProvider.overrideWithValue(
           AdhanNextPrayerProvider(store: prefsStore),
         ),
+        todayScheduleProvider.overrideWith((ref) async {
+          return AladhanDaySchedule(
+            date: DateTime(2000, 1, 1),
+            timezone: 'UTC',
+            latitude: 0,
+            longitude: 0,
+            methodName: 'test',
+            slots: [
+              for (final name in ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'])
+                NextPrayer(
+                  name: name,
+                  scheduledAt: DateTime(2000, 1, 1, 5),
+                  voiceId: 'standard_adhan',
+                ),
+            ],
+          );
+        }),
         activeDeliveryHeroProvider.overrideWithValue(ActiveDeliveryHero()),
         if (nextPrayer != null)
           nextPrayerSnapshotProvider.overrideWith((ref) async => nextPrayer),

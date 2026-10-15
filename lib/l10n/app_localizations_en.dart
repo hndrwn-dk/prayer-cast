@@ -942,6 +942,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get generalDhikr => 'Dhikr Counter';
 
   @override
+  String get dhikrNowBadge => 'NOW';
+
+  @override
   String get afterFajr => 'After Fajr';
 
   @override

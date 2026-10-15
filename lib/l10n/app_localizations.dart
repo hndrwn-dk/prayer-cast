@@ -1766,6 +1766,12 @@ abstract class AppLocalizations {
   /// **'Dhikr Counter'**
   String get generalDhikr;
 
+  /// Badge on the adhkar tile that is inside its prayer-time window
+  ///
+  /// In en, this message translates to:
+  /// **'NOW'**
+  String get dhikrNowBadge;
+
   /// Subtitle indicating timing after Fajr prayer
   ///
   /// In en, this message translates to:

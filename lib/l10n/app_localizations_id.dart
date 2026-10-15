@@ -942,6 +942,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get generalDhikr => 'Counter Dzikir';
 
   @override
+  String get dhikrNowBadge => 'SEKARANG';
+
+  @override
   String get afterFajr => 'Setelah Subuh';
 
   @override

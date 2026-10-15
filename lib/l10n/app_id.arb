@@ -293,6 +293,7 @@
   "morningAdhkar": "Dzikir Pagi",
   "eveningAdhkar": "Dzikir Petang",
   "generalDhikr": "Counter Dzikir",
+  "dhikrNowBadge": "SEKARANG",
   "afterFajr": "Setelah Subuh",
   "afterAsr": "Setelah Ashar",
   "adhkarEnabled": "Aktif",

@@ -460,6 +460,10 @@
   "@generalDhikr": {
     "description": "Title for general dhikr counter page"
   },
+  "dhikrNowBadge": "NOW",
+  "@dhikrNowBadge": {
+    "description": "Badge on the adhkar tile that is inside its prayer-time window"
+  },
   "afterFajr": "After Fajr",
   "@afterFajr": {
     "description": "Subtitle indicating timing after Fajr prayer"
