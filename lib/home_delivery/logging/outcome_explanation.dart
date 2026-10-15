@@ -29,30 +29,31 @@ abstract final class OutcomeExplanation {
     Outcome.playedPhoneFallback:
         'Speaker gagal — Adhan/nada diputar di ponsel sebagai cadangan.',
     Outcome.iqamahChime: 'Nada iqamah diputar di ponsel.',
-    Outcome.suppressedAway:
-        'Perangkat tidak di rumah — adhan tidak diputar.',
+    Outcome.suppressedAway: 'Perangkat tidak di rumah — adhan tidak diputar.',
     Outcome.suppressedNotLeader:
         'Perangkat lain di keluarga yang memutar adhan.',
     Outcome.suppressedAlreadyPlaying:
         'Speaker sudah memutar adhan — duplikat dicegah.',
-    Outcome.suppressedUserDnd:
-        'Mode tenang / tamu aktif — adhan ditunda.',
+    Outcome.suppressedUserDnd: 'Mode tenang / tamu aktif — adhan ditunda.',
     Outcome.failedNoTarget:
         'Speaker tersimpan tidak ditemukan di jaringan rumah.',
     Outcome.failedNoRoute:
         'Tidak ada jalur jaringan ke speaker (VPN atau subnet salah).',
-    Outcome.failedCastConnect:
-        'Gagal terhubung ke speaker (waktu habis).',
-    Outcome.failedLoadMedia:
-        'Speaker menolak memuat audio adhan.',
+    Outcome.failedCastConnect: 'Gagal terhubung ke speaker (waktu habis).',
+    Outcome.failedLoadMedia: 'Speaker menolak memuat audio adhan.',
     Outcome.failedAlarmMissed:
         'Alarm terlambat >60 detik — penghemat baterai OEM mungkin memblokir.',
-    Outcome.clockSkew:
-        'Jam perangkat melenceng — tidak memimpin pemutaran.',
+    Outcome.clockSkew: 'Jam perangkat melenceng — tidak memimpin pemutaran.',
     Outcome.failedReschedule:
         'Gagal menjadwalkan adhan berikutnya — mungkin perlu ulang.',
     Outcome.rescheduleRetryArmed:
         'Waktu 15 detik dijadwalkan untuk mencoba lagi.',
+    Outcome.adhkarPlayed: 'Dzikir diputar di speaker rumah.',
+    Outcome.adhkarSkippedAway:
+        'Perangkat tidak di rumah — dzikir tidak diputar.',
+    Outcome.adhkarSkippedOffline:
+        'Speaker tidak terhubung — dzikir tidak diputar.',
+    Outcome.adhkarFailed: 'Dzikir gagal diputar di speaker.',
   };
 
   static const Map<Outcome, String> _en = {
@@ -63,29 +64,28 @@ abstract final class OutcomeExplanation {
     Outcome.playedPhoneFallback:
         'Speaker unavailable — played on this phone instead.',
     Outcome.iqamahChime: 'Iqamah chime played on this phone.',
-    Outcome.suppressedAway:
-        'Device was away from home — Adhan was not cast.',
+    Outcome.suppressedAway: 'Device was away from home — Adhan was not cast.',
     Outcome.suppressedNotLeader:
         'Another family device led and cast the Adhan.',
     Outcome.suppressedAlreadyPlaying:
         'Speaker was already playing Adhan — duplicate blocked.',
     Outcome.suppressedUserDnd:
         'Quiet hours / guest mode active — Adhan suppressed.',
-    Outcome.failedNoTarget:
-        'Saved speaker was not found on the home network.',
+    Outcome.failedNoTarget: 'Saved speaker was not found on the home network.',
     Outcome.failedNoRoute:
         'No network route to the speaker (VPN or wrong subnet).',
-    Outcome.failedCastConnect:
-        'Could not connect to the speaker (timed out).',
-    Outcome.failedLoadMedia:
-        'Speaker rejected loading the Adhan audio.',
+    Outcome.failedCastConnect: 'Could not connect to the speaker (timed out).',
+    Outcome.failedLoadMedia: 'Speaker rejected loading the Adhan audio.',
     Outcome.failedAlarmMissed:
         'Alarm fired >60s late — OEM battery saver may be blocking.',
-    Outcome.clockSkew:
-        'Device clock skew detected — did not lead playback.',
-    Outcome.failedReschedule:
-        'Failed to schedule next Adhan — may need retry.',
-    Outcome.rescheduleRetryArmed:
-        '15-second retry wake scheduled.',
+    Outcome.clockSkew: 'Device clock skew detected — did not lead playback.',
+    Outcome.failedReschedule: 'Failed to schedule next Adhan — may need retry.',
+    Outcome.rescheduleRetryArmed: '15-second retry wake scheduled.',
+    Outcome.adhkarPlayed: 'Adhkar played on the home speaker.',
+    Outcome.adhkarSkippedAway:
+        'Device was away from home — adhkar was not played.',
+    Outcome.adhkarSkippedOffline:
+        'Speaker was not connected — adhkar was not played.',
+    Outcome.adhkarFailed: 'Adhkar failed to play on the speaker.',
   };
 }

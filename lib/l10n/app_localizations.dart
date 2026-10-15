@@ -2024,6 +2024,18 @@ abstract class AppLocalizations {
   /// **'{minutes} min after Fajr'**
   String adhkarDelayAfterFajr(int minutes);
 
+  /// Effective adhkar playback time under the delay slider
+  ///
+  /// In en, this message translates to:
+  /// **'Plays at {time}'**
+  String adhkarPlaysAt(String time);
+
+  /// Playback time when the iqamah offset is later than the delay
+  ///
+  /// In en, this message translates to:
+  /// **'Plays at {time} (after iqamah)'**
+  String adhkarPlaysAtAfterIqamah(String time);
+
   /// Delay slider value for evening adhkar
   ///
   /// In en, this message translates to:

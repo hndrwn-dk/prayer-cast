@@ -336,6 +336,8 @@
   "adhkarAutoPlaySpeaker": "Putar otomatis di speaker",
   "adhkarAutoPlayHint": "Audio dzikir diputar di speaker rumah saat Anda sedang di rumah.",
   "adhkarDelayAfterFajr": "{minutes} menit setelah Subuh",
+  "adhkarPlaysAt": "Diputar {time}",
+  "adhkarPlaysAtAfterIqamah": "Diputar {time} (setelah iqamah)",
   "adhkarDelayAfterAsr": "{minutes} menit setelah Asar",
   "adhkarPlayOnSpeakerNow": "Putar sekarang di speaker",
   "adhkarProgress": "{current} dari {total}",

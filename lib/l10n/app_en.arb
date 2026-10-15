@@ -578,6 +578,26 @@
       }
     }
   },
+  "adhkarPlaysAt": "Plays at {time}",
+  "@adhkarPlaysAt": {
+    "description": "Effective adhkar playback time under the delay slider",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "16:36"
+      }
+    }
+  },
+  "adhkarPlaysAtAfterIqamah": "Plays at {time} (after iqamah)",
+  "@adhkarPlaysAtAfterIqamah": {
+    "description": "Playback time when the iqamah offset is later than the delay",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "16:36"
+      }
+    }
+  },
   "adhkarDelayAfterAsr": "{minutes} min after Asr",
   "@adhkarDelayAfterAsr": {
     "description": "Delay slider value for evening adhkar",

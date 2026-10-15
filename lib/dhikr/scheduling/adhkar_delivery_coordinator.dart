@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -14,23 +15,29 @@ enum AdhkarDeliveryResult {
   castFailed,
 }
 
-/// Plays adhkar audio on the already-connected Cast speaker.
+/// Plays adhkar audio on the saved home Cast speaker.
 ///
-/// Cast only (no phone fallback). Callers decide *when* to play (schedule,
-/// user-at-home); this class never throws and reports a result instead.
+/// Cast only (no phone fallback). A session left open by adzan is reused.
+/// Otherwise the saved home Cast id is connected, the same way a manual
+/// adzan test does. This class never throws and reports a result instead.
 /// Audio is served by the existing [MediaServer] because Cast receivers
-/// cannot fetch `data:` URIs.
+/// cannot fetch `data:` URIs. The server stays up after success so a long
+/// recitation can finish buffering.
 final class AdhkarDeliveryCoordinator {
   AdhkarDeliveryCoordinator({
     required this._audioLoader,
     required this._castClient,
     Future<InternetAddress> Function(InternetAddress receiverHost)?
         resolveHost,
+    this._readHomeCastId,
+    this._playbackGrace = const Duration(seconds: 20),
   }) : _resolveHost = resolveHost ?? InterfaceSelector().selectFor;
 
   final AdhkarAudioLoader _audioLoader;
   final CastClient _castClient;
   final Future<InternetAddress> Function(InternetAddress) _resolveHost;
+  final Future<String?> Function()? _readHomeCastId;
+  final Duration _playbackGrace;
 
   MediaServer? _server;
   Future<void> _tail = Future<void>.value();
@@ -44,7 +51,7 @@ final class AdhkarDeliveryCoordinator {
   }
 
   Future<AdhkarDeliveryResult> _play(AdhkarType type) async {
-    final receiver = _castClient.connected;
+    final receiver = await _receiver();
     if (receiver == null) return AdhkarDeliveryResult.speakerOffline;
 
     final audio = await _loadAudio(type);
@@ -64,15 +71,72 @@ final class AdhkarDeliveryCoordinator {
       _server = server;
 
       final host = await _resolveHost(receiver.host);
+      final playingOrDone = _castClient.playbackEvents.firstWhere(
+        (event) =>
+            event == CastPlaybackEvent.playing ||
+            event == CastPlaybackEvent.finished,
+      );
+      final failed = _castClient.playbackEvents.firstWhere(
+        (event) => event == CastPlaybackEvent.error,
+      );
       await _castClient.loadAdzan(
         contentId: voiceId,
         contentUrl: server.mediaUri(host),
         title: voiceId,
       );
+      final confirmed = await _confirmPlayback(
+        playingOrDone: playingOrDone,
+        failed: failed,
+        server: server,
+      );
+      if (!confirmed) {
+        await _stopServer();
+        return AdhkarDeliveryResult.castFailed;
+      }
       return AdhkarDeliveryResult.success;
     } catch (_) {
       await _stopServer();
       return AdhkarDeliveryResult.castFailed;
+    }
+  }
+
+  /// Open session, or the saved home speaker. Null means nothing to cast to.
+  Future<CastReceiver?> _receiver() async {
+    final current = _castClient.connected;
+    if (current != null) return current;
+    final readHomeCastId = _readHomeCastId;
+    if (readHomeCastId == null) return null;
+    final castId = await readHomeCastId();
+    if (castId == null || castId.isEmpty) return null;
+    try {
+      return await _castClient.connectById(castId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// True when the receiver reports playback, or at least fetches the file.
+  /// A loadMedia ack with zero HTTP hits is the silent-speaker failure.
+  Future<bool> _confirmPlayback({
+    required Future<CastPlaybackEvent> playingOrDone,
+    required Future<CastPlaybackEvent> failed,
+    required MediaServer server,
+  }) async {
+    final timedOut = Completer<String>();
+    final timer = Timer(_playbackGrace, () {
+      if (!timedOut.isCompleted) timedOut.complete('timeout');
+    });
+    try {
+      final outcome = await Future.any<Object>([
+        playingOrDone,
+        failed,
+        timedOut.future,
+      ]);
+      if (outcome == CastPlaybackEvent.error) return false;
+      if (outcome == 'timeout' && server.hitCount == 0) return false;
+      return true;
+    } finally {
+      timer.cancel();
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prayer_cast/dhikr/models/adhkar_type.dart';
+import 'package:prayer_cast/dhikr/scheduling/adhkar_alarm_sync.dart';
 import 'package:prayer_cast/dhikr/scheduling/adhkar_delivery_coordinator.dart';
 import 'package:prayer_cast/dhikr/storage/adhkar_prefs.dart';
 
@@ -9,8 +10,12 @@ final adhkarPrefsProvider = Provider<AdhkarPrefs>((ref) {
 });
 
 /// Null when no Cast delivery is wired; "Test now" is then disabled.
-final adhkarDeliveryCoordinatorProvider =
-    Provider<AdhkarDeliveryCoordinator?>((ref) => null);
+final adhkarDeliveryCoordinatorProvider = Provider<AdhkarDeliveryCoordinator?>(
+  (ref) => null,
+);
+
+/// Null in tests. Overridden in main once the alarm sync exists.
+final adhkarAlarmSyncProvider = Provider<AdhkarAlarmSync?>((ref) => null);
 
 final adhkarEnabledProvider = StateProvider.family<bool, AdhkarType>(
   (ref, type) => ref.watch(adhkarPrefsProvider).enabled(type),
@@ -29,6 +34,7 @@ Future<void> toggleAdhkarEnabled(
   await prefs.setEnabled(type, enabled);
   await prefs.save();
   ref.read(adhkarEnabledProvider(type).notifier).state = enabled;
+  await ref.read(adhkarAlarmSyncProvider)?.sync();
 }
 
 Future<void> updateAdhkarDelay(
@@ -40,6 +46,7 @@ Future<void> updateAdhkarDelay(
   await prefs.setDelayMinutes(type, minutes);
   await prefs.save();
   ref.read(adhkarDelayProvider(type).notifier).state = minutes;
+  await ref.read(adhkarAlarmSyncProvider)?.sync();
 }
 
 /// Reading display options, shared by morning and evening for the session.

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:prayer_cast/dhikr/models/adhkar_type.dart';
 import 'package:prayer_cast/dhikr/scheduling/adhkar_scheduler.dart';
 import 'package:prayer_cast/dhikr/storage/adhkar_prefs.dart';
+import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 
 void main() {
   group('AdhkarScheduler', () {
@@ -111,6 +112,55 @@ void main() {
       );
     });
 
+    test('delay 5 and iqamah 20 plays at Asr plus 30', () async {
+      await prefs.setDelayMinutes(AdhkarType.evening, 5);
+      final withIqamah = AdhkarScheduler(
+        prefs,
+        prayerPrefs: _prayerPrefs(asr: 20),
+      );
+      expect(
+        withIqamah.calculateAdhkarTime(AdhkarType.evening, asr),
+        DateTime(2026, 10, 14, 16, 15),
+      );
+      expect(
+        (withIqamah as PrayerTimeAdhkarScheduler).iqamahOffsetWins(
+          AdhkarType.evening,
+        ),
+        isTrue,
+      );
+    });
+
+    test('delay 40 and iqamah 20 plays at Asr plus 40', () async {
+      await prefs.setDelayMinutes(AdhkarType.evening, 40);
+      final withIqamah = AdhkarScheduler(
+        prefs,
+        prayerPrefs: _prayerPrefs(asr: 20),
+      );
+      expect(
+        withIqamah.calculateAdhkarTime(AdhkarType.evening, asr),
+        DateTime(2026, 10, 14, 16, 25),
+      );
+      expect(
+        (withIqamah as PrayerTimeAdhkarScheduler).iqamahOffsetWins(
+          AdhkarType.evening,
+        ),
+        isFalse,
+      );
+    });
+
+    test('iqamah off keeps the delay', () async {
+      await prefs.setDelayMinutes(AdhkarType.evening, 12);
+      final off = AdhkarScheduler(prefs, prayerPrefs: _prayerPrefs(asr: 0));
+      expect(
+        off.calculateAdhkarTime(AdhkarType.evening, asr),
+        DateTime(2026, 10, 14, 15, 57),
+      );
+      expect(
+        (off as PrayerTimeAdhkarScheduler).iqamahOffsetWins(AdhkarType.evening),
+        isFalse,
+      );
+    });
+
     test('shouldSkipAdhkar boundaries', () {
       final t = DateTime(2026, 10, 14, 7, 0);
       expect(
@@ -127,4 +177,16 @@ void main() {
       );
     });
   });
+}
+
+PrayerPrefs _prayerPrefs({required int asr}) {
+  return PrayerPrefs(
+    city: 'Singapore',
+    country: 'Singapore',
+    methodId: 11,
+    madhabId: PrayerMadhabId.shafi,
+    voiceId: 'standard_adhan',
+    configured: true,
+    iqamahMinutesByPrayer: {'asr': asr},
+  );
 }

@@ -6,6 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:prayer_cast/dhikr/scheduling/adhkar_alarm_handler.dart';
+import 'package:prayer_cast/dhikr/scheduling/adhkar_alarm_names.dart';
+import 'package:prayer_cast/dhikr/scheduling/adhkar_alarm_sync.dart';
 import 'package:prayer_cast/dhikr/scheduling/adhkar_audio_loader.dart';
 import 'package:prayer_cast/dhikr/scheduling/adhkar_delivery_coordinator.dart';
 import 'package:prayer_cast/dhikr/storage/adhkar_prefs.dart';
@@ -23,6 +26,7 @@ import 'package:prayer_cast/home_delivery/coordinator/next_prayer_provider.dart'
 import 'package:prayer_cast/home_delivery/coordinator/prayer_delivery_coordinator.dart';
 import 'package:prayer_cast/home_delivery/delivery/cast_client.dart';
 import 'package:prayer_cast/home_delivery/logging/delivery_database.dart';
+import 'package:prayer_cast/home_delivery/logging/delivery_log_dao.dart';
 import 'package:prayer_cast/home_delivery/logging/delivery_database_open.dart';
 import 'package:prayer_cast/home_delivery/platform/exact_alarm.dart';
 import 'package:prayer_cast/home_delivery/platform/launch_prayer.dart';
@@ -125,6 +129,7 @@ Future<void> main() async {
     final fingerprintHolder = _FingerprintHolder();
     final activeHeroHolder = _ActiveHeroHolder();
     final adhkarCoordinatorHolder = _AdhkarCoordinatorHolder();
+    final adhkarAlarmSyncHolder = _AdhkarAlarmSyncHolder();
 
     final appContainer = ProviderContainer(
       overrides: [
@@ -139,6 +144,9 @@ Future<void> main() async {
         dhikrCounterStoreProvider.overrideWithValue(dhikrCounterStore),
         adhkarDeliveryCoordinatorProvider.overrideWith(
           (ref) => adhkarCoordinatorHolder.value,
+        ),
+        adhkarAlarmSyncProvider.overrideWith(
+          (ref) => adhkarAlarmSyncHolder.value,
         ),
         adhanNextPrayerProvider.overrideWithValue(nextPrayer),
         activeDeliveryHeroProvider.overrideWith((ref) {
@@ -196,9 +204,62 @@ Future<void> main() async {
     presenceHolder.value = runtime.presence;
     fingerprintHolder.value = runtime.fingerprintStore;
     activeHeroHolder.value = runtime.activeHero;
-    adhkarCoordinatorHolder.value = AdhkarDeliveryCoordinator(
+    final adhkarPlayback = AdhkarDeliveryCoordinator(
       audioLoader: AdhkarAudioLoader(),
       castClient: runtime.castClient,
+      readHomeCastId: runtime.fingerprintStore.readHomeCastIdResilient,
+    );
+    adhkarCoordinatorHolder.value = adhkarPlayback;
+    final adhkarSync = AdhkarAlarmSync(
+      adhkarPrefs: adhkarPrefs,
+      alarm: runtime.exactAlarm,
+      readPrayerPrefs: prayerPrefsStore.read,
+      readPrayerTimes: (day) async {
+        final prefs = await prayerPrefsStore.read();
+        final daySchedule = await nextPrayer.scheduleForDay(
+          prefs: prefs,
+          day: day,
+        );
+        return {
+          for (final slot in daySchedule.slots) slot.name: slot.scheduledAt,
+        };
+      },
+    );
+    final adhkarLog = DeliveryLogDao(db);
+    final adhkarHandler = AdhkarAlarmHandler(
+      play: adhkarPlayback.playAdhkar,
+      readPresence: () async {
+        await runtime.presence.scan();
+        return runtime.presence.state;
+      },
+      speakerConnected: () async {
+        if (runtime.castClient.connected != null) return true;
+        final id = await runtime.fingerprintStore.readHomeCastIdResilient();
+        return id != null && id.isNotEmpty;
+      },
+      castBusy: () async {
+        try {
+          final media = await runtime.castPlatform.currentMedia();
+          return media?.isPlaying ?? false;
+        } catch (_) {
+          return false;
+        }
+      },
+      log: ({required outcome, required type, required scheduledAtMs, detail}) {
+        return adhkarLog.insertAttempt(
+          sessionId: 'adhkar-${type.name}-$scheduledAtMs',
+          prayer: AdhkarAlarmNames.of(type),
+          scheduledAtMs: scheduledAtMs,
+          outcome: outcome,
+          detail: detail,
+        );
+      },
+      sync: adhkarSync.sync,
+    );
+    adhkarAlarmSyncHolder.value = adhkarSync;
+    runtime.coordinator.attachAdhkar(
+      sync: adhkarSync.sync,
+      handler: adhkarHandler,
     );
     appContainer.invalidate(adhkarDeliveryCoordinatorProvider);
 
@@ -297,6 +358,10 @@ final class _ActiveHeroHolder {
 
 final class _AdhkarCoordinatorHolder {
   AdhkarDeliveryCoordinator? value;
+}
+
+final class _AdhkarAlarmSyncHolder {
+  AdhkarAlarmSync? value;
 }
 
 /// App shell with speaker setup, prayer times, and delivery log.

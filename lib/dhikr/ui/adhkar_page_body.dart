@@ -5,13 +5,18 @@ import 'package:prayer_cast/dhikr/data/adhkar_content_data.dart';
 import 'package:prayer_cast/dhikr/models/adhkar_content.dart';
 import 'package:prayer_cast/dhikr/models/adhkar_type.dart';
 import 'package:prayer_cast/dhikr/scheduling/adhkar_delivery_coordinator.dart';
+import 'package:prayer_cast/dhikr/scheduling/adhkar_scheduler.dart';
+import 'package:prayer_cast/dhikr/storage/adhkar_prefs.dart';
 import 'package:prayer_cast/dhikr/ui/adhkar_providers.dart';
+import 'package:prayer_cast/home_delivery/coordinator/next_prayer_provider.dart';
 import 'package:prayer_cast/dhikr/ui/widgets/counter_progress.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_tokens.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
+import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
+import 'package:prayer_cast/prayer_times/prayer_times_providers.dart';
 
 /// Morning / evening adhkar as a reader: one dhikr per page, swiped or
 /// advanced with the button at the bottom. Items read more than once get
@@ -25,10 +30,12 @@ class AdhkarPageBody extends ConsumerStatefulWidget {
   final AdhkarType type;
   final Key? listKey;
 
-  static const ValueKey<String> settingsButtonKey =
-      ValueKey<String>('adhkar_settings_button');
-  static const ValueKey<String> advanceButtonKey =
-      ValueKey<String>('adhkar_advance_button');
+  static const ValueKey<String> settingsButtonKey = ValueKey<String>(
+    'adhkar_settings_button',
+  );
+  static const ValueKey<String> advanceButtonKey = ValueKey<String>(
+    'adhkar_advance_button',
+  );
 
   @override
   ConsumerState<AdhkarPageBody> createState() => _AdhkarPageBodyState();
@@ -201,8 +208,10 @@ class _AdhkarReadingCard extends ConsumerWidget {
           Row(
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: PrayerCastColors.dawn.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(12),
@@ -446,6 +455,9 @@ class _AdhkarSettingsSheet extends ConsumerWidget {
     final enabled = ref.watch(adhkarEnabledProvider(type));
     final delay = ref.watch(adhkarDelayProvider(type));
     final coordinator = ref.watch(adhkarDeliveryCoordinatorProvider);
+    final schedule = ref.watch(todayScheduleProvider).asData?.value;
+    final prayerPrefs = ref.watch(prayerPrefsProvider).asData?.value;
+    final adhkarPrefs = ref.watch(adhkarPrefsProvider);
 
     final labelStyle = TextStyle(
       fontFamily: PrayerCastTheme.bodyFont,
@@ -470,9 +482,9 @@ class _AdhkarSettingsSheet extends ConsumerWidget {
               contentPadding: EdgeInsets.zero,
               title: Text(l10n.adhkarShowTransliteration, style: labelStyle),
               value: showTranslit,
-              onChanged: (v) => ref
-                  .read(adhkarShowTransliterationProvider.notifier)
-                  .state = v,
+              onChanged: (v) =>
+                  ref.read(adhkarShowTransliterationProvider.notifier).state =
+                      v,
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
@@ -485,7 +497,14 @@ class _AdhkarSettingsSheet extends ConsumerWidget {
             Text(l10n.adhkarTextSize, style: labelStyle),
             Row(
               children: [
-                Text('ع', style: TextStyle(fontFamily: PrayerCastTheme.arabicFont, fontSize: 16, color: PrayerCastTokens.glyph(context))),
+                Text(
+                  'ع',
+                  style: TextStyle(
+                    fontFamily: PrayerCastTheme.arabicFont,
+                    fontSize: 16,
+                    color: PrayerCastTokens.glyph(context),
+                  ),
+                ),
                 Expanded(
                   child: Slider(
                     value: scale,
@@ -496,7 +515,14 @@ class _AdhkarSettingsSheet extends ConsumerWidget {
                         ref.read(adhkarArabicScaleProvider.notifier).state = v,
                   ),
                 ),
-                Text('ع', style: TextStyle(fontFamily: PrayerCastTheme.arabicFont, fontSize: 26, color: PrayerCastTokens.glyph(context))),
+                Text(
+                  'ع',
+                  style: TextStyle(
+                    fontFamily: PrayerCastTheme.arabicFont,
+                    fontSize: 26,
+                    color: PrayerCastTokens.glyph(context),
+                  ),
+                ),
               ],
             ),
             const SectionRule(top: 8, bottom: 8),
@@ -525,6 +551,20 @@ class _AdhkarSettingsSheet extends ConsumerWidget {
                     : l10n.adhkarDelayAfterAsr(delay),
                 onChanged: (v) => updateAdhkarDelay(ref, type, v.round()),
               ),
+              if (schedule != null && prayerPrefs != null)
+                Builder(
+                  builder: (context) {
+                    final line = _adhkarPlayLine(
+                      l10n: l10n,
+                      type: type,
+                      prefs: adhkarPrefs,
+                      prayerPrefs: prayerPrefs,
+                      slots: schedule.slots,
+                    );
+                    if (line == null) return const SizedBox.shrink();
+                    return Text(line, style: mutedStyle);
+                  },
+                ),
             ],
             Text(
               isMorning
@@ -565,4 +605,27 @@ class _AdhkarSettingsSheet extends ConsumerWidget {
     };
     messenger.showSnackBar(SnackBar(content: Text(message)));
   }
+}
+
+String? _adhkarPlayLine({
+  required AppLocalizations l10n,
+  required AdhkarType type,
+  required AdhkarPrefs prefs,
+  required PrayerPrefs prayerPrefs,
+  required List<NextPrayer> slots,
+}) {
+  final anchor = type == AdhkarType.morning ? 'fajr' : 'asr';
+  DateTime? at;
+  for (final slot in slots) {
+    if (slot.name == anchor) at = slot.scheduledAt;
+  }
+  if (at == null) return null;
+  final scheduler = PrayerTimeAdhkarScheduler(prefs, prayerPrefs: prayerPrefs);
+  final fire = scheduler.calculateAdhkarTime(type, at).toLocal();
+  final clock =
+      '${fire.hour.toString().padLeft(2, '0')}:${fire.minute.toString().padLeft(2, '0')}';
+  if (scheduler.iqamahOffsetWins(type)) {
+    return l10n.adhkarPlaysAtAfterIqamah(clock);
+  }
+  return l10n.adhkarPlaysAt(clock);
 }

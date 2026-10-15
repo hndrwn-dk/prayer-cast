@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../dhikr/scheduling/adhkar_alarm_handler.dart';
+import '../../dhikr/scheduling/adhkar_alarm_names.dart';
 import '../../prayer_times/prayer_prefs.dart';
 import '../common/clock.dart';
 import '../common/logger.dart';
@@ -138,6 +140,19 @@ final class PrayerDeliveryCoordinator {
   final PrePrayerAlertScheduler? _prePrayerAlerts;
   final IqamahReminderScheduler? _iqamahReminders;
   final PrayerPrefsStore? _prayerPrefs;
+  Future<void> Function()? _syncAdhkar;
+  AdhkarAlarmHandler? _adhkarHandler;
+
+  /// Wire scheduled adhkar after bootstrap. [sync] arms the next alarm;
+  /// [handler] runs when that alarm fires.
+  void attachAdhkar({
+    required Future<void> Function() sync,
+    required AdhkarAlarmHandler handler,
+  }) {
+    _syncAdhkar = sync;
+    _adhkarHandler = handler;
+  }
+
   final Future<String?> Function() _readLocaleCode;
   final void Function(bool granted)? _onPermissionChanged;
   final ActiveDeliveryHero? _activeHero;
@@ -415,6 +430,21 @@ final class PrayerDeliveryCoordinator {
   }
 
   Future<void> _onFired(AlarmFiredEvent event) async {
+    final adhkarType = AdhkarAlarmNames.parse(event.prayer);
+    if (adhkarType != null) {
+      try {
+        await _adhkarHandler?.onFired(
+          adhkarType,
+          scheduledEpochMs: event.scheduledEpochMs,
+        );
+      } finally {
+        // Leave the service up while an adzan delivery still owns it.
+        if (!_handling) {
+          await _exactAlarm.stopForegroundService();
+        }
+      }
+      return;
+    }
     // In-flight delivery owns the disk pending token until its finally
     // block acks. A concurrent emit (START_REDELIVER_INTENT, start()
     // re-arming a past-but-eligible wake, stream replay) must not clear
@@ -716,7 +746,10 @@ final class PrayerDeliveryCoordinator {
     if (castId == null || castId.trim().isEmpty) return false;
 
     if (result.outcome == Outcome.suppressedAway) {
-      if (DeliveryTiming.isTooLate(scheduledAzan: azanEpoch, now: _clock.now())) {
+      if (DeliveryTiming.isTooLate(
+        scheduledAzan: azanEpoch,
+        now: _clock.now(),
+      )) {
         return false;
       }
       _logger.info(
@@ -724,7 +757,10 @@ final class PrayerDeliveryCoordinator {
         tag: 'PrayerDeliveryCoordinator',
       );
       await _waitUntilAzan(azanEpoch);
-      if (DeliveryTiming.isTooLate(scheduledAzan: azanEpoch, now: _clock.now())) {
+      if (DeliveryTiming.isTooLate(
+        scheduledAzan: azanEpoch,
+        now: _clock.now(),
+      )) {
         return false;
       }
       await _playPhoneAdhanForFallback(
@@ -981,31 +1017,35 @@ final class PrayerDeliveryCoordinator {
   /// Re-sync the pre-prayer reminder after prefs change (e.g. minutes toggle).
   Future<void> refreshPrePrayerAlert() async {
     if (!_started) return;
-    final scheduled = await _exactAlarm.readScheduled();
-    if (scheduled == null) {
-      await _prePrayerAlerts?.cancel();
-      await _iqamahReminders?.cancel();
-      return;
+    try {
+      final scheduled = await _exactAlarm.readScheduled();
+      if (scheduled == null) {
+        await _prePrayerAlerts?.cancel();
+        await _iqamahReminders?.cancel();
+        return;
+      }
+      if (PrayerDeliveryCoordinator.isDryRunPrayer(scheduled.prayer) ||
+          PrayerDeliveryCoordinator.isRescheduleRetry(scheduled.prayer)) {
+        await _prePrayerAlerts?.cancel();
+        await _iqamahReminders?.cancel();
+        return;
+      }
+      final wakeAt = DateTime.fromMillisecondsSinceEpoch(
+        scheduled.epochMs,
+        isUtc: true,
+      );
+      final azanAt = wakeAt.subtract(PresenceSchedule.scanOffset);
+      final prayer = NextPrayer(
+        name: scheduled.prayer,
+        scheduledAt: azanAt,
+        voiceId: scheduled.voiceId,
+      );
+      final now = _clock.now();
+      await _prePrayerAlerts?.syncForPrayer(prayer, now);
+      await _iqamahReminders?.syncForPrayer(prayer, now);
+    } finally {
+      await _syncAdhkarAlarms();
     }
-    if (PrayerDeliveryCoordinator.isDryRunPrayer(scheduled.prayer) ||
-        PrayerDeliveryCoordinator.isRescheduleRetry(scheduled.prayer)) {
-      await _prePrayerAlerts?.cancel();
-      await _iqamahReminders?.cancel();
-      return;
-    }
-    final wakeAt = DateTime.fromMillisecondsSinceEpoch(
-      scheduled.epochMs,
-      isUtc: true,
-    );
-    final azanAt = wakeAt.subtract(PresenceSchedule.scanOffset);
-    final prayer = NextPrayer(
-      name: scheduled.prayer,
-      scheduledAt: azanAt,
-      voiceId: scheduled.voiceId,
-    );
-    final now = _clock.now();
-    await _prePrayerAlerts?.syncForPrayer(prayer, now);
-    await _iqamahReminders?.syncForPrayer(prayer, now);
   }
 
   /// Keep the just-fired prayer's iqamah if it is still upcoming; otherwise
@@ -1077,6 +1117,7 @@ final class PrayerDeliveryCoordinator {
             now: now,
             justDelivered: justDelivered,
           );
+          await _syncAdhkarAlarms();
           return;
         }
         _logger.warn(
@@ -1105,13 +1146,30 @@ final class PrayerDeliveryCoordinator {
         'voice ${prayer.voiceId})',
         tag: 'PrayerDeliveryCoordinator',
       );
+      await _syncAdhkarAlarms();
       return;
     }
     _logger.error(
       'Unable to find a future wake after $after',
       tag: 'PrayerDeliveryCoordinator',
     );
+    await _syncAdhkarAlarms();
     throw StateError('Unable to find a future wake after $after');
+  }
+
+  Future<void> _syncAdhkarAlarms() async {
+    final sync = _syncAdhkar;
+    if (sync == null) return;
+    try {
+      await sync();
+    } catch (e, st) {
+      _logger.warn(
+        'Adhkar alarm sync failed',
+        tag: 'PrayerDeliveryCoordinator',
+        error: e,
+        stackTrace: st,
+      );
+    }
   }
 
   /// Keep a wake path if Aladhan/cache cannot resolve the next prayer.

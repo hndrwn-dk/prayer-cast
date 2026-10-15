@@ -1074,16 +1074,27 @@ class AppLocalizationsId extends AppLocalizations {
   String get adhkarAutoPlaySpeaker => 'Putar otomatis di speaker';
 
   @override
-  String get adhkarAutoPlayHint => 'Audio dzikir diputar di speaker rumah saat Anda sedang di rumah.';
+  String get adhkarAutoPlayHint =>
+      'Audio dzikir diputar di speaker rumah saat Anda sedang di rumah.';
 
   @override
   String adhkarDelayAfterFajr(int minutes) {
-    return '${minutes} menit setelah Subuh';
+    return '$minutes menit setelah Subuh';
+  }
+
+  @override
+  String adhkarPlaysAt(String time) {
+    return 'Diputar $time';
+  }
+
+  @override
+  String adhkarPlaysAtAfterIqamah(String time) {
+    return 'Diputar $time (setelah iqamah)';
   }
 
   @override
   String adhkarDelayAfterAsr(int minutes) {
-    return '${minutes} menit setelah Asar';
+    return '$minutes menit setelah Asar';
   }
 
   @override
@@ -1091,7 +1102,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String adhkarProgress(int current, int total) {
-    return '${current} dari ${total}';
+    return '$current dari $total';
   }
 
   @override
@@ -1130,7 +1141,8 @@ class AppLocalizationsId extends AppLocalizations {
   String get dhikrAfterPrayerTitle => 'Setelah salat';
 
   @override
-  String get dhikrAfterPrayerSubtitle => 'Tasbih, tahmid, takbir masing-masing 33x, lalu tahlil, genap 100';
+  String get dhikrAfterPrayerSubtitle =>
+      'Tasbih, tahmid, takbir masing-masing 33x, lalu tahlil, genap 100';
 
   @override
   String get dhikrFreeTitle => 'Dzikir bebas';

@@ -170,6 +170,9 @@ object SpiritualBenefitsTeaser {
     }
 
     fun contentText(prayer: String, language: String = "en"): String {
+        if (prayer.startsWith("adhkar-")) {
+            return if (language == "id") "Dzikir" else "Adhkar"
+        }
         val copy = copyFor(prayer, language)
         if (copy == null) {
             return if (isDryRun(prayer)) "Adhan (dry-run)" else "Adhan"

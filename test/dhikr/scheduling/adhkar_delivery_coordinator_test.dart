@@ -17,14 +17,16 @@ final class _FakePlatform implements CastPlatform {
     friendlyName: 'Kitchen',
     host: InternetAddress('192.168.1.50'),
   );
+  final playback = StreamController<CastPlaybackEvent>.broadcast(sync: true);
   Object? loadError;
   Uri? loadedUrl;
   String? loadedType;
   String? loadedTitle;
   int loadCalls = 0;
+  bool emitPlaying = true;
 
   @override
-  Stream<CastPlaybackEvent> get playbackEvents => const Stream.empty();
+  Stream<CastPlaybackEvent> get playbackEvents => playback.stream;
   @override
   Future<List<CastReceiver>> discover({
     required Duration budget,
@@ -52,6 +54,7 @@ final class _FakePlatform implements CastPlatform {
     loadedUrl = contentUrl;
     loadedType = contentType;
     loadedTitle = title;
+    if (emitPlaying) playback.add(CastPlaybackEvent.playing);
   }
 
   @override
@@ -110,6 +113,24 @@ void main() {
 
       expect(result, AdhkarDeliveryResult.speakerOffline);
       verifyNever(() => audioLoader.load(any()));
+    });
+
+    test('connects to the saved home speaker when no session is open', () async {
+      when(() => audioLoader.load(AdhkarType.morning))
+          .thenAnswer((_) async => Uint8List.fromList([1, 2, 3, 4]));
+      coordinator = AdhkarDeliveryCoordinator(
+        audioLoader: audioLoader,
+        castClient: castClient,
+        resolveHost: (_) async => InternetAddress.loopbackIPv4,
+        readHomeCastId: () async => 'cast-1',
+      );
+
+      final result = await coordinator.playAdhkar(AdhkarType.morning);
+
+      expect(result, AdhkarDeliveryResult.success);
+      expect(platform.loadCalls, 1);
+      expect(castClient.connected?.deviceId, 'cast-1');
+      expect(platform.loadedUrl!.path, endsWith('adhkar_morning.mp3'));
     });
 
     test('returns audioMissing when loader returns null', () async {
