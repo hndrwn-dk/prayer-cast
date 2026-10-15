@@ -71,6 +71,7 @@ class DhikrCounterPage extends ConsumerWidget {
                         '${afterPrayer[0].arabic} · ${afterPrayer[1].arabic} · ${afterPrayer[2].arabic}',
                         textDirection: TextDirection.rtl,
                         style: TextStyle(
+                          fontFamily: PrayerCastTheme.arabicFont,
                           fontSize: 20,
                           height: 1.7,
                           color: PrayerCastTokens.onSurface(context),
@@ -156,6 +157,7 @@ class _FreeDhikrTile extends ConsumerWidget {
                         spec.arabic,
                         textDirection: TextDirection.rtl,
                         style: TextStyle(
+                          fontFamily: PrayerCastTheme.arabicFont,
                           fontSize: 22,
                           height: 1.6,
                           color: PrayerCastTokens.onSurface(context),

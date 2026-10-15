@@ -12,6 +12,9 @@ abstract final class PrayerCastTheme {
   static const String displayFont = 'Fraunces';
   static const String bodyFont = 'AtkinsonHyperlegible';
 
+  /// Arabic dhikr and Quran text (DigitalKhatt, shared with Quran Offline).
+  static const String arabicFont = 'DigitalKhatt';
+
   /// Minimum comfortable tap height for older fingers.
   static const double minTap = 56;
 

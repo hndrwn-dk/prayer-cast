@@ -83,3 +83,7 @@ flutter:
         - asset: assets/fonts/AtkinsonHyperlegible-BoldItalic.ttf
           weight: 700
           style: italic
+    # Same mushaf font as Quran Offline, for all Arabic dhikr text.
+    - family: DigitalKhatt
+      fonts:
+        - asset: assets/fonts/DigitalKhattV2.otf

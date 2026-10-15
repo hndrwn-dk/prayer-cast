@@ -275,6 +275,7 @@ class _DhikrFocusPageState extends ConsumerState<DhikrFocusPage> {
                       maxLines: 4,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
+                        fontFamily: PrayerCastTheme.arabicFont,
                         fontSize: step.arabic.length > 40 ? 24 : 34,
                         height: 1.8,
                         color: PrayerCastTokens.onSurface(context),

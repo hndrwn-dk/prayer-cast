@@ -240,6 +240,7 @@ class _AdhkarReadingCard extends ConsumerWidget {
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.right,
             style: TextStyle(
+              fontFamily: PrayerCastTheme.arabicFont,
               fontSize: 26 * scale,
               height: 2.0,
               color: PrayerCastTokens.onSurface(context),
@@ -483,7 +484,7 @@ class _AdhkarSettingsSheet extends ConsumerWidget {
             Text(l10n.adhkarTextSize, style: labelStyle),
             Row(
               children: [
-                Text('ع', style: TextStyle(fontSize: 16, color: PrayerCastTokens.glyph(context))),
+                Text('ع', style: TextStyle(fontFamily: PrayerCastTheme.arabicFont, fontSize: 16, color: PrayerCastTokens.glyph(context))),
                 Expanded(
                   child: Slider(
                     value: scale,
@@ -494,7 +495,7 @@ class _AdhkarSettingsSheet extends ConsumerWidget {
                         ref.read(adhkarArabicScaleProvider.notifier).state = v,
                   ),
                 ),
-                Text('ع', style: TextStyle(fontSize: 26, color: PrayerCastTokens.glyph(context))),
+                Text('ع', style: TextStyle(fontFamily: PrayerCastTheme.arabicFont, fontSize: 26, color: PrayerCastTokens.glyph(context))),
               ],
             ),
             const SectionRule(top: 8, bottom: 8),
