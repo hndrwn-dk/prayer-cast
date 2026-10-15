@@ -120,23 +120,71 @@ abstract final class PremiumIcons {
   static Widget flame({double size = 24, Color? color}) =>
       _Icon(size: size, color: color, paint: _paintFlame);
 
-  static Widget prayerTimes({double size = 24, Color? color}) =>
-      _Icon(size: size, color: color, paint: _paintPrayerTimes);
+  static Widget prayerTimes({
+    double size = 24,
+    Color? color,
+    double fillOpacity = 0.16,
+  }) => _MenuIcon(
+    size: size,
+    color: color,
+    fillOpacity: fillOpacity,
+    paint: _paintPrayerTimes,
+  );
 
-  static Widget prayerTracker({double size = 24, Color? color}) =>
-      _Icon(size: size, color: color, paint: _paintPrayerTracker);
+  static Widget prayerTracker({
+    double size = 24,
+    Color? color,
+    double fillOpacity = 0.16,
+  }) => _MenuIcon(
+    size: size,
+    color: color,
+    fillOpacity: fillOpacity,
+    paint: _paintPrayerTracker,
+  );
 
-  static Widget qibla({double size = 24, Color? color}) =>
-      _Icon(size: size, color: color, paint: _paintQibla);
+  static Widget qibla({
+    double size = 24,
+    Color? color,
+    double fillOpacity = 0.16,
+  }) => _MenuIcon(
+    size: size,
+    color: color,
+    fillOpacity: fillOpacity,
+    paint: _paintQibla,
+  );
 
-  static Widget morningAdhkar({double size = 24, Color? color}) =>
-      _Icon(size: size, color: color, paint: _paintMorningAdhkar);
+  static Widget morningAdhkar({
+    double size = 24,
+    Color? color,
+    double fillOpacity = 0.22,
+  }) => _MenuIcon(
+    size: size,
+    color: color,
+    fillOpacity: fillOpacity,
+    paint: _paintMorningAdhkar,
+  );
 
-  static Widget eveningAdhkar({double size = 24, Color? color}) =>
-      _Icon(size: size, color: color, paint: _paintEveningAdhkar);
+  static Widget eveningAdhkar({
+    double size = 24,
+    Color? color,
+    double fillOpacity = 0.16,
+  }) => _MenuIcon(
+    size: size,
+    color: color,
+    fillOpacity: fillOpacity,
+    paint: _paintEveningAdhkar,
+  );
 
-  static Widget tasbih({double size = 24, Color? color}) =>
-      _Icon(size: size, color: color, paint: _paintTasbih);
+  static Widget tasbih({
+    double size = 24,
+    Color? color,
+    double fillOpacity = 0.35,
+  }) => _MenuIcon(
+    size: size,
+    color: color,
+    fillOpacity: fillOpacity,
+    paint: _paintTasbih,
+  );
 }
 
 typedef _PaintFn = void Function(Canvas canvas, Size size, Color color);
@@ -157,6 +205,49 @@ class _Icon extends StatelessWidget {
       child: CustomPaint(painter: _FnPainter(resolved, paint)),
     );
   }
+}
+
+typedef _MenuPaintFn =
+    void Function(Canvas canvas, Size size, Color color, double fillOpacity);
+
+class _MenuIcon extends StatelessWidget {
+  const _MenuIcon({
+    required this.size,
+    required this.paint,
+    required this.fillOpacity,
+    this.color,
+  });
+
+  final double size;
+  final Color? color;
+  final double fillOpacity;
+  final _MenuPaintFn paint;
+
+  @override
+  Widget build(BuildContext context) {
+    final resolved = color ?? IconTheme.of(context).color ?? Colors.black;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _MenuPainter(resolved, fillOpacity, paint)),
+    );
+  }
+}
+
+class _MenuPainter extends CustomPainter {
+  _MenuPainter(this.color, this.fillOpacity, this.paintFn);
+
+  final Color color;
+  final double fillOpacity;
+  final _MenuPaintFn paintFn;
+
+  @override
+  void paint(Canvas canvas, Size size) =>
+      paintFn(canvas, size, color, fillOpacity);
+
+  @override
+  bool shouldRepaint(covariant _MenuPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.fillOpacity != fillOpacity;
 }
 
 class _FnPainter extends CustomPainter {
@@ -720,12 +811,17 @@ void _roundRect(
 Paint _sw(Color color, Size size, double width) =>
     _stroke(color, width: width * _u(size));
 
-void _paintPrayerTimes(Canvas canvas, Size size, Color color) {
+void _paintPrayerTimes(
+  Canvas canvas,
+  Size size,
+  Color color,
+  double fillOpacity,
+) {
   _svg(
     canvas,
     size,
     'M7 28V14.5C7 9.3 11 5.5 16 4c5 1.5 9 5.3 9 10.5V28z',
-    _fill(PrayerCastColors.leaf.withValues(alpha: 0.16)),
+    _fill(PrayerCastColors.leaf.withValues(alpha: fillOpacity)),
   );
   _svg(
     canvas,
@@ -737,7 +833,12 @@ void _paintPrayerTimes(Canvas canvas, Size size, Color color) {
   _svg(canvas, size, 'M16 14.8v2.9l1.9 1.2', _sw(color, size, 1.6));
 }
 
-void _paintPrayerTracker(Canvas canvas, Size size, Color color) {
+void _paintPrayerTracker(
+  Canvas canvas,
+  Size size,
+  Color color,
+  double fillOpacity,
+) {
   _roundRect(
     canvas,
     size,
@@ -746,7 +847,7 @@ void _paintPrayerTracker(Canvas canvas, Size size, Color color) {
     18,
     24,
     2.5,
-    _fill(PrayerCastColors.leaf.withValues(alpha: 0.16)),
+    _fill(PrayerCastColors.leaf.withValues(alpha: fillOpacity)),
   );
   _roundRect(canvas, size, 7, 4, 18, 24, 2.5, _sw(color, size, 1.7));
   _svg(
@@ -764,14 +865,14 @@ void _paintPrayerTracker(Canvas canvas, Size size, Color color) {
   _svg(canvas, size, 'M13.2 15.3l2 2 3.8-3.9', _sw(color, size, 1.7));
 }
 
-void _paintQibla(Canvas canvas, Size size, Color color) {
+void _paintQibla(Canvas canvas, Size size, Color color, double fillOpacity) {
   _disc(
     canvas,
     size,
     16,
     16,
     12,
-    _fill(PrayerCastColors.leaf.withValues(alpha: 0.16)),
+    _fill(PrayerCastColors.leaf.withValues(alpha: fillOpacity)),
   );
   _disc(canvas, size, 16, 16, 12, _sw(color, size, 1.7));
   _svg(
@@ -785,12 +886,17 @@ void _paintQibla(Canvas canvas, Size size, Color color) {
   _svg(canvas, size, 'M19.4 9.6h4.2', _sw(PrayerCastColors.dawn, size, 0.9));
 }
 
-void _paintMorningAdhkar(Canvas canvas, Size size, Color color) {
+void _paintMorningAdhkar(
+  Canvas canvas,
+  Size size,
+  Color color,
+  double fillOpacity,
+) {
   _svg(
     canvas,
     size,
     'M8.5 22a7.5 7.5 0 0115 0z',
-    _fill(PrayerCastColors.dawn.withValues(alpha: 0.22)),
+    _fill(PrayerCastColors.dawn.withValues(alpha: fillOpacity)),
   );
   _svg(
     canvas,
@@ -806,13 +912,18 @@ void _paintMorningAdhkar(Canvas canvas, Size size, Color color) {
   );
 }
 
-void _paintEveningAdhkar(Canvas canvas, Size size, Color color) {
+void _paintEveningAdhkar(
+  Canvas canvas,
+  Size size,
+  Color color,
+  double fillOpacity,
+) {
   const crescent = 'M20.5 5.5A10.5 10.5 0 1026.5 23 8.5 8.5 0 0120.5 5.5z';
   _svg(
     canvas,
     size,
     crescent,
-    _fill(PrayerCastColors.leaf.withValues(alpha: 0.16)),
+    _fill(PrayerCastColors.leaf.withValues(alpha: fillOpacity)),
   );
   _svg(canvas, size, crescent, _sw(color, size, 1.7));
   _svg(
@@ -829,8 +940,8 @@ void _paintEveningAdhkar(Canvas canvas, Size size, Color color) {
   );
 }
 
-void _paintTasbih(Canvas canvas, Size size, Color color) {
-  final bead = _fill(PrayerCastColors.leaf.withValues(alpha: 0.35));
+void _paintTasbih(Canvas canvas, Size size, Color color, double fillOpacity) {
+  final bead = _fill(PrayerCastColors.leaf.withValues(alpha: fillOpacity));
   final beadStroke = _sw(color, size, 1.3);
   _disc(canvas, size, 16, 13, 8.5, _sw(color.withValues(alpha: 0.5), size, 1));
   for (final center in const [

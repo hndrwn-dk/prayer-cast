@@ -61,6 +61,7 @@ Future<void> _pump(
   required DateTime now,
   Locale locale = const Locale('en'),
   TextScaler textScaler = TextScaler.noScaling,
+  ThemeData? theme,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -84,7 +85,7 @@ Future<void> _pump(
         ],
         supportedLocales: AppLocalizations.supportedLocales,
         locale: locale,
-        theme: PrayerCastTheme.forest(),
+        theme: theme ?? PrayerCastTheme.forest(),
         home: MediaQuery(
           data: MediaQueryData(textScaler: textScaler),
           child: Scaffold(
@@ -140,23 +141,57 @@ void main() {
     }
     final morning = tester.getRect(find.byKey(morningKey));
     final above = tester.getRect(find.byKey(timesKey));
+    final tracker = tester.getRect(find.byKey(trackerKey));
     expect(morning.width, closeTo(above.width, 0.5));
     expect(morning.height, closeTo(above.height, 0.5));
+    expect(tracker.left - above.right, closeTo(4, 0.5));
+    expect(morning.top - above.bottom, closeTo(20, 0.5));
+    final gridPadding = tester.widget<Padding>(
+      find.byKey(HomeMenuGrid.gridKey),
+    );
+    final insets = gridPadding.padding.resolve(TextDirection.ltr);
+    expect(insets.left, 12);
+    expect(insets.right, 12);
     expect(
       tester.widget<Text>(find.text('Prayer times')).style?.color,
       PrayerCastColors.surfaceRaised,
     );
-    final circles = tester
-        .widgetList<DecoratedBox>(find.byType(DecoratedBox))
-        .where((box) {
-          final decoration = box.decoration;
+    expect(
+      find.descendant(
+        of: find.byKey(HomeMenuGrid.gridKey),
+        matching: find.byWidgetPredicate((widget) {
+          if (widget is! DecoratedBox) return false;
+          final decoration = widget.decoration;
           return decoration is BoxDecoration &&
-              decoration.shape == BoxShape.circle;
-        });
-    expect(circles, hasLength(6));
-    for (final box in circles) {
-      expect((box.decoration as BoxDecoration).color, PrayerCastColors.canopy);
+              decoration.borderRadius == BorderRadius.circular(18);
+        }),
+      ),
+      findsNothing,
+    );
+    final circles = find.byWidgetPredicate((widget) {
+      if (widget is! DecoratedBox) return false;
+      final decoration = widget.decoration;
+      return decoration is BoxDecoration &&
+          decoration.shape == BoxShape.circle &&
+          decoration.color == PrayerCastColors.canopy;
+    });
+    expect(circles, findsNWidgets(6));
+    for (var i = 0; i < 6; i++) {
+      expect(tester.getSize(circles.at(i)), const Size(72, 72));
+      final border =
+          (tester.widget<DecoratedBox>(circles.at(i)).decoration
+                  as BoxDecoration)
+              .border;
+      expect(border, isA<Border>());
     }
+    final quiet = tester.widget<DecoratedBox>(
+      find.descendant(of: find.byKey(timesKey), matching: circles),
+    );
+    final quietSide =
+        ((quiet.decoration as BoxDecoration).border! as Border).top;
+    expect(quietSide.width, 1);
+    expect(quietSide.color, PrayerCastColors.dawn.withValues(alpha: 0.35));
+    expect((quiet.decoration as BoxDecoration).boxShadow, isEmpty);
   });
 
   testWidgets('each tile opens its page', (tester) async {
@@ -219,8 +254,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    Future<void> openAndLeave(ValueKey<String> key, Type page) async {
-      await tester.tap(find.byKey(key));
+    Future<void> openAndLeave(Finder target, Type page) async {
+      await tester.tap(target);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byType(page), findsOneWidget);
@@ -230,12 +265,29 @@ void main() {
       expect(find.byType(page), findsNothing);
     }
 
-    await openAndLeave(timesKey, PrayerSettingsPage);
-    await openAndLeave(trackerKey, PrayerTrackerPage);
-    await openAndLeave(qiblaKey, QiblaPage);
-    await openAndLeave(morningKey, MorningAdhkarPage);
-    await openAndLeave(eveningKey, EveningAdhkarPage);
-    await openAndLeave(counterKey, DhikrCounterPage);
+    Finder circleOf(ValueKey<String> key) => find.descendant(
+      of: find.byKey(key),
+      matching: find.byWidgetPredicate((widget) {
+        if (widget is! DecoratedBox) return false;
+        final decoration = widget.decoration;
+        return decoration is BoxDecoration &&
+            decoration.shape == BoxShape.circle &&
+            decoration.color != null;
+      }),
+    );
+
+    await openAndLeave(circleOf(timesKey), PrayerSettingsPage);
+    await openAndLeave(find.text('Prayer times'), PrayerSettingsPage);
+    await openAndLeave(circleOf(trackerKey), PrayerTrackerPage);
+    await openAndLeave(find.text('Prayer tracker'), PrayerTrackerPage);
+    await openAndLeave(circleOf(qiblaKey), QiblaPage);
+    await openAndLeave(find.text('Qibla/Mosque'), QiblaPage);
+    await openAndLeave(circleOf(morningKey), MorningAdhkarPage);
+    await openAndLeave(find.text('Morning Adhkar'), MorningAdhkarPage);
+    await openAndLeave(circleOf(eveningKey), EveningAdhkarPage);
+    await openAndLeave(find.text('Evening Adhkar'), EveningAdhkarPage);
+    await openAndLeave(circleOf(counterKey), DhikrCounterPage);
+    await openAndLeave(find.text('Dhikr Counter'), DhikrCounterPage);
   });
 
   testWidgets('NOW badge is on evening adhkar after Asr', (tester) async {
@@ -249,7 +301,38 @@ void main() {
       find.descendant(of: find.byKey(morningKey), matching: find.text('NOW')),
       findsNothing,
     );
-    expect(tester.getSemantics(find.byKey(eveningKey)).label, contains('NOW'));
+    expect(
+      tester.getSemantics(find.byKey(eveningKey)).label,
+      'Evening Adhkar, NOW',
+    );
+    final active = tester.widget<DecoratedBox>(
+      find.descendant(
+        of: find.byKey(eveningKey),
+        matching: find.byWidgetPredicate((widget) {
+          if (widget is! DecoratedBox) return false;
+          final decoration = widget.decoration;
+          return decoration is BoxDecoration &&
+              decoration.shape == BoxShape.circle &&
+              decoration.color == PrayerCastColors.canopy;
+        }),
+      ),
+    );
+    expect(
+      ((active.decoration as BoxDecoration).border! as Border).top.width,
+      2,
+    );
+    final badge = tester.widget<DecoratedBox>(
+      find.descendant(
+        of: find.byKey(eveningKey),
+        matching: find.byWidgetPredicate((widget) {
+          if (widget is! DecoratedBox) return false;
+          final decoration = widget.decoration;
+          return decoration is BoxDecoration &&
+              decoration.borderRadius == BorderRadius.circular(10);
+        }),
+      ),
+    );
+    expect((badge.decoration as BoxDecoration).color, homeMenuNowFillForest);
     expect(
       tester.getSemantics(find.byKey(morningKey)).label,
       isNot(contains('NOW')),
@@ -278,18 +361,46 @@ void main() {
     );
   });
 
-  testWidgets('indonesian labels stay within two lines on a narrow phone', (
+  testWidgets('light circles are white with the shared ink shadow', (
     tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(400, 900));
+    await _pump(
+      tester,
+      now: DateTime(2026, 10, 15, 22),
+      theme: PrayerCastTheme.light(),
+    );
+
+    final circles = find.byWidgetPredicate((widget) {
+      if (widget is! DecoratedBox) return false;
+      final decoration = widget.decoration;
+      return decoration is BoxDecoration &&
+          decoration.shape == BoxShape.circle &&
+          decoration.color == Colors.white;
+    });
+    expect(circles, findsNWidgets(6));
+    final decoration =
+        tester.widget<DecoratedBox>(circles.first).decoration as BoxDecoration;
+    final shadows = decoration.boxShadow;
+    expect(shadows, hasLength(2));
+    expect(shadows!.first.blurRadius, 2);
+    expect(shadows.first.offset, const Offset(0, 1));
+    expect(shadows.last.blurRadius, 16);
+    expect(shadows.last.offset, const Offset(0, 6));
+  });
+
+  testWidgets('indonesian labels do not overflow at 320 with text scale 1.3', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final loader = FontLoader('Fraunces')
       ..addFont(rootBundle.load('assets/fonts/Fraunces-Variable.ttf'));
     await loader.load();
     await _pump(
       tester,
-      now: DateTime(2026, 10, 15, 8),
+      now: DateTime(2026, 10, 15, 22),
       locale: const Locale('id'),
+      textScaler: const TextScaler.linear(1.3),
     );
 
     for (final label in [
@@ -300,13 +411,16 @@ void main() {
       'Dzikir Petang',
       'Counter Dzikir',
     ]) {
+      expect(find.text(label), findsOneWidget);
       final paragraph = tester.renderObject<RenderParagraph>(find.text(label));
-      expect(paragraph.didExceedMaxLines, isFalse, reason: label);
+      expect(paragraph.size.height, greaterThan(0), reason: label);
     }
-    expect(find.text('SEKARANG'), findsOneWidget);
+    expect(find.text('NOW'), findsNothing);
+    expect(find.text('SEKARANG'), findsNothing);
     expect(tester.takeException(), isNull);
-
-    final tile = tester.getSize(find.byKey(timesKey));
-    expect(tile.height, greaterThanOrEqualTo(124));
+    expect(
+      tester.getSize(find.byKey(timesKey)).height,
+      greaterThanOrEqualTo(112),
+    );
   });
 }

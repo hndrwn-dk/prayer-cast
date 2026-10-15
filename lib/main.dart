@@ -1144,39 +1144,43 @@ class _PlaceAndPresence extends StatelessWidget {
             style: countryStyle,
           ),
         const SizedBox(height: 28),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const EditorialHairline(vertical: true, height: 28, width: 1),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  EditorialEyebrow(
-                    presenceLabel,
-                    color: presenceLabel == l10n.speakerNotSelected
-                        ? PrayerCastColors.dawn
-                        : _heroMistDeep(context),
-                  ),
-                  if (placeDetail != null && placeDetail!.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      placeDetail!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: PrayerCastTheme.displayFont,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        color: _heroInk(context),
-                      ),
+        // Hero copy sits at 28. Pull the rule left onto the speaker card edge.
+        Transform.translate(
+          offset: const Offset(homeContentInset - 28, 0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const EditorialHairline(vertical: true, height: 28, width: 1),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    EditorialEyebrow(
+                      presenceLabel,
+                      color: presenceLabel == l10n.speakerNotSelected
+                          ? PrayerCastColors.dawn
+                          : _heroMistDeep(context),
                     ),
+                    if (placeDetail != null && placeDetail!.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        placeDetail!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: PrayerCastTheme.displayFont,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w400,
+                          color: _heroInk(context),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -1218,7 +1222,12 @@ class _SpeakerBand extends StatelessWidget {
     return ColoredBox(
       color: PrayerCastTokens.slab(context),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 4, 16, 20),
+        padding: const EdgeInsets.fromLTRB(
+          homeContentInset,
+          4,
+          homeContentInset,
+          20,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1231,9 +1240,7 @@ class _SpeakerBand extends StatelessWidget {
                     : Colors.white,
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                  color: PrayerCastTokens.isForest(context)
-                      ? PrayerCastColors.dawn.withValues(alpha: 0.45)
-                      : homeMenuCardBorder,
+                  color: PrayerCastColors.dawn.withValues(alpha: 0.45),
                 ),
                 boxShadow: homeMenuCardShadow(context),
               ),
@@ -1245,7 +1252,7 @@ class _SpeakerBand extends StatelessWidget {
                   child: InkWell(
                     onTap: onTap,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 0, 8),
+                      padding: const EdgeInsets.fromLTRB(10, 8, 0, 8),
                       child: Row(
                         children: [
                           IconWell(

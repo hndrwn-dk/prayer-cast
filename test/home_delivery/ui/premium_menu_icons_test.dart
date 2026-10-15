@@ -6,12 +6,36 @@ import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 void main() {
   testWidgets('home menu icons render at 34 px', (tester) async {
     final icons = <Widget>[
-      PremiumIcons.prayerTimes(size: 34, color: PrayerCastColors.canopy),
-      PremiumIcons.prayerTracker(size: 34, color: PrayerCastColors.canopy),
-      PremiumIcons.qibla(size: 34, color: PrayerCastColors.canopy),
-      PremiumIcons.morningAdhkar(size: 34, color: PrayerCastColors.canopy),
-      PremiumIcons.eveningAdhkar(size: 34, color: PrayerCastColors.canopy),
-      PremiumIcons.tasbih(size: 34, color: PrayerCastColors.canopy),
+      PremiumIcons.prayerTimes(
+        size: 34,
+        color: PrayerCastColors.canopy,
+        fillOpacity: 0.18,
+      ),
+      PremiumIcons.prayerTracker(
+        size: 34,
+        color: PrayerCastColors.canopy,
+        fillOpacity: 0.18,
+      ),
+      PremiumIcons.qibla(
+        size: 34,
+        color: PrayerCastColors.canopy,
+        fillOpacity: 0.18,
+      ),
+      PremiumIcons.morningAdhkar(
+        size: 34,
+        color: PrayerCastColors.canopy,
+        fillOpacity: 0.18,
+      ),
+      PremiumIcons.eveningAdhkar(
+        size: 34,
+        color: PrayerCastColors.canopy,
+        fillOpacity: 0.18,
+      ),
+      PremiumIcons.tasbih(
+        size: 34,
+        color: PrayerCastColors.canopy,
+        fillOpacity: 0.35,
+      ),
     ];
 
     await tester.pumpWidget(
