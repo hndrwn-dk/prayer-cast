@@ -22,13 +22,11 @@ enum AdhkarDeliveryResult {
 /// cannot fetch `data:` URIs.
 final class AdhkarDeliveryCoordinator {
   AdhkarDeliveryCoordinator({
-    required AdhkarAudioLoader audioLoader,
-    required CastClient castClient,
+    required this._audioLoader,
+    required this._castClient,
     Future<InternetAddress> Function(InternetAddress receiverHost)?
         resolveHost,
-  })  : _audioLoader = audioLoader,
-        _castClient = castClient,
-        _resolveHost = resolveHost ?? InterfaceSelector().selectFor;
+  }) : _resolveHost = resolveHost ?? InterfaceSelector().selectFor;
 
   final AdhkarAudioLoader _audioLoader;
   final CastClient _castClient;
