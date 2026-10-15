@@ -1161,4 +1161,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get dhikrTargetReached => 'Target tercapai';
+
+  @override
+  String get dhikrAnytimeEyebrow => 'Kapan saja';
 }

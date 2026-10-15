@@ -699,5 +699,9 @@
   "dhikrTargetReached": "Target reached",
   "@dhikrTargetReached": {
     "description": "Shown when a free counter hits its target"
+  },
+  "dhikrAnytimeEyebrow": "Anytime",
+  "@dhikrAnytimeEyebrow": {
+    "description": "Eyebrow over the Dhikr Counter cell on home"
   }
 }

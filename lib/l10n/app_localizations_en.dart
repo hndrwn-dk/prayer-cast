@@ -1161,4 +1161,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dhikrTargetReached => 'Target reached';
+
+  @override
+  String get dhikrAnytimeEyebrow => 'Anytime';
 }

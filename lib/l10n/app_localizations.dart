@@ -2173,6 +2173,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Target reached'**
   String get dhikrTargetReached;
+
+  /// Eyebrow over the Dhikr Counter cell on home
+  ///
+  /// In en, this message translates to:
+  /// **'Anytime'**
+  String get dhikrAnytimeEyebrow;
 }
 
 class _AppLocalizationsDelegate
