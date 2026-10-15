@@ -1053,4 +1053,102 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get countYourRemembrance => 'Hitung dzikirmu';
+
+  @override
+  String get adhkarSettings => 'Pengaturan dzikir';
+
+  @override
+  String get adhkarAutoPlaySpeaker => 'Putar otomatis di speaker';
+
+  @override
+  String get adhkarAutoPlayHint => 'Audio dzikir diputar di speaker rumah saat Anda sedang di rumah.';
+
+  @override
+  String adhkarDelayAfterFajr(int minutes) {
+    return '${minutes} menit setelah Subuh';
+  }
+
+  @override
+  String adhkarDelayAfterAsr(int minutes) {
+    return '${minutes} menit setelah Asar';
+  }
+
+  @override
+  String get adhkarPlayOnSpeakerNow => 'Putar sekarang di speaker';
+
+  @override
+  String adhkarProgress(int current, int total) {
+    return '${current} dari ${total}';
+  }
+
+  @override
+  String get adhkarTapToCount => 'Ketuk untuk menghitung';
+
+  @override
+  String get adhkarMarkRead => 'Sudah dibaca, lanjut';
+
+  @override
+  String get adhkarFinish => 'Selesai';
+
+  @override
+  String get adhkarCompleteTitle => 'Dzikir selesai';
+
+  @override
+  String get adhkarCompleteBody => 'Semoga Allah menerima dzikir Anda.';
+
+  @override
+  String get adhkarReadAgain => 'Baca lagi';
+
+  @override
+  String get adhkarShowTransliteration => 'Transliterasi';
+
+  @override
+  String get adhkarShowTranslation => 'Terjemahan';
+
+  @override
+  String get adhkarTextSize => 'Ukuran teks Arab';
+
+  @override
+  String adhkarRepeatTimes(int count) {
+    return 'Baca ${count}x';
+  }
+
+  @override
+  String get dhikrAfterPrayerTitle => 'Setelah salat';
+
+  @override
+  String get dhikrAfterPrayerSubtitle => 'Tasbih, tahmid, takbir masing-masing 33x, lalu tahlil, genap 100';
+
+  @override
+  String get dhikrFreeTitle => 'Dzikir bebas';
+
+  @override
+  String get dhikrFreeSubtitle => 'Saat menunggu, berjalan, atau di perjalanan';
+
+  @override
+  String get dhikrUndo => 'Batalkan ketukan terakhir';
+
+  @override
+  String get dhikrResetConfirmTitle => 'Reset hitungan ini?';
+
+  @override
+  String get dhikrResetConfirmBody => 'Hitungan kembali ke 0.';
+
+  @override
+  String get dhikrCancel => 'Batal';
+
+  @override
+  String get dhikrSequenceDone => 'Dzikir setelah salat selesai';
+
+  @override
+  String get dhikrStartAgain => 'Mulai lagi';
+
+  @override
+  String get dhikrTapAnywhere => 'Ketuk di mana saja untuk menghitung';
+
+  @override
+  String get dhikrVolumeKeysHint => 'Tombol volume juga menghitung';
+
+  @override
+  String get dhikrTargetReached => 'Target tercapai';
 }

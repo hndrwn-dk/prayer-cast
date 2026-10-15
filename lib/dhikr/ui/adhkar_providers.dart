@@ -41,3 +41,10 @@ Future<void> updateAdhkarDelay(
   await prefs.save();
   ref.read(adhkarDelayProvider(type).notifier).state = minutes;
 }
+
+/// Reading display options, shared by morning and evening for the session.
+final adhkarShowTransliterationProvider = StateProvider<bool>((ref) => true);
+final adhkarShowTranslationProvider = StateProvider<bool>((ref) => true);
+
+/// Multiplier on the base Arabic size (26).
+final adhkarArabicScaleProvider = StateProvider<double>((ref) => 1.0);

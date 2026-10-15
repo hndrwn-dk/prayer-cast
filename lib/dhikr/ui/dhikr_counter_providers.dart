@@ -30,3 +30,9 @@ Future<void> resetDhikrCounter(WidgetRef ref, String dhikrId) async {
   await store.reset(dhikrId);
   ref.invalidate(dhikrCounterProvider(dhikrId));
 }
+
+Future<void> decrementDhikrCounter(WidgetRef ref, String dhikrId) async {
+  final store = ref.read(dhikrCounterStoreProvider);
+  await store.decrement(dhikrId);
+  ref.invalidate(dhikrCounterProvider(dhikrId));
+}

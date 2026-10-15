@@ -5,10 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:prayer_cast/dhikr/storage/dhikr_counter_store.dart';
 import 'package:prayer_cast/dhikr/ui/dhikr_counter_page.dart';
 import 'package:prayer_cast/dhikr/ui/dhikr_counter_providers.dart';
+import 'package:prayer_cast/dhikr/ui/dhikr_focus_page.dart';
 import 'package:prayer_cast/l10n/app_localizations.dart';
 
 Future<void> _pump(WidgetTester tester, DhikrCounterStore store) async {
-  tester.view.physicalSize = const Size(800, 6000);
+  tester.view.physicalSize = const Size(800, 3000);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
@@ -31,36 +32,47 @@ Future<void> _pump(WidgetTester tester, DhikrCounterStore store) async {
 
 void main() {
   group('DhikrCounterPage', () {
-    testWidgets('displays list of dhikr counters', (tester) async {
+    testWidgets('offers the after-prayer sequence and free counters', (
+      tester,
+    ) async {
       await _pump(tester, MemoryDhikrCounterStore());
 
+      expect(find.byKey(DhikrCounterPage.afterPrayerKey), findsOneWidget);
+      expect(find.text('FREE DHIKR'), findsOneWidget);
       expect(find.text('سُبْحَانَ اللهِ'), findsOneWidget);
-      expect(find.text('اَلْحَمْدُ لِلَّه'), findsOneWidget);
-      expect(find.text('اَللهُ أَكْبَرُ'), findsOneWidget);
-      expect(find.byIcon(Icons.refresh), findsNWidgets(7));
+      expect(find.text('أَسْتَغْفِرُ اللهَ'), findsOneWidget);
     });
 
-    testWidgets('increments counter on tap', (tester) async {
+    testWidgets('shows saved progress on a free counter', (tester) async {
       final store = MemoryDhikrCounterStore();
+      await store.increment('astaghfirullah', target: 100);
+      await store.increment('astaghfirullah', target: 100);
+      final handle = tester.ensureSemantics();
       await _pump(tester, store);
 
-      await tester.tap(find.text('سُبْحَانَ اللهِ'));
-      await tester.pumpAndSettle();
-
-      expect((await store.get('subhanallah'))?.count, 1);
-      expect(find.text('1'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('I seek forgiveness from Allah, 2 / 100'),
+        findsOneWidget,
+      );
+      handle.dispose();
     });
 
-    testWidgets('resets counter on reset button tap', (tester) async {
-      final store = MemoryDhikrCounterStore();
-      await store.increment('subhanallah', target: 33);
-      await store.increment('subhanallah', target: 33);
-      await _pump(tester, store);
-
-      await tester.tap(find.byIcon(Icons.refresh).first);
+    testWidgets('a free counter opens focus mode', (tester) async {
+      await _pump(tester, MemoryDhikrCounterStore());
+      await tester.tap(find.text('أَسْتَغْفِرُ اللهَ'));
       await tester.pumpAndSettle();
 
-      expect((await store.get('subhanallah'))?.count, 0);
+      expect(find.byType(DhikrFocusPage), findsOneWidget);
+      expect(find.text('/ 100'), findsOneWidget);
+    });
+
+    testWidgets('after-prayer opens the sequence on tasbih', (tester) async {
+      await _pump(tester, MemoryDhikrCounterStore());
+      await tester.tap(find.byKey(DhikrCounterPage.afterPrayerKey));
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 of 4'), findsOneWidget);
+      expect(find.text('/ 33'), findsOneWidget);
     });
   });
 }

@@ -548,5 +548,153 @@
   "@dhikrCustom": {
     "description": "Label for custom user-defined dhikr"
   },
-  "countYourRemembrance": "Count your remembrance"
+  "countYourRemembrance": "Count your remembrance",
+  "adhkarSettings": "Adhkar settings",
+  "@adhkarSettings": {
+    "description": "Tooltip/title for the adhkar settings sheet"
+  },
+  "adhkarAutoPlaySpeaker": "Auto-play on speaker",
+  "@adhkarAutoPlaySpeaker": {
+    "description": "Toggle: play adhkar audio on the home speaker on schedule"
+  },
+  "adhkarAutoPlayHint": "Plays the adhkar audio on your home speaker when you are at home.",
+  "@adhkarAutoPlayHint": {
+    "description": "Helper text under the auto-play toggle"
+  },
+  "adhkarDelayAfterFajr": "{minutes} min after Fajr",
+  "@adhkarDelayAfterFajr": {
+    "description": "Delay slider value for morning adhkar",
+    "placeholders": {
+      "minutes": {
+        "type": "int",
+        "example": "10"
+      }
+    }
+  },
+  "adhkarDelayAfterAsr": "{minutes} min after Asr",
+  "@adhkarDelayAfterAsr": {
+    "description": "Delay slider value for evening adhkar",
+    "placeholders": {
+      "minutes": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "adhkarPlayOnSpeakerNow": "Play on speaker now",
+  "@adhkarPlayOnSpeakerNow": {
+    "description": "Button that plays the adhkar audio on the speaker immediately"
+  },
+  "adhkarProgress": "{current} of {total}",
+  "@adhkarProgress": {
+    "description": "Reading progress through a list",
+    "placeholders": {
+      "current": {
+        "type": "int",
+        "example": "3"
+      },
+      "total": {
+        "type": "int",
+        "example": "14"
+      }
+    }
+  },
+  "adhkarTapToCount": "Tap to count",
+  "@adhkarTapToCount": {
+    "description": "Counter button hint inside an adhkar card"
+  },
+  "adhkarMarkRead": "Read, next",
+  "@adhkarMarkRead": {
+    "description": "Button for adhkar read once"
+  },
+  "adhkarFinish": "Finish",
+  "@adhkarFinish": {
+    "description": "Button on the last adhkar card"
+  },
+  "adhkarCompleteTitle": "Adhkar complete",
+  "@adhkarCompleteTitle": {
+    "description": "Title of the completion card"
+  },
+  "adhkarCompleteBody": "May Allah accept your remembrance.",
+  "@adhkarCompleteBody": {
+    "description": "Body of the completion card"
+  },
+  "adhkarReadAgain": "Read again",
+  "@adhkarReadAgain": {
+    "description": "Restart the adhkar from the first card"
+  },
+  "adhkarShowTransliteration": "Transliteration",
+  "@adhkarShowTransliteration": {
+    "description": "Toggle for Latin transliteration"
+  },
+  "adhkarShowTranslation": "Translation",
+  "@adhkarShowTranslation": {
+    "description": "Toggle for translation"
+  },
+  "adhkarTextSize": "Arabic text size",
+  "@adhkarTextSize": {
+    "description": "Slider label for Arabic font size"
+  },
+  "adhkarRepeatTimes": "Read {count}x",
+  "@adhkarRepeatTimes": {
+    "description": "How many times an item is read",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "dhikrAfterPrayerTitle": "After prayer",
+  "@dhikrAfterPrayerTitle": {
+    "description": "Guided tasbih sequence after the obligatory prayer"
+  },
+  "dhikrAfterPrayerSubtitle": "Tasbih, tahmid and takbir 33x each, then tahlil, for 100",
+  "@dhikrAfterPrayerSubtitle": {
+    "description": "Subtitle of the after-prayer sequence"
+  },
+  "dhikrFreeTitle": "Free dhikr",
+  "@dhikrFreeTitle": {
+    "description": "Section of standalone counters"
+  },
+  "dhikrFreeSubtitle": "For waiting, walking or commuting",
+  "@dhikrFreeSubtitle": {
+    "description": "Subtitle of the free dhikr section"
+  },
+  "dhikrUndo": "Undo last tap",
+  "@dhikrUndo": {
+    "description": "Undo one count"
+  },
+  "dhikrResetConfirmTitle": "Reset this counter?",
+  "@dhikrResetConfirmTitle": {
+    "description": "Confirm dialog title"
+  },
+  "dhikrResetConfirmBody": "The count goes back to 0.",
+  "@dhikrResetConfirmBody": {
+    "description": "Confirm dialog body"
+  },
+  "dhikrCancel": "Cancel",
+  "@dhikrCancel": {
+    "description": "Dismiss a dialog"
+  },
+  "dhikrSequenceDone": "Dhikr after prayer complete",
+  "@dhikrSequenceDone": {
+    "description": "Shown when the after-prayer sequence is finished"
+  },
+  "dhikrStartAgain": "Start again",
+  "@dhikrStartAgain": {
+    "description": "Restart a finished counter or sequence"
+  },
+  "dhikrTapAnywhere": "Tap anywhere to count",
+  "@dhikrTapAnywhere": {
+    "description": "Hint in focus mode"
+  },
+  "dhikrVolumeKeysHint": "Volume buttons count too",
+  "@dhikrVolumeKeysHint": {
+    "description": "Hint that hardware volume keys increment"
+  },
+  "dhikrTargetReached": "Target reached",
+  "@dhikrTargetReached": {
+    "description": "Shown when a free counter hits its target"
+  }
 }

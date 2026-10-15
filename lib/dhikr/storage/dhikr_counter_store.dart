@@ -6,6 +6,7 @@ import 'package:prayer_cast/dhikr/models/dhikr_counter_state.dart';
 abstract class DhikrCounterStore {
   Future<DhikrCounterState?> get(String dhikrId);
   Future<void> increment(String dhikrId, {required int target});
+  Future<void> decrement(String dhikrId);
   Future<void> reset(String dhikrId);
   Future<void> setTarget(String dhikrId, int target);
 }
@@ -16,15 +17,15 @@ final class FileDhikrCounterStore implements DhikrCounterStore {
 
   final File _file;
   final Map<String, DhikrCounterState> _cache = {};
-  bool _loaded = false;
 
-  Future<void> _ensureLoaded() async {
-    if (_loaded) return;
+  /// Memoized so concurrent first calls share one read instead of each
+  /// re-reading the file over counts already changed in memory.
+  Future<void>? _loading;
 
-    if (!await _file.exists()) {
-      _loaded = true;
-      return;
-    }
+  Future<void> _ensureLoaded() => _loading ??= _load();
+
+  Future<void> _load() async {
+    if (!await _file.exists()) return;
 
     try {
       final content = await _file.readAsString();
@@ -36,19 +37,25 @@ final class FileDhikrCounterStore implements DhikrCounterStore {
           ),
       };
       _cache.addAll(parsed);
-      _loaded = true;
     } catch (_) {
       // Corrupted or unreadable file: start fresh.
-      _loaded = true;
     }
   }
 
-  Future<void> _save() async {
-    final json = <String, dynamic>{};
-    for (final entry in _cache.entries) {
-      json[entry.key] = entry.value.toJson();
-    }
-    await _file.writeAsString(jsonEncode(json));
+  /// Writes are chained so rapid taps never run two writes to the same
+  /// file at once; each write snapshots the cache when it starts.
+  Future<void> _writes = Future<void>.value();
+
+  Future<void> _save() {
+    final next = _writes.then((_) {
+      final json = <String, dynamic>{};
+      for (final entry in _cache.entries) {
+        json[entry.key] = entry.value.toJson();
+      }
+      return _file.writeAsString(jsonEncode(json));
+    });
+    _writes = next.then<void>((_) {}, onError: (_) {});
+    return next;
   }
 
   @override
@@ -73,6 +80,17 @@ final class FileDhikrCounterStore implements DhikrCounterStore {
     }
 
     await _save();
+  }
+
+  @override
+  Future<void> decrement(String dhikrId) async {
+    await _ensureLoaded();
+
+    final current = _cache[dhikrId];
+    if (current != null && current.count > 0) {
+      _cache[dhikrId] = current.decrement();
+      await _save();
+    }
   }
 
   @override
@@ -123,6 +141,14 @@ final class MemoryDhikrCounterStore implements DhikrCounterStore {
       );
     } else {
       _data[dhikrId] = current.increment();
+    }
+  }
+
+  @override
+  Future<void> decrement(String dhikrId) async {
+    final current = _data[dhikrId];
+    if (current != null && current.count > 0) {
+      _data[dhikrId] = current.decrement();
     }
   }
 

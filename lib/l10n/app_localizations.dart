@@ -1975,6 +1975,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Count your remembrance'**
   String get countYourRemembrance;
+
+  /// Tooltip/title for the adhkar settings sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Adhkar settings'**
+  String get adhkarSettings;
+
+  /// Toggle: play adhkar audio on the home speaker on schedule
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-play on speaker'**
+  String get adhkarAutoPlaySpeaker;
+
+  /// Helper text under the auto-play toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Plays the adhkar audio on your home speaker when you are at home.'**
+  String get adhkarAutoPlayHint;
+
+  /// Delay slider value for morning adhkar
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min after Fajr'**
+  String adhkarDelayAfterFajr(int minutes);
+
+  /// Delay slider value for evening adhkar
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min after Asr'**
+  String adhkarDelayAfterAsr(int minutes);
+
+  /// Button that plays the adhkar audio on the speaker immediately
+  ///
+  /// In en, this message translates to:
+  /// **'Play on speaker now'**
+  String get adhkarPlayOnSpeakerNow;
+
+  /// Reading progress through a list
+  ///
+  /// In en, this message translates to:
+  /// **'{current} of {total}'**
+  String adhkarProgress(int current, int total);
+
+  /// Counter button hint inside an adhkar card
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to count'**
+  String get adhkarTapToCount;
+
+  /// Button for adhkar read once
+  ///
+  /// In en, this message translates to:
+  /// **'Read, next'**
+  String get adhkarMarkRead;
+
+  /// Button on the last adhkar card
+  ///
+  /// In en, this message translates to:
+  /// **'Finish'**
+  String get adhkarFinish;
+
+  /// Title of the completion card
+  ///
+  /// In en, this message translates to:
+  /// **'Adhkar complete'**
+  String get adhkarCompleteTitle;
+
+  /// Body of the completion card
+  ///
+  /// In en, this message translates to:
+  /// **'May Allah accept your remembrance.'**
+  String get adhkarCompleteBody;
+
+  /// Restart the adhkar from the first card
+  ///
+  /// In en, this message translates to:
+  /// **'Read again'**
+  String get adhkarReadAgain;
+
+  /// Toggle for Latin transliteration
+  ///
+  /// In en, this message translates to:
+  /// **'Transliteration'**
+  String get adhkarShowTransliteration;
+
+  /// Toggle for translation
+  ///
+  /// In en, this message translates to:
+  /// **'Translation'**
+  String get adhkarShowTranslation;
+
+  /// Slider label for Arabic font size
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic text size'**
+  String get adhkarTextSize;
+
+  /// How many times an item is read
+  ///
+  /// In en, this message translates to:
+  /// **'Read {count}x'**
+  String adhkarRepeatTimes(int count);
+
+  /// Guided tasbih sequence after the obligatory prayer
+  ///
+  /// In en, this message translates to:
+  /// **'After prayer'**
+  String get dhikrAfterPrayerTitle;
+
+  /// Subtitle of the after-prayer sequence
+  ///
+  /// In en, this message translates to:
+  /// **'Tasbih, tahmid and takbir 33x each, then tahlil, for 100'**
+  String get dhikrAfterPrayerSubtitle;
+
+  /// Section of standalone counters
+  ///
+  /// In en, this message translates to:
+  /// **'Free dhikr'**
+  String get dhikrFreeTitle;
+
+  /// Subtitle of the free dhikr section
+  ///
+  /// In en, this message translates to:
+  /// **'For waiting, walking or commuting'**
+  String get dhikrFreeSubtitle;
+
+  /// Undo one count
+  ///
+  /// In en, this message translates to:
+  /// **'Undo last tap'**
+  String get dhikrUndo;
+
+  /// Confirm dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Reset this counter?'**
+  String get dhikrResetConfirmTitle;
+
+  /// Confirm dialog body
+  ///
+  /// In en, this message translates to:
+  /// **'The count goes back to 0.'**
+  String get dhikrResetConfirmBody;
+
+  /// Dismiss a dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get dhikrCancel;
+
+  /// Shown when the after-prayer sequence is finished
+  ///
+  /// In en, this message translates to:
+  /// **'Dhikr after prayer complete'**
+  String get dhikrSequenceDone;
+
+  /// Restart a finished counter or sequence
+  ///
+  /// In en, this message translates to:
+  /// **'Start again'**
+  String get dhikrStartAgain;
+
+  /// Hint in focus mode
+  ///
+  /// In en, this message translates to:
+  /// **'Tap anywhere to count'**
+  String get dhikrTapAnywhere;
+
+  /// Hint that hardware volume keys increment
+  ///
+  /// In en, this message translates to:
+  /// **'Volume buttons count too'**
+  String get dhikrVolumeKeysHint;
+
+  /// Shown when a free counter hits its target
+  ///
+  /// In en, this message translates to:
+  /// **'Target reached'**
+  String get dhikrTargetReached;
 }
 
 class _AppLocalizationsDelegate

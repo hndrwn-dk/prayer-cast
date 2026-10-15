@@ -26,6 +26,14 @@ final class DhikrCounterState {
         lastUpdated: DateTime.now(),
       );
 
+  /// Undo one tap. Never goes below zero.
+  DhikrCounterState decrement() => copyWith(
+        count: count > 0 ? count - 1 : 0,
+        lastUpdated: DateTime.now(),
+      );
+
+  bool get isComplete => target > 0 && count >= target;
+
   DhikrCounterState reset() => copyWith(
         count: 0,
         lastUpdated: DateTime.now(),

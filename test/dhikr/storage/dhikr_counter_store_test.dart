@@ -59,6 +59,35 @@ void main() {
       expect(state2?.count, 2);
     });
 
+    test('decrement undoes a tap and persists', () async {
+      await store.increment('subhanallah', target: 33);
+      await store.increment('subhanallah', target: 33);
+      await store.decrement('subhanallah');
+
+      expect((await store.get('subhanallah'))?.count, 1);
+      final reloaded = FileDhikrCounterStore(storeFile);
+      expect((await reloaded.get('subhanallah'))?.count, 1);
+    });
+
+    test('decrement on a missing or zero counter is a no-op', () async {
+      await store.decrement('subhanallah');
+      expect(await store.get('subhanallah'), isNull);
+
+      await store.setTarget('subhanallah', 33);
+      await store.decrement('subhanallah');
+      expect((await store.get('subhanallah'))?.count, 0);
+    });
+
+    test('rapid unawaited increments all land on disk', () async {
+      final writes = [
+        for (var i = 0; i < 20; i++) store.increment('subhanallah', target: 33),
+      ];
+      await Future.wait(writes);
+
+      final reloaded = FileDhikrCounterStore(storeFile);
+      expect((await reloaded.get('subhanallah'))?.count, 20);
+    });
+
     test('persists across store instances', () async {
       await store.increment('subhanallah', target: 33);
       await store.increment('subhanallah', target: 33);

@@ -42,6 +42,17 @@ void main() {
       expect(make(count: 5, target: 0).progress, 0.0);
     });
 
+    test('decrement undoes one tap and stops at zero', () {
+      expect(make(count: 5).decrement().count, 4);
+      expect(make(count: 0).decrement().count, 0);
+    });
+
+    test('isComplete once count reaches target', () {
+      expect(make(count: 32).isComplete, false);
+      expect(make(count: 33).isComplete, true);
+      expect(make(count: 3, target: 0).isComplete, false);
+    });
+
     test('converts to and from JSON', () {
       final state = DhikrCounterState(
         dhikrId: 'subhanallah',

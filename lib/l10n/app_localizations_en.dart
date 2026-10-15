@@ -1053,4 +1053,102 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get countYourRemembrance => 'Count your remembrance';
+
+  @override
+  String get adhkarSettings => 'Adhkar settings';
+
+  @override
+  String get adhkarAutoPlaySpeaker => 'Auto-play on speaker';
+
+  @override
+  String get adhkarAutoPlayHint => 'Plays the adhkar audio on your home speaker when you are at home.';
+
+  @override
+  String adhkarDelayAfterFajr(int minutes) {
+    return '${minutes} min after Fajr';
+  }
+
+  @override
+  String adhkarDelayAfterAsr(int minutes) {
+    return '${minutes} min after Asr';
+  }
+
+  @override
+  String get adhkarPlayOnSpeakerNow => 'Play on speaker now';
+
+  @override
+  String adhkarProgress(int current, int total) {
+    return '${current} of ${total}';
+  }
+
+  @override
+  String get adhkarTapToCount => 'Tap to count';
+
+  @override
+  String get adhkarMarkRead => 'Read, next';
+
+  @override
+  String get adhkarFinish => 'Finish';
+
+  @override
+  String get adhkarCompleteTitle => 'Adhkar complete';
+
+  @override
+  String get adhkarCompleteBody => 'May Allah accept your remembrance.';
+
+  @override
+  String get adhkarReadAgain => 'Read again';
+
+  @override
+  String get adhkarShowTransliteration => 'Transliteration';
+
+  @override
+  String get adhkarShowTranslation => 'Translation';
+
+  @override
+  String get adhkarTextSize => 'Arabic text size';
+
+  @override
+  String adhkarRepeatTimes(int count) {
+    return 'Read ${count}x';
+  }
+
+  @override
+  String get dhikrAfterPrayerTitle => 'After prayer';
+
+  @override
+  String get dhikrAfterPrayerSubtitle => 'Tasbih, tahmid and takbir 33x each, then tahlil, for 100';
+
+  @override
+  String get dhikrFreeTitle => 'Free dhikr';
+
+  @override
+  String get dhikrFreeSubtitle => 'For waiting, walking or commuting';
+
+  @override
+  String get dhikrUndo => 'Undo last tap';
+
+  @override
+  String get dhikrResetConfirmTitle => 'Reset this counter?';
+
+  @override
+  String get dhikrResetConfirmBody => 'The count goes back to 0.';
+
+  @override
+  String get dhikrCancel => 'Cancel';
+
+  @override
+  String get dhikrSequenceDone => 'Dhikr after prayer complete';
+
+  @override
+  String get dhikrStartAgain => 'Start again';
+
+  @override
+  String get dhikrTapAnywhere => 'Tap anywhere to count';
+
+  @override
+  String get dhikrVolumeKeysHint => 'Volume buttons count too';
+
+  @override
+  String get dhikrTargetReached => 'Target reached';
 }

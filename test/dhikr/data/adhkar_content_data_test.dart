@@ -68,5 +68,33 @@ void main() {
       ];
       expect(differing, isNotEmpty);
     });
+
+    test('every item has id, transliteration and source', () {
+      for (final list in [
+        AdhkarContentData.morning(l10n),
+        AdhkarContentData.evening(l10n),
+      ]) {
+        final ids = list.map((a) => a.id).toSet();
+        expect(ids.length, list.length, reason: 'ids must be unique');
+        for (final a in list) {
+          expect(a.transliteration, isNotEmpty, reason: a.id);
+          expect(a.source, isNotEmpty, reason: a.id);
+        }
+      }
+    });
+
+    test('morning and evening use their own wording', () {
+      final morning = AdhkarContentData.morning(l10n);
+      final evening = AdhkarContentData.evening(l10n);
+      expect(morning.any((a) => a.arabic.startsWith('أَصْبَحْنَا')), true);
+      expect(evening.any((a) => a.arabic.startsWith('أَمْسَيْنَا')), true);
+      expect(morning.any((a) => a.arabic.startsWith('أَمْسَيْنَا')), false);
+      expect(evening.any((a) => a.arabic.startsWith('أَصْبَحْنَا')), false);
+    });
+
+    test('after-prayer 33/33/34 tasbih is not part of evening adhkar', () {
+      final evening = AdhkarContentData.evening(l10n);
+      expect(evening.where((a) => a.count == 33 || a.count == 34), isEmpty);
+    });
   });
 }
