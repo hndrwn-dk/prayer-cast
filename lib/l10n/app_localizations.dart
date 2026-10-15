@@ -878,6 +878,24 @@ abstract class AppLocalizations {
   /// **'Speaker did not fetch audio from the phone (0 requests). Check same Wi‑Fi, turn off VPN, and reselect the home speaker.'**
   String get castNoFetch;
 
+  /// No description provided for @adhkarSpeakerOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Home speaker is offline. Check it is on and on the same Wi‑Fi.'**
+  String get adhkarSpeakerOffline;
+
+  /// No description provided for @adhkarAudioMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Adhkar audio is not available yet.'**
+  String get adhkarAudioMissing;
+
+  /// No description provided for @adhkarPlayFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not play adhkar on the speaker.'**
+  String get adhkarPlayFailed;
+
   /// No description provided for @castFailed.
   ///
   /// In en, this message translates to:

@@ -42,6 +42,7 @@ final class HomeDeliveryRuntime {
     required this.fingerprintStore,
     required this.exactAlarm,
     required this.castPlatform,
+    required this.castClient,
     required this.lanFingerprint,
     required this.presence,
     required this.onboarding,
@@ -54,6 +55,7 @@ final class HomeDeliveryRuntime {
   final FingerprintStore fingerprintStore;
   final ExactAlarmPlatform exactAlarm;
   final CastPlatform castPlatform;
+  final CastClient castClient;
   final LanFingerprint lanFingerprint;
   final PresenceService presence;
   final HomeOnboarding onboarding;
@@ -210,6 +212,7 @@ final class HomeDeliveryRuntime {
       fingerprintStore: fingerprintStore,
       exactAlarm: exactAlarm,
       castPlatform: castPlatform,
+      castClient: castClient,
       lanFingerprint: lanFingerprint,
       presence: presence,
       onboarding: onboarding,

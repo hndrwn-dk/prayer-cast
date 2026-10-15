@@ -67,6 +67,7 @@ flutter:
   assets:
     # Adzan recordings: fajr_adhan.mp3 (Subuh), standard_adhan.mp3 (other prayers).
     - assets/audio/
+    - assets/audio/Adhkar/
   fonts:
     - family: Fraunces
       fonts:
