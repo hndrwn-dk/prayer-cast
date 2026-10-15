@@ -1165,7 +1165,11 @@ class _SpeakerBand extends StatelessWidget {
                     ? PrayerCastColors.canopyDeep
                     : Colors.white,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: homeMenuCardBorder),
+                border: Border.all(
+                  color: PrayerCastTokens.isForest(context)
+                      ? PrayerCastColors.dawn.withValues(alpha: 0.45)
+                      : homeMenuCardBorder,
+                ),
                 boxShadow: homeMenuCardShadow(context),
               ),
               child: Semantics(
@@ -1176,7 +1180,7 @@ class _SpeakerBand extends StatelessWidget {
                   child: InkWell(
                     onTap: onTap,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 0, 8),
                       child: Row(
                         children: [
                           IconWell(

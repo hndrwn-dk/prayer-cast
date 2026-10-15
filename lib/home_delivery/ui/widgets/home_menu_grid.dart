@@ -79,6 +79,9 @@ class HomeMenuGrid extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
+    final iconColor = PrayerCastTokens.isForest(context)
+        ? PrayerCastColors.mist
+        : PrayerCastColors.canopy;
     final now = ref.watch(homeMenuClockProvider)();
     final schedule = ref.watch(todayScheduleProvider).asData?.value;
     final window = homeAdhkarWindow(now: now, schedule: schedule);
@@ -96,28 +99,19 @@ class HomeMenuGrid extends ConsumerWidget {
               _MenuTile(
                 tileKey: const ValueKey<String>('home_prayer_times_slab'),
                 label: l10n.prayerTimes,
-                icon: PremiumIcons.prayerTimes(
-                  size: 34,
-                  color: PrayerCastColors.canopy,
-                ),
+                icon: PremiumIcons.prayerTimes(size: 34, color: iconColor),
                 onTap: onPrayerTimes,
               ),
               _MenuTile(
                 tileKey: const ValueKey<String>('home_prayer_tracker_slab'),
                 label: l10n.prayerTracker,
-                icon: PremiumIcons.prayerTracker(
-                  size: 34,
-                  color: PrayerCastColors.canopy,
-                ),
+                icon: PremiumIcons.prayerTracker(size: 34, color: iconColor),
                 onTap: onPrayerTracker,
               ),
               _MenuTile(
                 tileKey: const ValueKey<String>('home_qibla_slab'),
                 label: l10n.qibla,
-                icon: PremiumIcons.qibla(
-                  size: 34,
-                  color: PrayerCastColors.canopy,
-                ),
+                icon: PremiumIcons.qibla(size: 34, color: iconColor),
                 onTap: onQibla,
               ),
             ],
@@ -128,30 +122,21 @@ class HomeMenuGrid extends ConsumerWidget {
               _MenuTile(
                 tileKey: const ValueKey<String>('home_morning_adhkar'),
                 label: l10n.morningAdhkar,
-                icon: PremiumIcons.morningAdhkar(
-                  size: 34,
-                  color: PrayerCastColors.canopy,
-                ),
+                icon: PremiumIcons.morningAdhkar(size: 34, color: iconColor),
                 showNow: window == HomeAdhkarWindow.morning,
                 onTap: () => open(const MorningAdhkarPage()),
               ),
               _MenuTile(
                 tileKey: const ValueKey<String>('home_evening_adhkar'),
                 label: l10n.eveningAdhkar,
-                icon: PremiumIcons.eveningAdhkar(
-                  size: 34,
-                  color: PrayerCastColors.canopy,
-                ),
+                icon: PremiumIcons.eveningAdhkar(size: 34, color: iconColor),
                 showNow: window == HomeAdhkarWindow.evening,
                 onTap: () => open(const EveningAdhkarPage()),
               ),
               _MenuTile(
                 tileKey: const ValueKey<String>('home_dhikr_counter'),
                 label: l10n.generalDhikr,
-                icon: PremiumIcons.tasbih(
-                  size: 34,
-                  color: PrayerCastColors.canopy,
-                ),
+                icon: PremiumIcons.tasbih(size: 34, color: iconColor),
                 onTap: () => open(const DhikrCounterPage()),
               ),
             ],
@@ -205,7 +190,7 @@ class _MenuTile extends StatelessWidget {
     final borderColor = showNow
         ? PrayerCastColors.dawn
         : forest
-        ? PrayerCastColors.mistDeep.withValues(alpha: 0.30)
+        ? PrayerCastColors.dawn.withValues(alpha: 0.35)
         : homeMenuCardBorder;
 
     return Semantics(
@@ -239,8 +224,10 @@ class _MenuTile extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           DecoratedBox(
-                            decoration: const BoxDecoration(
-                              color: PrayerCastColors.atmosphere,
+                            decoration: BoxDecoration(
+                              color: forest
+                                  ? PrayerCastColors.canopy
+                                  : PrayerCastColors.atmosphere,
                               shape: BoxShape.circle,
                             ),
                             child: SizedBox(

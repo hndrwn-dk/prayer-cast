@@ -146,6 +146,17 @@ void main() {
       tester.widget<Text>(find.text('Prayer times')).style?.color,
       PrayerCastColors.surfaceRaised,
     );
+    final circles = tester
+        .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+        .where((box) {
+          final decoration = box.decoration;
+          return decoration is BoxDecoration &&
+              decoration.shape == BoxShape.circle;
+        });
+    expect(circles, hasLength(6));
+    for (final box in circles) {
+      expect((box.decoration as BoxDecoration).color, PrayerCastColors.canopy);
+    }
   });
 
   testWidgets('each tile opens its page', (tester) async {
