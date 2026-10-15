@@ -49,6 +49,18 @@ HomeAdhkarWindow homeAdhkarWindow({
   return HomeAdhkarWindow.none;
 }
 
+const Color homeMenuCardBorder = Color(0xFFDFE8E2);
+const Color homeMenuNowFill = Color(0xFFA86A17);
+
+List<BoxShadow> homeMenuCardShadow(BuildContext context) {
+  if (PrayerCastTokens.isForest(context)) return const <BoxShadow>[];
+  final ink = PrayerCastColors.ink.withValues(alpha: 0.06);
+  return <BoxShadow>[
+    BoxShadow(color: ink, blurRadius: 2, offset: const Offset(0, 1)),
+    BoxShadow(color: ink, blurRadius: 16, offset: const Offset(0, 6)),
+  ];
+}
+
 /// Home menu: three columns, two rows, large enough for older readers.
 class HomeMenuGrid extends ConsumerWidget {
   const HomeMenuGrid({
@@ -84,8 +96,8 @@ class HomeMenuGrid extends ConsumerWidget {
               _MenuTile(
                 tileKey: const ValueKey<String>('home_prayer_times_slab'),
                 label: l10n.prayerTimes,
-                icon: PremiumIcons.clock(
-                  size: 28,
+                icon: PremiumIcons.prayerTimes(
+                  size: 34,
                   color: PrayerCastColors.canopy,
                 ),
                 onTap: onPrayerTimes,
@@ -93,8 +105,8 @@ class HomeMenuGrid extends ConsumerWidget {
               _MenuTile(
                 tileKey: const ValueKey<String>('home_prayer_tracker_slab'),
                 label: l10n.prayerTracker,
-                icon: PremiumIcons.bars(
-                  size: 28,
+                icon: PremiumIcons.prayerTracker(
+                  size: 34,
                   color: PrayerCastColors.canopy,
                 ),
                 onTap: onPrayerTracker,
@@ -102,9 +114,8 @@ class HomeMenuGrid extends ConsumerWidget {
               _MenuTile(
                 tileKey: const ValueKey<String>('home_qibla_slab'),
                 label: l10n.qibla,
-                icon: const Icon(
-                  Icons.explore_outlined,
-                  size: 28,
+                icon: PremiumIcons.qibla(
+                  size: 34,
                   color: PrayerCastColors.canopy,
                 ),
                 onTap: onQibla,
@@ -117,8 +128,8 @@ class HomeMenuGrid extends ConsumerWidget {
               _MenuTile(
                 tileKey: const ValueKey<String>('home_morning_adhkar'),
                 label: l10n.morningAdhkar,
-                icon: PremiumIcons.sunrise(
-                  size: 28,
+                icon: PremiumIcons.morningAdhkar(
+                  size: 34,
                   color: PrayerCastColors.canopy,
                 ),
                 showNow: window == HomeAdhkarWindow.morning,
@@ -127,8 +138,8 @@ class HomeMenuGrid extends ConsumerWidget {
               _MenuTile(
                 tileKey: const ValueKey<String>('home_evening_adhkar'),
                 label: l10n.eveningAdhkar,
-                icon: PremiumIcons.sunset(
-                  size: 28,
+                icon: PremiumIcons.eveningAdhkar(
+                  size: 34,
                   color: PrayerCastColors.canopy,
                 ),
                 showNow: window == HomeAdhkarWindow.evening,
@@ -137,9 +148,8 @@ class HomeMenuGrid extends ConsumerWidget {
               _MenuTile(
                 tileKey: const ValueKey<String>('home_dhikr_counter'),
                 label: l10n.generalDhikr,
-                icon: const Icon(
-                  Icons.exposure_plus_1_outlined,
-                  size: 28,
+                icon: PremiumIcons.tasbih(
+                  size: 34,
                   color: PrayerCastColors.canopy,
                 ),
                 onTap: () => open(const DhikrCounterPage()),
@@ -190,76 +200,90 @@ class _MenuTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scaler = MediaQuery.textScalerOf(context);
     final labelSlot = scaler.scale(16 * 1.2) * 2;
+    final forest = PrayerCastTokens.isForest(context);
+    final badge = context.l10n.dhikrNowBadge;
+    final borderColor = showNow
+        ? PrayerCastColors.dawn
+        : forest
+        ? PrayerCastColors.mistDeep.withValues(alpha: 0.30)
+        : homeMenuCardBorder;
 
     return Semantics(
       key: tileKey,
       button: true,
-      label: label,
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.topCenter,
-        children: [
-          Material(
-            color: PrayerCastColors.surfaceRaised,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-              side: BorderSide(
-                color: showNow ? PrayerCastColors.dawn : PrayerCastColors.mist,
-                width: showNow ? 2 : 1,
-              ),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: onTap,
-              customBorder: RoundedRectangleBorder(
+      label: showNow ? '$label $badge' : label,
+      child: ExcludeSemantics(
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.topCenter,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: forest ? PrayerCastColors.canopyDeep : Colors.white,
                 borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: borderColor, width: showNow ? 2 : 1),
+                boxShadow: homeMenuCardShadow(context),
               ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 124),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(6, 14, 6, 12),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: PrayerCastTokens.leafWash(context, 0.45),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: SizedBox(
-                          width: 52,
-                          height: 52,
-                          child: Center(child: icon),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ConstrainedBox(
-                        constraints: BoxConstraints(minHeight: labelSlot),
-                        child: Text(
-                          label,
-                          maxLines: 2,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: PrayerCastTheme.displayFont,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            height: 1.2,
-                            color: PrayerCastTokens.onSurface(context),
+              child: Material(
+                type: MaterialType.transparency,
+                borderRadius: BorderRadius.circular(18),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(18),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 124),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(6, 14, 6, 12),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          DecoratedBox(
+                            decoration: const BoxDecoration(
+                              color: PrayerCastColors.atmosphere,
+                              shape: BoxShape.circle,
+                            ),
+                            child: SizedBox(
+                              width: 58,
+                              height: 58,
+                              child: Center(child: icon),
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            height: labelSlot,
+                            width: double.infinity,
+                            child: Align(
+                              alignment: Alignment.center,
+                              child: Text(
+                                label,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontFamily: PrayerCastTheme.displayFont,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.2,
+                                  color: PrayerCastTokens.onSurface(context),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          if (showNow)
-            const Positioned(
-              top: -10,
-              child: IgnorePointer(child: _NowBadge()),
-            ),
-        ],
+            if (showNow)
+              const Positioned(
+                top: -10,
+                child: IgnorePointer(child: _NowBadge()),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -270,11 +294,9 @@ class _NowBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hsl = HSLColor.fromColor(PrayerCastColors.dawn);
-    final fill = hsl.withLightness(0.28).toColor();
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: fill,
+        color: homeMenuNowFill,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Padding(
@@ -285,7 +307,8 @@ class _NowBadge extends StatelessWidget {
             fontFamily: PrayerCastTheme.bodyFont,
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: PrayerCastColors.surfaceRaised,
+            letterSpacing: 1.5,
+            color: Colors.white,
             height: 1.2,
           ),
         ),

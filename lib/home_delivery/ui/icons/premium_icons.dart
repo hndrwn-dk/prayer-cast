@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 
 /// Hand-drawn vector icons — premium stroke language, not stock Material glyphs.
 abstract final class PremiumIcons {
@@ -118,6 +119,24 @@ abstract final class PremiumIcons {
 
   static Widget flame({double size = 24, Color? color}) =>
       _Icon(size: size, color: color, paint: _paintFlame);
+
+  static Widget prayerTimes({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintPrayerTimes);
+
+  static Widget prayerTracker({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintPrayerTracker);
+
+  static Widget qibla({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintQibla);
+
+  static Widget morningAdhkar({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintMorningAdhkar);
+
+  static Widget eveningAdhkar({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintEveningAdhkar);
+
+  static Widget tasbih({double size = 24, Color? color}) =>
+      _Icon(size: size, color: color, paint: _paintTasbih);
 }
 
 typedef _PaintFn = void Function(Canvas canvas, Size size, Color color);
@@ -398,11 +417,7 @@ void _paintPhone(Canvas canvas, Size size, Color color) {
     ),
     p,
   );
-  canvas.drawLine(
-    Offset(s * 0.40, s * 0.78),
-    Offset(s * 0.60, s * 0.78),
-    p,
-  );
+  canvas.drawLine(Offset(s * 0.40, s * 0.78), Offset(s * 0.60, s * 0.78), p);
 }
 
 void _paintSpeakerSlash(Canvas canvas, Size size, Color color) {
@@ -527,7 +542,12 @@ void _paintSunAfternoon(Canvas canvas, Size size, Color color) {
   final p = _stroke(color);
   final c = Offset(s * 0.42, s * 0.42);
   canvas.drawCircle(c, s * 0.16, p);
-  for (final a in <double>[-math.pi * 0.7, -math.pi * 0.35, 0, math.pi * 0.35]) {
+  for (final a in <double>[
+    -math.pi * 0.7,
+    -math.pi * 0.35,
+    0,
+    math.pi * 0.35,
+  ]) {
     final inner = Offset(
       c.dx + math.cos(a) * s * 0.24,
       c.dy + math.sin(a) * s * 0.24,
@@ -657,4 +677,316 @@ void _paintFlame(Canvas canvas, Size size, Color color) {
     ..cubicTo(s * 0.42, s * 0.58, s * 0.42, s * 0.66, s * 0.50, s * 0.76)
     ..cubicTo(s * 0.58, s * 0.66, s * 0.58, s * 0.58, s * 0.50, s * 0.46);
   canvas.drawPath(inner, p);
+}
+
+double _u(Size size) => size.shortestSide / 32;
+
+void _svg(Canvas canvas, Size size, String d, Paint paint) {
+  canvas.drawPath(_svgPath(d, size.shortestSide), paint);
+}
+
+void _disc(
+  Canvas canvas,
+  Size size,
+  double cx,
+  double cy,
+  double r,
+  Paint paint,
+) {
+  final k = _u(size);
+  canvas.drawCircle(Offset(cx * k, cy * k), r * k, paint);
+}
+
+void _roundRect(
+  Canvas canvas,
+  Size size,
+  double x,
+  double y,
+  double w,
+  double h,
+  double rx,
+  Paint paint,
+) {
+  final k = _u(size);
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(
+      Rect.fromLTWH(x * k, y * k, w * k, h * k),
+      Radius.circular(rx * k),
+    ),
+    paint,
+  );
+}
+
+Paint _sw(Color color, Size size, double width) =>
+    _stroke(color, width: width * _u(size));
+
+void _paintPrayerTimes(Canvas canvas, Size size, Color color) {
+  _svg(
+    canvas,
+    size,
+    'M7 28V14.5C7 9.3 11 5.5 16 4c5 1.5 9 5.3 9 10.5V28z',
+    _fill(PrayerCastColors.leaf.withValues(alpha: 0.16)),
+  );
+  _svg(
+    canvas,
+    size,
+    'M7 28V14.5C7 9.3 11 5.5 16 4c5 1.5 9 5.3 9 10.5V28M4.5 28h23',
+    _sw(color, size, 1.7),
+  );
+  _disc(canvas, size, 16, 17.5, 5, _sw(color, size, 1.6));
+  _svg(canvas, size, 'M16 14.8v2.9l1.9 1.2', _sw(color, size, 1.6));
+}
+
+void _paintPrayerTracker(Canvas canvas, Size size, Color color) {
+  _roundRect(
+    canvas,
+    size,
+    7,
+    4,
+    18,
+    24,
+    2.5,
+    _fill(PrayerCastColors.leaf.withValues(alpha: 0.16)),
+  );
+  _roundRect(canvas, size, 7, 4, 18, 24, 2.5, _sw(color, size, 1.7));
+  _svg(
+    canvas,
+    size,
+    'M11 13.5c0-2.6 2.2-4.7 5-5.5 2.8.8 5 2.9 5 5.5V20H11z',
+    _sw(color, size, 1.5),
+  );
+  _svg(
+    canvas,
+    size,
+    'M9.5 24h13M9.5 24.2v2M12.5 24.2v2M15.5 24.2v2M18.5 24.2v2M21.5 24.2v2',
+    _sw(color, size, 1.2),
+  );
+  _svg(canvas, size, 'M13.2 15.3l2 2 3.8-3.9', _sw(color, size, 1.7));
+}
+
+void _paintQibla(Canvas canvas, Size size, Color color) {
+  _disc(
+    canvas,
+    size,
+    16,
+    16,
+    12,
+    _fill(PrayerCastColors.leaf.withValues(alpha: 0.16)),
+  );
+  _disc(canvas, size, 16, 16, 12, _sw(color, size, 1.7));
+  _svg(
+    canvas,
+    size,
+    'M16 5.6v1.8M16 24.6v1.8M5.6 16h1.8M24.6 16h1.8',
+    _sw(color, size, 1.4),
+  );
+  _svg(canvas, size, 'M19.6 12.4l-2.2 5-5 2.2 2.2-5z', _sw(color, size, 1.6));
+  _roundRect(canvas, size, 19.4, 8.4, 4.2, 4.2, 0.6, _fill(color));
+  _svg(canvas, size, 'M19.4 9.6h4.2', _sw(PrayerCastColors.dawn, size, 0.9));
+}
+
+void _paintMorningAdhkar(Canvas canvas, Size size, Color color) {
+  _svg(
+    canvas,
+    size,
+    'M8.5 22a7.5 7.5 0 0115 0z',
+    _fill(PrayerCastColors.dawn.withValues(alpha: 0.22)),
+  );
+  _svg(
+    canvas,
+    size,
+    'M8.5 22a7.5 7.5 0 0115 0M4 22h24M8 26h16',
+    _sw(color, size, 1.7),
+  );
+  _svg(
+    canvas,
+    size,
+    'M16 6.5v3M7 10.5l2 2M25 10.5l-2 2M3.5 17h2.5M26 17h2.5',
+    _sw(color, size, 1.6),
+  );
+}
+
+void _paintEveningAdhkar(Canvas canvas, Size size, Color color) {
+  const crescent = 'M20.5 5.5A10.5 10.5 0 1026.5 23 8.5 8.5 0 0120.5 5.5z';
+  _svg(
+    canvas,
+    size,
+    crescent,
+    _fill(PrayerCastColors.leaf.withValues(alpha: 0.16)),
+  );
+  _svg(canvas, size, crescent, _sw(color, size, 1.7));
+  _svg(
+    canvas,
+    size,
+    'M24 9.5l.7 1.6 1.6.7-1.6.7-.7 1.6-.7-1.6-1.6-.7 1.6-.7z',
+    _fill(PrayerCastColors.dawn),
+  );
+  _svg(
+    canvas,
+    size,
+    'M27.5 15.5l.4.9.9.4-.9.4-.4.9-.4-.9-.9-.4.9-.4z',
+    _fill(PrayerCastColors.dawn),
+  );
+}
+
+void _paintTasbih(Canvas canvas, Size size, Color color) {
+  final bead = _fill(PrayerCastColors.leaf.withValues(alpha: 0.35));
+  final beadStroke = _sw(color, size, 1.3);
+  _disc(canvas, size, 16, 13, 8.5, _sw(color.withValues(alpha: 0.5), size, 1));
+  for (final center in const [
+    (16.0, 4.5),
+    (22.0, 7.0),
+    (24.5, 13.0),
+    (22.0, 19.0),
+    (10.0, 19.0),
+    (7.5, 13.0),
+    (10.0, 7.0),
+  ]) {
+    _disc(canvas, size, center.$1, center.$2, 2, bead);
+    _disc(canvas, size, center.$1, center.$2, 2, beadStroke);
+  }
+  _svg(canvas, size, 'M16 21.5v2.5', _sw(color, size, 1.5));
+  _disc(canvas, size, 16, 21.5, 2.2, _fill(PrayerCastColors.dawn));
+  _disc(canvas, size, 16, 21.5, 2.2, beadStroke);
+  _svg(
+    canvas,
+    size,
+    'M14.3 25l-1 3.5M16 25v3.8M17.7 25l1 3.5',
+    _sw(PrayerCastColors.dawn, size, 1.4),
+  );
+}
+
+final _svgToken = RegExp(
+  r'[MmLlHhVvCcAaZz]|[+-]?(?:\d*\.\d+|\d+)(?:[eE][+-]?\d+)?',
+);
+
+bool _svgCommand(String token) =>
+    token.length == 1 && RegExp(r'[A-Za-z]').hasMatch(token);
+
+Path _svgPath(String d, double s) {
+  final k = s / 32;
+  final tokens = _svgToken.allMatches(d).map((m) => m.group(0)!).toList();
+  final path = Path();
+  var i = 0;
+  String? cmd;
+  var cx = 0.0;
+  var cy = 0.0;
+  var sx = 0.0;
+  var sy = 0.0;
+
+  double number() => double.parse(tokens[i++]);
+
+  int flag() {
+    final raw = tokens[i];
+    if (raw == '0' || raw == '1') {
+      i++;
+      return raw == '1' ? 1 : 0;
+    }
+    if (raw.startsWith('0') || raw.startsWith('1')) {
+      final bit = raw.startsWith('1') ? 1 : 0;
+      final rest = raw.substring(1);
+      if (rest.isEmpty) {
+        i++;
+      } else {
+        tokens[i] = rest;
+      }
+      return bit;
+    }
+    throw FormatException('SVG arc flag "$raw"');
+  }
+
+  while (i < tokens.length) {
+    if (_svgCommand(tokens[i])) {
+      cmd = tokens[i++];
+    } else if (cmd == null) {
+      throw FormatException('SVG path expected a command');
+    }
+    switch (cmd) {
+      case 'M':
+        cx = number();
+        cy = number();
+        path.moveTo(cx * k, cy * k);
+        sx = cx;
+        sy = cy;
+        cmd = 'L';
+      case 'm':
+        cx += number();
+        cy += number();
+        path.moveTo(cx * k, cy * k);
+        sx = cx;
+        sy = cy;
+        cmd = 'l';
+      case 'L':
+        cx = number();
+        cy = number();
+        path.lineTo(cx * k, cy * k);
+      case 'l':
+        cx += number();
+        cy += number();
+        path.lineTo(cx * k, cy * k);
+      case 'H':
+        cx = number();
+        path.lineTo(cx * k, cy * k);
+      case 'h':
+        cx += number();
+        path.lineTo(cx * k, cy * k);
+      case 'V':
+        cy = number();
+        path.lineTo(cx * k, cy * k);
+      case 'v':
+        cy += number();
+        path.lineTo(cx * k, cy * k);
+      case 'C':
+        final x1 = number();
+        final y1 = number();
+        final x2 = number();
+        final y2 = number();
+        final x = number();
+        final y = number();
+        path.cubicTo(x1 * k, y1 * k, x2 * k, y2 * k, x * k, y * k);
+        cx = x;
+        cy = y;
+      case 'c':
+        final x1 = cx + number();
+        final y1 = cy + number();
+        final x2 = cx + number();
+        final y2 = cy + number();
+        final x = cx + number();
+        final y = cy + number();
+        path.cubicTo(x1 * k, y1 * k, x2 * k, y2 * k, x * k, y * k);
+        cx = x;
+        cy = y;
+      case 'A':
+      case 'a':
+        final rx = number().abs();
+        final ry = number().abs();
+        final rotation = number() * math.pi / 180;
+        final large = flag() == 1;
+        final sweep = flag() == 1;
+        var x = number();
+        var y = number();
+        if (cmd == 'a') {
+          x += cx;
+          y += cy;
+        }
+        path.arcToPoint(
+          Offset(x * k, y * k),
+          radius: Radius.elliptical(rx * k, ry * k),
+          rotation: rotation,
+          largeArc: large,
+          clockwise: sweep,
+        );
+        cx = x;
+        cy = y;
+      case 'Z':
+      case 'z':
+        path.close();
+        cx = sx;
+        cy = sy;
+        cmd = null;
+      default:
+        throw FormatException('SVG command $cmd');
+    }
+  }
+  return path;
 }

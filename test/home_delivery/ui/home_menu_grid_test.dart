@@ -12,6 +12,8 @@ import 'package:prayer_cast/dhikr/ui/dhikr_counter_providers.dart';
 import 'package:prayer_cast/dhikr/ui/evening_adhkar_page.dart';
 import 'package:prayer_cast/dhikr/ui/morning_adhkar_page.dart';
 import 'package:prayer_cast/home_delivery/coordinator/next_prayer_provider.dart';
+import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
+import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/home_menu_grid.dart';
 import 'package:prayer_cast/l10n/app_localizations.dart';
 import 'package:prayer_cast/prayer_times/aladhan_client.dart';
@@ -82,6 +84,7 @@ Future<void> _pump(
         ],
         supportedLocales: AppLocalizations.supportedLocales,
         locale: locale,
+        theme: PrayerCastTheme.forest(),
         home: MediaQuery(
           data: MediaQueryData(textScaler: textScaler),
           child: Scaffold(
@@ -120,6 +123,29 @@ void main() {
     expect(find.text('AFTER ASR'), findsNothing);
     expect(find.text('ANYTIME'), findsNothing);
     expect(find.text('SCHEDULE'), findsNothing);
+
+    final keys = [
+      timesKey,
+      trackerKey,
+      qiblaKey,
+      morningKey,
+      eveningKey,
+      counterKey,
+    ];
+    final first = tester.getRect(find.byKey(keys.first));
+    for (final key in keys.skip(1)) {
+      final rect = tester.getRect(find.byKey(key));
+      expect(rect.width, closeTo(first.width, 0.5), reason: '$key width');
+      expect(rect.height, closeTo(first.height, 0.5), reason: '$key height');
+    }
+    final morning = tester.getRect(find.byKey(morningKey));
+    final above = tester.getRect(find.byKey(timesKey));
+    expect(morning.width, closeTo(above.width, 0.5));
+    expect(morning.height, closeTo(above.height, 0.5));
+    expect(
+      tester.widget<Text>(find.text('Prayer times')).style?.color,
+      PrayerCastColors.surfaceRaised,
+    );
   });
 
   testWidgets('each tile opens its page', (tester) async {
@@ -212,6 +238,18 @@ void main() {
       find.descendant(of: find.byKey(morningKey), matching: find.text('NOW')),
       findsNothing,
     );
+    expect(tester.getSemantics(find.byKey(eveningKey)).label, contains('NOW'));
+    expect(
+      tester.getSemantics(find.byKey(morningKey)).label,
+      isNot(contains('NOW')),
+    );
+  });
+
+  testWidgets('no NOW badge at 10 pm', (tester) async {
+    await _pump(tester, now: DateTime(2026, 10, 15, 22));
+
+    expect(find.text('NOW'), findsNothing);
+    expect(find.text('SEKARANG'), findsNothing);
   });
 
   testWidgets('NOW badge is absent from evening adhkar in the morning', (

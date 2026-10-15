@@ -1159,59 +1159,69 @@ class _SpeakerBand extends StatelessWidget {
           children: [
             EditorialEyebrow(l10n.deviceEyebrow, color: PrayerCastColors.dawn),
             const SizedBox(height: 10),
-            Semantics(
-              button: true,
-              label: l10n.changeHomeSpeaker,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: onTap,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      children: [
-                        IconWell(
-                          child: PremiumIcons.speaker(
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: PrayerCastTokens.isForest(context)
+                    ? PrayerCastColors.canopyDeep
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: homeMenuCardBorder),
+                boxShadow: homeMenuCardShadow(context),
+              ),
+              child: Semantics(
+                button: true,
+                label: l10n.changeHomeSpeaker,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onTap,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          IconWell(
+                            child: PremiumIcons.speaker(
+                              size: 18,
+                              color: PrayerCastTokens.onMark(context),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  l10n.changeHomeSpeaker,
+                                  style: TextStyle(
+                                    fontFamily: PrayerCastTheme.displayFont,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: -0.1,
+                                    height: 1.2,
+                                    color: PrayerCastTokens.onSurface(context),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  subtitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontFamily: PrayerCastTheme.bodyFont,
+                                    fontSize: 13,
+                                    height: 1.35,
+                                    color: PrayerCastTokens.glyphMuted(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          PremiumIcons.caretRight(
                             size: 18,
-                            color: PrayerCastTokens.onMark(context),
+                            color: PrayerCastTokens.glyph(context),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                l10n.changeHomeSpeaker,
-                                style: TextStyle(
-                                  fontFamily: PrayerCastTheme.displayFont,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: -0.1,
-                                  height: 1.2,
-                                  color: PrayerCastTokens.onSurface(context),
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                subtitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontFamily: PrayerCastTheme.bodyFont,
-                                  fontSize: 13,
-                                  height: 1.35,
-                                  color: PrayerCastTokens.glyphMuted(context),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        PremiumIcons.caretRight(
-                          size: 18,
-                          color: PrayerCastTokens.glyph(context),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
