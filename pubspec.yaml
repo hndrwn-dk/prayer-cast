@@ -1,7 +1,7 @@
 name: prayer_cast
 description: Tursina Labs prayer times app — offline adzan cast to home speakers.
 publish_to: 'none'
-version: 1.0.36+37
+version: 1.0.36+38
 
 environment:
   sdk: ^3.12.0
@@ -47,6 +47,11 @@ dependencies:
   # Nearby mosques on OpenStreetMap tiles (Overpass query is http).
   flutter_map: ^8.2.2
   latlong2: ^0.9.1
+  # Optional developer support (consumable). Does not unlock features.
+  in_app_purchase: 3.3.1
+  # Direct so Play purchase quantity can be read from the billing client JSON.
+  in_app_purchase_android: 0.5.4
+  in_app_purchase_platform_interface: 1.4.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

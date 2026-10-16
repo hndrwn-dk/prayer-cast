@@ -8,6 +8,8 @@
          CHANGE_WIFI_MULTICAST_STATE / NFC / TRANSMIT_IR.
          WifiLock needs WAKE_LOCK only, not CHANGE_WIFI_STATE. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Optional in-app support via Google Play Billing. -->
+    <uses-permission android:name="com.android.vending.BILLING" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -144,7 +146,7 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-        <!-- Required for url_launcher to open Ko-fi / https links -->
+        <!-- Required for url_launcher to open https links (privacy, terms, Play Store). -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />

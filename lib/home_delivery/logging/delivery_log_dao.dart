@@ -82,4 +82,25 @@ final class DeliveryLogDao {
     final rows = await query.get();
     return rows.length;
   }
+
+  /// Lifetime count of adhans that played on the home speaker.
+  ///
+  /// The delivery log is not pruned. [latest] only limits what the history
+  /// screen reads. This count is the support-milestone baseline.
+  Future<int> countPlayed() {
+    final count = _db.deliveryLogs.id.count();
+    final query = _db.selectOnly(_db.deliveryLogs)
+      ..addColumns([count])
+      ..where(_db.deliveryLogs.outcome.equals(Outcome.played.code));
+    return query.getSingle().then((row) => row.read(count) ?? 0);
+  }
+
+  /// Emits the lifetime [Outcome.played] count, including the current value.
+  Stream<int> watchPlayedCount() {
+    final count = _db.deliveryLogs.id.count();
+    final query = _db.selectOnly(_db.deliveryLogs)
+      ..addColumns([count])
+      ..where(_db.deliveryLogs.outcome.equals(Outcome.played.code));
+    return query.watchSingle().map((row) => row.read(count) ?? 0);
+  }
 }

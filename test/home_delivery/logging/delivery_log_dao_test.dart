@@ -88,4 +88,32 @@ void main() {
       expect(Outcome.fromCode(value.code), value);
     }
   });
+
+  test('countPlayed counts every speaker adhan and ignores other outcomes', () async {
+    for (var i = 0; i < 31; i++) {
+      await dao.insertAttempt(
+        sessionId: 'played-$i'.padRight(16, '0'),
+        prayer: 'fajr',
+        scheduledAtMs: 1786353600000 + i,
+        outcome: Outcome.played,
+      );
+    }
+    for (final outcome in [
+      Outcome.playedOnPhone,
+      Outcome.playedBeep,
+      Outcome.playedTakbir,
+      Outcome.playedPhoneFallback,
+      Outcome.adhkarPlayed,
+    ]) {
+      await dao.insertAttempt(
+        sessionId: outcome.code.padRight(16, '0'),
+        prayer: 'dhuhr',
+        scheduledAtMs: 1786353601000,
+        outcome: outcome,
+      );
+    }
+
+    expect(await dao.countPlayed(), 31);
+    expect(await dao.latest(), hasLength(30));
+  });
 }
