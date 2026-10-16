@@ -46,7 +46,7 @@ void main() {
     testWidgets('opens on the first dhikr, not on settings', (tester) async {
       await _pump(tester, const MorningAdhkarPage());
       expect(find.text('Morning Adhkar'), findsOneWidget);
-      expect(find.text('1 of 14'), findsOneWidget);
+      expect(find.text('1 of 25'), findsOneWidget);
       expect(
         find.textContaining('اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ'),
         findsOneWidget,
@@ -59,7 +59,7 @@ void main() {
       await _pump(tester, const MorningAdhkarPage());
       await tester.tap(_advance);
       await tester.pumpAndSettle();
-      expect(find.text('2 of 14'), findsOneWidget);
+      expect(find.text('2 of 25'), findsOneWidget);
       expect(find.text('Read 3x'), findsOneWidget);
     });
 
@@ -79,7 +79,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
       await tester.pumpAndSettle();
 
-      expect(find.text('3 of 14'), findsOneWidget);
+      expect(find.text('3 of 25'), findsOneWidget);
     });
 
     testWidgets('undo takes one count back', (tester) async {
