@@ -304,10 +304,36 @@
       "address": {"type": "String"}
     }
   },
-  "supportOnKofi": "Support on Ko-fi",
-  "@supportOnKofi": {
-    "description": "Tooltip / accessibility label for the home Ko-fi support icon"
+  "supportTheApp": "Support the app",
+  "@supportTheApp": {
+    "description": "Tooltip and semantics label for the home support icon"
   },
+  "supportThisApp": "Support this app",
+  "@supportThisApp": {
+    "description": "Settings row that opens the Play Billing support sheet"
+  },
+  "supportSheetTitle": "Support Prayer Cast",
+  "supportSheetBody": "Free, with no ads and no account. Your support goes toward new features and keeping the app maintained.",
+  "supportTierCoffee": "Buy a coffee",
+  "supportTierLunch": "Buy a lunch",
+  "supportTierFull": "Full support",
+  "supportQuantityHint": "Want to give more? You can choose a quantity on the Google Play screen.",
+  "supportContinue": "Continue to Google Play",
+  "supportPaymentNote": "Payment is through Google Play. It does not unlock any features — everything stays free for everyone.",
+  "supportUnavailable": "Not available on this device",
+  "supportPending": "Payment is being processed",
+  "supportThanksTitle": "Jazakallahu khairan",
+  "supportThanksBody": "Thank you for supporting Prayer Cast. May it be a good deed for you.",
+  "supportClose": "Close",
+  "supportPurchaseError": "The payment did not go through.",
+  "supportMilestoneBody": "Alhamdulillah, Prayer Cast has played {count} adhans in your home.",
+  "@supportMilestoneBody": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "supportMilestoneInvite": "If this app is useful to you, you can support its development.",
+  "supportMilestoneAction": "Support",
   "dryRunTitle": "Test scheduled adhan",
   "dryRunHint": "Runs the real alarm path (wake, presence, then Cast, beep, or phone) — not the speaker test button. Replaces the next alarm until it fires.",
   "dryRunIn1Minute": "In 1 minute",

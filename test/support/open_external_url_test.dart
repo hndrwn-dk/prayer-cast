@@ -40,11 +40,6 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('openSupportUrl launches the Ko-fi donate URL', (tester) async {
-    await pumpAndTap(tester, openSupportUrl);
-    expect(launched, [Uri.parse(AppLinks.donateUrl)]);
-  });
-
   testWidgets('openPlayStoreUrl launches the Prayer Cast listing', (
     tester,
   ) async {

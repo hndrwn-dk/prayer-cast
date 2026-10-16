@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:prayer_cast/dhikr/scheduling/adhkar_alarm_handler.dart';
@@ -69,16 +70,26 @@ import 'package:prayer_cast/qibla/ui/qibla_page.dart';
 import 'package:prayer_cast/setup/onboarding_store.dart';
 import 'package:prayer_cast/setup/ui/home_permission_line.dart';
 import 'package:prayer_cast/setup/ui/onboarding_gate.dart';
+import 'package:prayer_cast/support/support_billing.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
+import 'package:prayer_cast/support/support_milestone_card.dart';
+import 'package:prayer_cast/support/support_providers.dart';
+import 'package:prayer_cast/support/support_purchase_service.dart';
+import 'package:prayer_cast/support/support_sheet.dart';
+import 'package:prayer_cast/support/support_state_store.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
-const String kAppVersion = '1.0.36+37';
+const String kAppVersion = '1.0.36+38';
 
 /// Android 13+ [POST_NOTIFICATIONS]. Default true so widget tests stay clean.
 final postNotificationsGrantedProvider = StateProvider<bool>((ref) => true);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final supportPurchases = SupportPurchaseService(
+    billing: PlaySupportBilling(),
+  );
+  unawaited(supportPurchases.start());
 
   // Paint before any await. Headless FGS + notification tap reuse this
   // engine; if DB/UDP/SystemChrome block before runApp, Android LaunchTheme
@@ -116,6 +127,10 @@ Future<void> main() async {
     final dhikrCounterStore = FileDhikrCounterStore(
       File(p.join(docs.path, 'dhikr_counter.json')),
     );
+    final supportStore = FileSupportStateStore(
+      File(p.join(docs.path, 'support_state.json')),
+    );
+    supportPurchases.attachStore(supportStore);
 
     const logger = ConsoleLogger();
     final nextPrayer = AdhanNextPrayerProvider(
@@ -142,6 +157,8 @@ Future<void> main() async {
         onboardingStoreProvider.overrideWithValue(onboardingStore),
         adhkarPrefsProvider.overrideWithValue(adhkarPrefs),
         dhikrCounterStoreProvider.overrideWithValue(dhikrCounterStore),
+        supportStateStoreProvider.overrideWithValue(supportStore),
+        supportPurchaseProvider.overrideWith((ref) => supportPurchases),
         adhkarDeliveryCoordinatorProvider.overrideWith(
           (ref) => adhkarCoordinatorHolder.value,
         ),
@@ -605,6 +622,7 @@ class _HomeShellState extends ConsumerState<_HomeShell>
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final supportMilestone = ref.watch(supportPromptProvider).milestone;
     final canSchedule = ref.watch(exactAlarmPermissionGrantedProvider);
     final notificationsGranted = ref.watch(postNotificationsGrantedProvider);
     final batteryUnrestricted = ref
@@ -741,6 +759,26 @@ class _HomeShellState extends ConsumerState<_HomeShell>
                       : () => _openSpiritualBenefits(nextPrayerKey),
                 ),
               ),
+              if (supportMilestone != null)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      homeContentInset,
+                      16,
+                      homeContentInset,
+                      4,
+                    ),
+                    child: SupportMilestoneCard(
+                      count: supportMilestone,
+                      onSupport: () => showSupportSheet(context),
+                      onDismiss: () {
+                        unawaited(
+                          ref.read(supportPromptProvider.notifier).dismiss(),
+                        );
+                      },
+                    ),
+                  ),
+                ),
               SliverToBoxAdapter(
                 child: FadeSlideIn(
                   delay: const Duration(milliseconds: 180),
@@ -1486,6 +1524,19 @@ class PrayerCastAppForTest extends StatelessWidget {
         prayerTrackerStoreProvider.overrideWithValue(
           MemoryPrayerTrackerStore(),
         ),
+        supportStateStoreProvider.overrideWithValue(MemorySupportStateStore()),
+        supportPurchaseProvider.overrideWith(
+          (ref) => SupportPurchaseService(billing: _UnavailableBilling()),
+        ),
+        // A Drift count stream schedules a timer when it closes. Widget tests
+        // dispose the tree before that timer can fire, so the harness feeds a
+        // plain count here. Production still watches the delivery log.
+        supportPromptProvider.overrideWith((ref) {
+          return SupportPromptController(
+            store: ref.watch(supportStateStoreProvider),
+            playedCounts: Stream<int>.value(0),
+          );
+        }),
         compassHeadingSourceProvider.overrideWithValue(
           StreamCompassHeadingSource.headings(Stream<double?>.value(0)),
         ),
@@ -1568,4 +1619,29 @@ final class _EmptyMdnsBrowser implements MdnsBrowser {
     required Duration budget,
     bool Function(List<DiscoveredService> soFar)? shouldStop,
   }) async => const [];
+}
+
+final class _UnavailableBilling implements SupportBilling {
+  final StreamController<List<PurchaseDetails>> _purchases =
+      StreamController<List<PurchaseDetails>>.broadcast();
+
+  @override
+  Stream<List<PurchaseDetails>> get purchaseStream => _purchases.stream;
+
+  @override
+  Future<bool> isAvailable() async => false;
+
+  @override
+  Future<ProductDetailsResponse> queryProductDetails(Set<String> ids) async {
+    return ProductDetailsResponse(
+      productDetails: const [],
+      notFoundIDs: ids.toList(),
+    );
+  }
+
+  @override
+  Future<bool> buyConsumable({required ProductDetails product}) async => false;
+
+  @override
+  Future<void> completePurchase(PurchaseDetails purchase) async {}
 }

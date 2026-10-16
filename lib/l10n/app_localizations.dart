@@ -1136,11 +1136,119 @@ abstract class AppLocalizations {
   /// **'IP: {address}'**
   String speakerIpDebug(String address);
 
-  /// Tooltip / accessibility label for the home Ko-fi support icon
+  /// Tooltip and semantics label for the home support icon
   ///
   /// In en, this message translates to:
-  /// **'Support on Ko-fi'**
-  String get supportOnKofi;
+  /// **'Support the app'**
+  String get supportTheApp;
+
+  /// Settings row that opens the Play Billing support sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Support this app'**
+  String get supportThisApp;
+
+  /// No description provided for @supportSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Support Prayer Cast'**
+  String get supportSheetTitle;
+
+  /// No description provided for @supportSheetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Free, with no ads and no account. Your support goes toward new features and keeping the app maintained.'**
+  String get supportSheetBody;
+
+  /// No description provided for @supportTierCoffee.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy a coffee'**
+  String get supportTierCoffee;
+
+  /// No description provided for @supportTierLunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy a lunch'**
+  String get supportTierLunch;
+
+  /// No description provided for @supportTierFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Full support'**
+  String get supportTierFull;
+
+  /// No description provided for @supportQuantityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Want to give more? You can choose a quantity on the Google Play screen.'**
+  String get supportQuantityHint;
+
+  /// No description provided for @supportContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue to Google Play'**
+  String get supportContinue;
+
+  /// No description provided for @supportPaymentNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment is through Google Play. It does not unlock any features — everything stays free for everyone.'**
+  String get supportPaymentNote;
+
+  /// No description provided for @supportUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available on this device'**
+  String get supportUnavailable;
+
+  /// No description provided for @supportPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment is being processed'**
+  String get supportPending;
+
+  /// No description provided for @supportThanksTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Jazakallahu khairan'**
+  String get supportThanksTitle;
+
+  /// No description provided for @supportThanksBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank you for supporting Prayer Cast. May it be a good deed for you.'**
+  String get supportThanksBody;
+
+  /// No description provided for @supportClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get supportClose;
+
+  /// No description provided for @supportPurchaseError.
+  ///
+  /// In en, this message translates to:
+  /// **'The payment did not go through.'**
+  String get supportPurchaseError;
+
+  /// No description provided for @supportMilestoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Alhamdulillah, Prayer Cast has played {count} adhans in your home.'**
+  String supportMilestoneBody(int count);
+
+  /// No description provided for @supportMilestoneInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'If this app is useful to you, you can support its development.'**
+  String get supportMilestoneInvite;
+
+  /// No description provided for @supportMilestoneAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get supportMilestoneAction;
 
   /// No description provided for @dryRunTitle.
   ///

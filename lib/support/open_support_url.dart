@@ -6,7 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 @visibleForTesting
 Future<bool> Function(Uri uri)? debugLaunchExternalUrl;
 
-/// Opens [url] in an external browser. Shared by Ko-fi and the privacy policy.
+/// Opens [url] in an external browser. Shared by privacy, terms, and Play.
 Future<void> openExternalUrl(BuildContext context, String url) async {
   final uri = Uri.parse(url);
   try {
@@ -34,11 +34,6 @@ Future<void> openExternalUrl(BuildContext context, String url) async {
       );
     }
   }
-}
-
-/// Opens the developer Ko-fi page in an external browser.
-Future<void> openSupportUrl(BuildContext context) {
-  return openExternalUrl(context, AppLinks.donateUrl);
 }
 
 /// Opens the public Prayer Cast privacy policy in an external browser.

@@ -603,7 +603,68 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get supportOnKofi => 'Dukung di Ko-fi';
+  String get supportTheApp => 'Dukung aplikasi';
+
+  @override
+  String get supportThisApp => 'Dukung aplikasi ini';
+
+  @override
+  String get supportSheetTitle => 'Dukung Prayer Cast';
+
+  @override
+  String get supportSheetBody =>
+      'Gratis, tanpa iklan, tanpa akun. Dukunganmu dipakai untuk pengembangan fitur dan perawatan aplikasi.';
+
+  @override
+  String get supportTierCoffee => 'Segelas kopi';
+
+  @override
+  String get supportTierLunch => 'Makan siang';
+
+  @override
+  String get supportTierFull => 'Dukung penuh';
+
+  @override
+  String get supportQuantityHint =>
+      'Ingin memberi lebih? Kamu bisa memilih jumlah di layar Google Play.';
+
+  @override
+  String get supportContinue => 'Lanjut ke Google Play';
+
+  @override
+  String get supportPaymentNote =>
+      'Pembayaran lewat Google Play. Tidak membuka fitur apa pun — semua fitur tetap gratis untuk semua orang.';
+
+  @override
+  String get supportUnavailable => 'Belum tersedia di perangkat ini';
+
+  @override
+  String get supportPending => 'Pembayaran sedang diproses';
+
+  @override
+  String get supportThanksTitle => 'Jazakallahu khairan';
+
+  @override
+  String get supportThanksBody =>
+      'Terima kasih sudah mendukung Prayer Cast. Semoga menjadi kebaikan untukmu.';
+
+  @override
+  String get supportClose => 'Tutup';
+
+  @override
+  String get supportPurchaseError => 'Pembayaran tidak selesai.';
+
+  @override
+  String supportMilestoneBody(int count) {
+    return 'Alhamdulillah, Prayer Cast sudah memutar $count azan di rumahmu.';
+  }
+
+  @override
+  String get supportMilestoneInvite =>
+      'Kalau aplikasi ini bermanfaat, kamu bisa mendukung pengembangannya.';
+
+  @override
+  String get supportMilestoneAction => 'Dukung';
 
   @override
   String get dryRunTitle => 'Uji adzan terjadwal';

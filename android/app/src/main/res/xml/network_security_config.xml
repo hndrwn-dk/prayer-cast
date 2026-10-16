@@ -10,7 +10,7 @@
   The only HTTP URL in this app is the on-device MediaServer advertised
   to Cast as contentId (http://<LAN-IPv4>:<port>/azan/<token>/<voice>.mp3).
   The Cast receiver fetches that URL. The phone does not HttpClient-GET
-  it (Aladhan, Ko-fi, privacy policy, and geocoding are HTTPS).
+  it (Aladhan, privacy policy, and geocoding are HTTPS).
 
   Therefore base-config cleartext is false. No user CAs. No debug-overrides
   that reopen the internet.

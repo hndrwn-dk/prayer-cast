@@ -5,6 +5,7 @@ import 'package:prayer_cast/l10n/locale_controller.dart';
 import 'package:prayer_cast/support/app_links.dart';
 import 'package:prayer_cast/support/open_support_url.dart';
 import 'package:prayer_cast/support/share_plain_text.dart';
+import 'package:prayer_cast/support/support_sheet.dart';
 import 'package:prayer_cast/theme/app_theme_store.dart';
 
 import '../coordinator/prayer_delivery_coordinator.dart';
@@ -43,6 +44,9 @@ class AppSettingsPage extends ConsumerWidget {
   );
   static const ValueKey<String> rateKey = ValueKey<String>('settings_rate');
   static const ValueKey<String> shareKey = ValueKey<String>('settings_share');
+  static const ValueKey<String> supportKey = ValueKey<String>(
+    'settings_support',
+  );
   static const ValueKey<String> privacyKey = ValueKey<String>(
     'settings_privacy',
   );
@@ -161,6 +165,11 @@ class AppSettingsPage extends ConsumerWidget {
               subtitle: l10n.shareAppHint,
               onTap: () =>
                   sharePlainText(l10n.shareAppMessage(AppLinks.playStoreUrl)),
+            ),
+            _SettingsLink(
+              rowKey: supportKey,
+              title: l10n.supportThisApp,
+              onTap: () => showSupportSheet(context),
             ),
             const SectionRule(top: 4, bottom: 18),
             EditorialEyebrow(l10n.legalEyebrow, color: PrayerCastColors.dawn),

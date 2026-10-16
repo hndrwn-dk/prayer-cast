@@ -601,7 +601,68 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get supportOnKofi => 'Support on Ko-fi';
+  String get supportTheApp => 'Support the app';
+
+  @override
+  String get supportThisApp => 'Support this app';
+
+  @override
+  String get supportSheetTitle => 'Support Prayer Cast';
+
+  @override
+  String get supportSheetBody =>
+      'Free, with no ads and no account. Your support goes toward new features and keeping the app maintained.';
+
+  @override
+  String get supportTierCoffee => 'Buy a coffee';
+
+  @override
+  String get supportTierLunch => 'Buy a lunch';
+
+  @override
+  String get supportTierFull => 'Full support';
+
+  @override
+  String get supportQuantityHint =>
+      'Want to give more? You can choose a quantity on the Google Play screen.';
+
+  @override
+  String get supportContinue => 'Continue to Google Play';
+
+  @override
+  String get supportPaymentNote =>
+      'Payment is through Google Play. It does not unlock any features — everything stays free for everyone.';
+
+  @override
+  String get supportUnavailable => 'Not available on this device';
+
+  @override
+  String get supportPending => 'Payment is being processed';
+
+  @override
+  String get supportThanksTitle => 'Jazakallahu khairan';
+
+  @override
+  String get supportThanksBody =>
+      'Thank you for supporting Prayer Cast. May it be a good deed for you.';
+
+  @override
+  String get supportClose => 'Close';
+
+  @override
+  String get supportPurchaseError => 'The payment did not go through.';
+
+  @override
+  String supportMilestoneBody(int count) {
+    return 'Alhamdulillah, Prayer Cast has played $count adhans in your home.';
+  }
+
+  @override
+  String get supportMilestoneInvite =>
+      'If this app is useful to you, you can support its development.';
+
+  @override
+  String get supportMilestoneAction => 'Support';
 
   @override
   String get dryRunTitle => 'Test scheduled adhan';
