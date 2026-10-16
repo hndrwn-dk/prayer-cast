@@ -83,6 +83,50 @@ void main() {
       }
     });
 
+    test('morning items 8-14 follow the Alafasy recording', () {
+      final morning = AdhkarContentData.morning(l10n);
+      expect(
+        morning.map((a) => a.id).toList().sublist(7, 14),
+        [
+          'ushhiduka',
+          'ma-asbaha',
+          'afini',
+          'kufr-faqr',
+          'hasbiyallah',
+          'afwa',
+          'alim-al-ghayb',
+        ],
+      );
+      expect(morning[7].count, 4);
+      expect(morning[9].count, 3);
+      expect(morning[10].count, 3);
+    });
+
+    test('evening items 8-14 follow the Alafasy recording', () {
+      final evening = AdhkarContentData.evening(l10n);
+      expect(
+        evening.map((a) => a.id).toList().sublist(7, 14),
+        [
+          'ushhiduka-masa',
+          'ma-amsa',
+          'afini',
+          'kufr-faqr',
+          'hasbiyallah',
+          'afwa',
+          'alim-al-ghayb',
+        ],
+      );
+      expect(evening[5].arabic, contains('النُّشُورُ'));
+      expect(evening[7].arabic, contains('أَمْسَيْتُ'));
+      expect(evening[7].count, 4);
+      expect(evening[8].arabic, contains('أَمْسَى'));
+      expect(evening.map((a) => a.id), isNot(contains('adada-khalqihi')));
+      expect(evening.map((a) => a.id), isNot(contains('ilman-nafian')));
+      final ids = evening.map((a) => a.id).toList();
+      expect(ids.indexOf('istighfar'), lessThan(ids.indexOf('kalimatillah')));
+      expect(ids.last, 'salawat');
+    });
+
     test('morning and evening use their own wording', () {
       final morning = AdhkarContentData.morning(l10n);
       final evening = AdhkarContentData.evening(l10n);

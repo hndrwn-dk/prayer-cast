@@ -1,10 +1,13 @@
 import 'package:prayer_cast/dhikr/models/adhkar_content.dart';
 import 'package:prayer_cast/l10n/app_localizations.dart';
 
-/// Morning and evening adhkar, following the order and counts in
-/// Hisnul Muslim (Sa'id al-Qahthani). Items that change wording between
-/// morning and evening (ashbahnā / amsainā, "this day" / "this night",
-/// an-nusyūr / al-maṣīr) have separate morning and evening entries.
+/// Morning and evening adhkar. Both follow Mishary Rashid Alafasy's
+/// recitation: items 1–7 match the opening of that recording, and from
+/// item 8 the wording and order follow it. Evening uses the night wording
+/// (amsaytu / ma amsa / kalimatillah) and omits the morning-only duas.
+/// Items that change wording between morning and evening (ashbahnā /
+/// amsainā, "this day" / "this night") have separate entries. His
+/// evening recitation still closes "bika amsayna" with an-nushur.
 ///
 /// Translations are paraphrased renderings, not quoted from a published
 /// translation. Have a teacher check the text before each release.
@@ -38,20 +41,7 @@ abstract final class AdhkarContentData {
         count: 1,
         source: id ? 'HR. at-Tirmidzi' : 'at-Tirmidhi',
       ),
-      ..._middle(id),
-      AdhkarContent(
-        id: 'adada-khalqihi',
-        arabic:
-            'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، عَدَدَ خَلْقِهِ، وَرِضَا نَفْسِهِ، وَزِنَةَ عَرْشِهِ، وَمِدَادَ كَلِمَاتِهِ',
-        transliteration:
-            "Subhaanallaahi wa bihamdih, 'adada khalqih, wa ridhaa nafsih, wa zinata 'arsyih, wa midaada kalimaatih.",
-        translation: id
-            ? 'Maha Suci Allah dan segala puji bagi-Nya, sebanyak jumlah makhluk-Nya, seridha diri-Nya, seberat timbangan Arsy-Nya, dan sebanyak tinta kalimat-Nya.'
-            : 'Glory be to Allah and praise be to Him, as many times as the number of His creation, as much as pleases Him, as heavy as His Throne, and as much as the ink of His words.',
-        count: 3,
-        source: id ? 'HR. Muslim' : 'Muslim',
-      ),
-      ..._closing(id),
+      ..._morningAlafasy(id),
     ];
   }
 
@@ -75,28 +65,16 @@ abstract final class AdhkarContentData {
       AdhkarContent(
         id: 'bika-amsaina',
         arabic:
-            'اللَّهُمَّ بِكَ أَمْسَيْنَا، وَبِكَ أَصْبَحْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ الْمَصِيرُ',
+            'اللَّهُمَّ بِكَ أَمْسَيْنَا، وَبِكَ أَصْبَحْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ النُّشُورُ',
         transliteration:
-            'Allaahumma bika amsainaa, wa bika ashbahnaa, wa bika nahyaa, wa bika namuutu, wa ilaikal mashiir.',
+            'Allaahumma bika amsainaa, wa bika ashbahnaa, wa bika nahyaa, wa bika namuutu, wa ilaikan nusyuur.',
         translation: id
-            ? 'Ya Allah, dengan-Mu kami memasuki petang dan dengan-Mu kami memasuki pagi, dengan-Mu kami hidup dan dengan-Mu kami mati, dan kepada-Mu tempat kembali.'
-            : 'O Allah, by You we enter the evening and by You we enter the morning, by You we live and by You we die, and to You is the final return.',
+            ? 'Ya Allah, dengan-Mu kami memasuki petang dan dengan-Mu kami memasuki pagi, dengan-Mu kami hidup dan dengan-Mu kami mati, dan kepada-Mu kami dibangkitkan.'
+            : 'O Allah, by You we enter the evening and by You we enter the morning, by You we live and by You we die, and to You is the resurrection.',
         count: 1,
-        source: id ? 'HR. at-Tirmidzi' : 'at-Tirmidhi',
+        source: id ? 'HR. Abu Dawud' : 'Abu Dawud',
       ),
-      ..._middle(id),
-      AdhkarContent(
-        id: 'kalimatillah',
-        arabic: 'أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ',
-        transliteration:
-            "A'uudzu bikalimaatillaahit taammaati min syarri maa khalaq.",
-        translation: id
-            ? 'Aku berlindung dengan kalimat-kalimat Allah yang sempurna dari keburukan makhluk yang Dia ciptakan.'
-            : 'I seek refuge in the perfect words of Allah from the evil of what He has created.',
-        count: 3,
-        source: id ? 'HR. Muslim' : 'Muslim',
-      ),
-      ..._closing(id),
+      ..._eveningAlafasy(id),
     ];
   }
 
@@ -217,6 +195,308 @@ abstract final class AdhkarContentData {
           source: id ? 'HR. al-Hakim' : 'al-Hakim',
         ),
       ];
+
+  /// Morning items from the 8th card onward, in Mishary Alafasy's order.
+  /// Shared duas are reused; the rest are only in this recording's sequence.
+  static List<AdhkarContent> _morningAlafasy(bool id) {
+    final shared = {
+      for (final item in [..._middle(id), ..._closing(id)]) item.id: item,
+    };
+    AdhkarContent pick(String key) => shared[key]!;
+    return [
+      pick('sayyidul-istighfar'),
+      AdhkarContent(
+        id: 'ushhiduka',
+        arabic:
+            'اللَّهُمَّ إِنِّي أَصْبَحْتُ أُشْهِدُكَ، وَأُشْهِدُ حَمَلَةَ عَرْشِكَ، وَمَلَائِكَتَكَ، وَجَمِيعَ خَلْقِكَ، أَنَّكَ أَنْتَ اللَّهُ لَا إِلَٰهَ إِلَّا أَنْتَ وَحْدَكَ لَا شَرِيكَ لَكَ، وَأَنَّ مُحَمَّدًا عَبْدُكَ وَرَسُولُكَ',
+        transliteration:
+            "Allaahumma innii ashbahtu usyhiduka, wa usyhidu hamalata 'arsyik, wa malaa-ikatak, wa jamii'a khalqik, annaka antallaahu laa ilaaha illaa anta wahdaka laa syariika lak, wa anna muhammadan 'abduka wa rasuuluk.",
+        translation: id
+            ? 'Ya Allah, di pagi ini aku bersaksi kepada-Mu, dan aku persaksikan para pemikul Arsy-Mu, para malaikat-Mu, dan seluruh makhluk-Mu, bahwa Engkau adalah Allah, tiada tuhan selain Engkau semata, tiada sekutu bagi-Mu, dan bahwa Muhammad adalah hamba dan utusan-Mu.'
+            : 'O Allah, this morning I call You to witness, and I call the bearers of Your Throne, Your angels, and all of Your creation to witness, that You are Allah, there is no god but You alone, without partner, and that Muhammad is Your servant and messenger.',
+        count: 4,
+        source: id ? 'HR. Abu Dawud' : 'Abu Dawud',
+      ),
+      AdhkarContent(
+        id: 'ma-asbaha',
+        arabic:
+            'اللَّهُمَّ مَا أَصْبَحَ بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وَحْدَكَ لَا شَرِيكَ لَكَ، فَلَكَ الْحَمْدُ وَلَكَ الشُّكْرُ',
+        transliteration:
+            'Allaahumma maa ashbaha bii min ni\'matin aw bi-ahadin min khalqik, faminka wahdaka laa syariika lak, falakal hamdu wa lakasy syukr.',
+        translation: id
+            ? 'Ya Allah, nikmat yang ada padaku pagi ini, atau pada seorang pun dari makhluk-Mu, semuanya dari-Mu semata, tiada sekutu bagi-Mu. Maka bagi-Mu segala puji dan syukur.'
+            : 'O Allah, whatever blessing has come to me this morning, or to any of Your creation, is from You alone, without partner. So to You belongs all praise and all thanks.',
+        count: 1,
+        source: id ? 'HR. Abu Dawud' : 'Abu Dawud',
+      ),
+      AdhkarContent(
+        id: 'afini',
+        arabic:
+            'اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لَا إِلَٰهَ إِلَّا أَنْتَ',
+        transliteration:
+            "Allaahumma 'aafinii fii badanii, allaahumma 'aafinii fii sam'ii, allaahumma 'aafinii fii basharii, laa ilaaha illaa ant.",
+        translation: id
+            ? 'Ya Allah, berilah aku afiat pada badanku. Ya Allah, berilah aku afiat pada pendengaranku. Ya Allah, berilah aku afiat pada penglihatanku. Tiada tuhan selain Engkau.'
+            : 'O Allah, grant me well-being in my body. O Allah, grant me well-being in my hearing. O Allah, grant me well-being in my sight. There is no god but You.',
+        count: 3,
+        source: id ? 'HR. Abu Dawud' : 'Abu Dawud',
+      ),
+      AdhkarContent(
+        id: 'kufr-faqr',
+        arabic:
+            'اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْكُفْرِ وَالْفَقْرِ، وَأَعُوذُ بِكَ مِنْ عَذَابِ الْقَبْرِ، لَا إِلَٰهَ إِلَّا أَنْتَ',
+        transliteration:
+            "Allaahumma innii a'uudzu bika minal kufri wal faqr, wa a'uudzu bika min 'adzaabil qabr, laa ilaaha illaa ant.",
+        translation: id
+            ? 'Ya Allah, aku berlindung kepada-Mu dari kekufuran dan kefakiran, dan aku berlindung kepada-Mu dari azab kubur. Tiada tuhan selain Engkau.'
+            : 'O Allah, I seek refuge in You from disbelief and poverty, and I seek refuge in You from the punishment of the grave. There is no god but You.',
+        count: 3,
+        source: id ? 'HR. Abu Dawud' : 'Abu Dawud',
+      ),
+      pick('hasbiyallah'),
+      AdhkarContent(
+        id: 'afwa',
+        arabic:
+            'اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ، اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي دِينِي وَدُنْيَايَ وَأَهْلِي وَمَالِي، اللَّهُمَّ اسْتُرْ عَوْرَاتِي، وَآمِنْ رَوْعَاتِي، اللَّهُمَّ احْفَظْنِي مِنْ بَيْنِ يَدَيَّ، وَمِنْ خَلْفِي، وَعَنْ يَمِينِي، وَعَنْ شِمَالِي، وَمِنْ فَوْقِي، وَأَعُوذُ بِعَظَمَتِكَ أَنْ أُغْتَالَ مِنْ تَحْتِي',
+        transliteration:
+            "Allaahumma innii as-alukal 'afwa wal 'aafiyata fid dunyaa wal aakhirah. Allaahumma innii as-alukal 'afwa wal 'aafiyata fii diinii wa dunyaaya wa ahlii wa maalii. Allaahummastur 'awraatii, wa aamin rau'aatii. Allaahummahfazhnii min baini yadayya, wa min khalfii, wa 'an yamiinii, wa 'an syimaalii, wa min fauqii, wa a'uudzu bi'azhamatika an ughtaala min tahtii.",
+        translation: id
+            ? 'Ya Allah, aku memohon kepada-Mu maaf dan afiat di dunia dan akhirat. Ya Allah, aku memohon kepada-Mu maaf dan afiat pada agama, dunia, keluarga, dan hartaku. Ya Allah, tutupilah auratku dan tenangkanlah ketakutanku. Ya Allah, jagalah aku dari depan, dari belakang, dari kanan, dari kiri, dan dari atas, dan aku berlindung dengan keagungan-Mu dari dibinasakan dari bawahku.'
+            : 'O Allah, I ask You for pardon and well-being in this world and the next. O Allah, I ask You for pardon and well-being in my religion, my worldly life, my family, and my wealth. O Allah, conceal my faults and calm my fears. O Allah, guard me from in front, from behind, on my right, on my left, and from above, and I seek refuge in Your greatness from being destroyed from beneath me.',
+        count: 1,
+        source: id ? 'HR. Abu Dawud' : 'Abu Dawud',
+      ),
+      AdhkarContent(
+        id: 'alim-al-ghayb',
+        arabic:
+            'اللَّهُمَّ عَالِمَ الْغَيْبِ وَالشَّهَادَةِ، فَاطِرَ السَّمَاوَاتِ وَالْأَرْضِ، رَبَّ كُلِّ شَيْءٍ وَمَلِيكَهُ، أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا أَنْتَ، أَعُوذُ بِكَ مِنْ شَرِّ نَفْسِي، وَمِنْ شَرِّ الشَّيْطَانِ وَشِرْكِهِ، وَأَنْ أَقْتَرِفَ عَلَىٰ نَفْسِي سُوءًا أَوْ أَجُرَّهُ إِلَىٰ مُسْلِمٍ',
+        transliteration:
+            "Allaahumma 'aalimal ghaibi wasy syahaadah, faathiras samaawaati wal ardh, rabba kulli syai-in wa maliikah, asyhadu an laa ilaaha illaa ant, a'uudzu bika min syarri nafsii, wa min syarrisy syaithaani wa syirkih, wa an aqtarifa 'alaa nafsii suu-an aw ajurrahu ilaa muslim.",
+        translation: id
+            ? 'Ya Allah, Yang mengetahui yang gaib dan yang nyata, Pencipta langit dan bumi, Rabb segala sesuatu dan Pemiliknya. Aku bersaksi bahwa tiada tuhan selain Engkau. Aku berlindung kepada-Mu dari keburukan diriku, dari keburukan setan dan syiriknya, dan dari melakukan kejahatan atas diriku atau menyeretnya kepada seorang muslim.'
+            : 'O Allah, Knower of the unseen and the seen, Creator of the heavens and the earth, Lord and Sovereign of everything. I bear witness that there is no god but You. I seek refuge in You from the evil of myself, from the evil of Satan and his setting up partners, and from bringing evil upon myself or dragging it upon a Muslim.',
+        count: 1,
+        source: id ? 'HR. Abu Dawud, at-Tirmidzi' : 'Abu Dawud, at-Tirmidhi',
+      ),
+      pick('bismillah-la-yadhurru'),
+      pick('radhitu'),
+      pick('ya-hayyu'),
+      AdhkarContent(
+        id: 'asbahna-rabbil-alamin',
+        arabic:
+            'أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ رَبِّ الْعَالَمِينَ، اللَّهُمَّ إِنِّي أَسْأَلُكَ خَيْرَ هَٰذَا الْيَوْمِ فَتْحَهُ وَنَصْرَهُ وَنُورَهُ وَبَرَكَتَهُ وَهُدَاهُ، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِيهِ وَشَرِّ مَا بَعْدَهُ',
+        transliteration:
+            "Ashbahnaa wa ashbahal mulku lillaahi rabbil 'aalamiin. Allaahumma innii as-aluka khaira haadzal yaum, fathahu wa nashrahu wa nuurahu wa barakatahu wa hudaah. Wa a'uudzu bika min syarri maa fiihi wa syarri maa ba'dah.",
+        translation: id
+            ? 'Kami memasuki pagi dan kerajaan di pagi ini milik Allah, Rabb semesta alam. Ya Allah, aku memohon kepada-Mu kebaikan hari ini: kemenangannya, pertolongannya, cahayanya, berkahnya, dan petunjuknya. Dan aku berlindung kepada-Mu dari keburukan yang ada di dalamnya dan keburukan sesudahnya.'
+            : 'We have entered the morning and the dominion this morning belongs to Allah, Lord of the worlds. O Allah, I ask You for the good of this day: its victory, its help, its light, its blessing, and its guidance. And I seek refuge in You from the evil in it and the evil after it.',
+        count: 1,
+        source: id ? 'HR. Abu Dawud' : 'Abu Dawud',
+      ),
+      AdhkarContent(
+        id: 'fitrah',
+        arabic:
+            'أَصْبَحْنَا عَلَىٰ فِطْرَةِ الْإِسْلَامِ، وَعَلَىٰ كَلِمَةِ الْإِخْلَاصِ، وَعَلَىٰ دِينِ نَبِيِّنَا مُحَمَّدٍ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ، وَعَلَىٰ مِلَّةِ أَبِينَا إِبْرَاهِيمَ حَنِيفًا مُسْلِمًا وَمَا كَانَ مِنَ الْمُشْرِكِينَ',
+        transliteration:
+            "Ashbahnaa 'alaa fithratil islaam, wa 'alaa kalimatil ikhlaash, wa 'alaa diini nabiyyinaa muhammadin shallallaahu 'alaihi wa sallam, wa 'alaa millati abiinaa ibraahiima haniifan musliman wa maa kaana minal musyrikiin.",
+        translation: id
+            ? 'Kami memasuki pagi di atas fitrah Islam, di atas kalimat ikhlas, di atas agama nabi kami Muhammad ﷺ, dan di atas agama ayah kami Ibrahim yang lurus, muslim, dan bukan termasuk orang-orang musyrik.'
+            : 'We have entered the morning upon the natural way of Islam, upon the word of sincerity, upon the religion of our prophet Muhammad ﷺ, and upon the way of our father Abraham, upright, a Muslim, and not of those who associate partners with Allah.',
+        count: 1,
+        source: id ? "HR. Ahmad, an-Nasa'i" : "Ahmad, an-Nasa'i",
+      ),
+      pick('subhanallah-wabihamdihi'),
+      pick('tahlil'),
+      AdhkarContent(
+        id: 'adada-khalqihi',
+        arabic:
+            'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، عَدَدَ خَلْقِهِ، وَرِضَا نَفْسِهِ، وَزِنَةَ عَرْشِهِ، وَمِدَادَ كَلِمَاتِهِ',
+        transliteration:
+            "Subhaanallaahi wa bihamdih, 'adada khalqih, wa ridhaa nafsih, wa zinata 'arsyih, wa midaada kalimaatih.",
+        translation: id
+            ? 'Maha Suci Allah dan segala puji bagi-Nya, sebanyak jumlah makhluk-Nya, seridha diri-Nya, seberat timbangan Arsy-Nya, dan sebanyak tinta kalimat-Nya.'
+            : 'Glory be to Allah and praise be to Him, as many times as the number of His creation, as much as pleases Him, as heavy as His Throne, and as much as the ink of His words.',
+        count: 3,
+        source: id ? 'HR. Muslim' : 'Muslim',
+      ),
+      AdhkarContent(
+        id: 'ilman-nafian',
+        arabic:
+            'اللَّهُمَّ إِنِّي أَسْأَلُكَ عِلْمًا نَافِعًا، وَرِزْقًا طَيِّبًا، وَعَمَلًا مُتَقَبَّلًا',
+        transliteration:
+            "Allaahumma innii as-aluka 'ilman naafi'an, wa rizqan thayyiban, wa 'amalan mutaqabbalaa.",
+        translation: id
+            ? 'Ya Allah, aku memohon kepada-Mu ilmu yang bermanfaat, rezeki yang baik, dan amal yang diterima.'
+            : 'O Allah, I ask You for beneficial knowledge, good provision, and accepted deeds.',
+        count: 1,
+        source: id ? 'HR. Ibnu Majah' : 'Ibn Majah',
+      ),
+      AdhkarContent(
+        id: 'istighfar',
+        arabic: 'أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ',
+        transliteration: 'Astaghfirullaaha wa atuubu ilaih.',
+        translation: id
+            ? 'Aku memohon ampun kepada Allah dan bertobat kepada-Nya.'
+            : 'I seek Allah\'s forgiveness and I repent to Him.',
+        count: 100,
+        source: id ? 'HR. al-Bukhari, Muslim' : 'al-Bukhari, Muslim',
+      ),
+      AdhkarContent(
+        id: 'salawat',
+        arabic: 'اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَىٰ نَبِيِّنَا مُحَمَّدٍ',
+        transliteration: "Allaahumma shalli wa sallim 'alaa nabiyyinaa muhammad.",
+        translation: id
+            ? 'Ya Allah, limpahkan selawat dan salam kepada nabi kami Muhammad.'
+            : 'O Allah, send prayers and peace upon our prophet Muhammad.',
+        count: 10,
+        source: id ? 'HR. at-Tabarani' : 'at-Tabarani',
+      ),
+    ];
+  }
+
+  /// Evening items from Sayyidul Istighfar onward, in Mishary Alafasy's order.
+  static List<AdhkarContent> _eveningAlafasy(bool id) {
+    final shared = {
+      for (final item in [..._middle(id), ..._closing(id)]) item.id: item,
+    };
+    AdhkarContent pick(String key) => shared[key]!;
+    return [
+      pick('sayyidul-istighfar'),
+      AdhkarContent(
+        id: 'ushhiduka-masa',
+        arabic:
+            'اللَّهُمَّ إِنِّي أَمْسَيْتُ أُشْهِدُكَ، وَأُشْهِدُ حَمَلَةَ عَرْشِكَ، وَمَلَائِكَتَكَ، وَجَمِيعَ خَلْقِكَ، أَنَّكَ أَنْتَ اللَّهُ لَا إِلَٰهَ إِلَّا أَنْتَ وَحْدَكَ لَا شَرِيكَ لَكَ، وَأَنَّ مُحَمَّدًا عَبْدُكَ وَرَسُولُكَ',
+        transliteration:
+            "Allaahumma innii amsaytu usyhiduka, wa usyhidu hamalata 'arsyik, wa malaa-ikatak, wa jamii'a khalqik, annaka antallaahu laa ilaaha illaa anta wahdaka laa syariika lak, wa anna muhammadan 'abduka wa rasuuluk.",
+        translation: id
+            ? 'Ya Allah, di petang ini aku bersaksi kepada-Mu, dan aku persaksikan para pemikul Arsy-Mu, para malaikat-Mu, dan seluruh makhluk-Mu, bahwa Engkau adalah Allah, tiada tuhan selain Engkau semata, tiada sekutu bagi-Mu, dan bahwa Muhammad adalah hamba dan utusan-Mu.'
+            : 'O Allah, this evening I call You to witness, and I call the bearers of Your Throne, Your angels, and all of Your creation to witness, that You are Allah, there is no god but You alone, without partner, and that Muhammad is Your servant and messenger.',
+        count: 4,
+        source: id ? 'HR. Abu Dawud' : 'Abu Dawud',
+      ),
+      AdhkarContent(
+        id: 'ma-amsa',
+        arabic:
+            'اللَّهُمَّ مَا أَمْسَى بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وَحْدَكَ لَا شَرِيكَ لَكَ، فَلَكَ الْحَمْدُ وَلَكَ الشُّكْرُ',
+        transliteration:
+            'Allaahumma maa amsaa bii min ni\'matin aw bi-ahadin min khalqik, faminka wahdaka laa syariika lak, falakal hamdu wa lakasy syukr.',
+        translation: id
+            ? 'Ya Allah, nikmat yang ada padaku petang ini, atau pada seorang pun dari makhluk-Mu, semuanya dari-Mu semata, tiada sekutu bagi-Mu. Maka bagi-Mu segala puji dan syukur.'
+            : 'O Allah, whatever blessing has come to me this evening, or to any of Your creation, is from You alone, without partner. So to You belongs all praise and all thanks.',
+        count: 1,
+        source: id ? 'HR. Abu Dawud' : 'Abu Dawud',
+      ),
+      AdhkarContent(
+        id: 'afini',
+        arabic:
+            'اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لَا إِلَٰهَ إِلَّا أَنْتَ',
+        transliteration:
+            "Allaahumma 'aafinii fii badanii, allaahumma 'aafinii fii sam'ii, allaahumma 'aafinii fii basharii, laa ilaaha illaa ant.",
+        translation: id
+            ? 'Ya Allah, berilah aku afiat pada badanku. Ya Allah, berilah aku afiat pada pendengaranku. Ya Allah, berilah aku afiat pada penglihatanku. Tiada tuhan selain Engkau.'
+            : 'O Allah, grant me well-being in my body. O Allah, grant me well-being in my hearing. O Allah, grant me well-being in my sight. There is no god but You.',
+        count: 3,
+        source: id ? 'HR. Abu Dawud' : 'Abu Dawud',
+      ),
+      AdhkarContent(
+        id: 'kufr-faqr',
+        arabic:
+            'اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْكُفْرِ وَالْفَقْرِ، وَأَعُوذُ بِكَ مِنْ عَذَابٍ فِي الْقَبْرِ، لَا إِلَٰهَ إِلَّا أَنْتَ',
+        transliteration:
+            "Allaahumma innii a'uudzu bika minal kufri wal faqr, wa a'uudzu bika min 'adzaabin fil qabr, laa ilaaha illaa ant.",
+        translation: id
+            ? 'Ya Allah, aku berlindung kepada-Mu dari kekufuran dan kefakiran, dan aku berlindung kepada-Mu dari azab di dalam kubur. Tiada tuhan selain Engkau.'
+            : 'O Allah, I seek refuge in You from disbelief and poverty, and I seek refuge in You from punishment in the grave. There is no god but You.',
+        count: 3,
+        source: id ? 'HR. Abu Dawud' : 'Abu Dawud',
+      ),
+      pick('hasbiyallah'),
+      AdhkarContent(
+        id: 'afwa',
+        arabic:
+            'اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ، اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي دِينِي وَدُنْيَايَ وَأَهْلِي وَمَالِي، اللَّهُمَّ اسْتُرْ عَوْرَاتِي، وَآمِنْ رَوْعَاتِي، اللَّهُمَّ احْفَظْنِي مِنْ بَيْنِ يَدَيَّ، وَمِنْ خَلْفِي، وَعَنْ يَمِينِي، وَعَنْ شِمَالِي، وَمِنْ فَوْقِي، وَأَعُوذُ بِعَظَمَتِكَ أَنْ أُغْتَالَ مِنْ تَحْتِي',
+        transliteration:
+            "Allaahumma innii as-alukal 'afwa wal 'aafiyata fid dunyaa wal aakhirah. Allaahumma innii as-alukal 'afwa wal 'aafiyata fii diinii wa dunyaaya wa ahlii wa maalii. Allaahummastur 'awraatii, wa aamin rau'aatii. Allaahummahfazhnii min baini yadayya, wa min khalfii, wa 'an yamiinii, wa 'an syimaalii, wa min fauqii, wa a'uudzu bi'azhamatika an ughtaala min tahtii.",
+        translation: id
+            ? 'Ya Allah, aku memohon kepada-Mu maaf dan afiat di dunia dan akhirat. Ya Allah, aku memohon kepada-Mu maaf dan afiat pada agama, dunia, keluarga, dan hartaku. Ya Allah, tutupilah auratku dan tenangkanlah ketakutanku. Ya Allah, jagalah aku dari depan, dari belakang, dari kanan, dari kiri, dan dari atas, dan aku berlindung dengan keagungan-Mu dari dibinasakan dari bawahku.'
+            : 'O Allah, I ask You for pardon and well-being in this world and the next. O Allah, I ask You for pardon and well-being in my religion, my worldly life, my family, and my wealth. O Allah, conceal my faults and calm my fears. O Allah, guard me from in front, from behind, on my right, on my left, and from above, and I seek refuge in Your greatness from being destroyed from beneath me.',
+        count: 1,
+        source: id ? 'HR. Abu Dawud' : 'Abu Dawud',
+      ),
+      AdhkarContent(
+        id: 'alim-al-ghayb',
+        arabic:
+            'اللَّهُمَّ عَالِمَ الْغَيْبِ وَالشَّهَادَةِ، فَاطِرَ السَّمَاوَاتِ وَالْأَرْضِ، رَبَّ كُلِّ شَيْءٍ وَمَلِيكَهُ، أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا أَنْتَ، أَعُوذُ بِكَ مِنْ شَرِّ نَفْسِي، وَمِنْ شَرِّ الشَّيْطَانِ وَشِرْكِهِ، وَأَنْ أَقْتَرِفَ عَلَىٰ نَفْسِي سُوءًا أَوْ أَجُرَّهُ إِلَىٰ مُسْلِمٍ',
+        transliteration:
+            "Allaahumma 'aalimal ghaibi wasy syahaadah, faathiras samaawaati wal ardh, rabba kulli syai-in wa maliikah, asyhadu an laa ilaaha illaa ant, a'uudzu bika min syarri nafsii, wa min syarrisy syaithaani wa syirkih, wa an aqtarifa 'alaa nafsii suu-an aw ajurrahu ilaa muslim.",
+        translation: id
+            ? 'Ya Allah, Yang mengetahui yang gaib dan yang nyata, Pencipta langit dan bumi, Rabb segala sesuatu dan Pemiliknya. Aku bersaksi bahwa tiada tuhan selain Engkau. Aku berlindung kepada-Mu dari keburukan diriku, dari keburukan setan dan syiriknya, dan dari melakukan kejahatan atas diriku atau menyeretnya kepada seorang muslim.'
+            : 'O Allah, Knower of the unseen and the seen, Creator of the heavens and the earth, Lord and Sovereign of everything. I bear witness that there is no god but You. I seek refuge in You from the evil of myself, from the evil of Satan and his setting up partners, and from bringing evil upon myself or dragging it upon a Muslim.',
+        count: 1,
+        source: id ? 'HR. Abu Dawud, at-Tirmidzi' : 'Abu Dawud, at-Tirmidhi',
+      ),
+      pick('bismillah-la-yadhurru'),
+      pick('radhitu'),
+      pick('ya-hayyu'),
+      AdhkarContent(
+        id: 'amsaina-rabbil-alamin',
+        arabic:
+            'أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ رَبِّ الْعَالَمِينَ، اللَّهُمَّ إِنِّي أَسْأَلُكَ خَيْرَ هَٰذِهِ اللَّيْلَةِ فَتْحَهَا وَنَصْرَهَا وَنُورَهَا وَبَرَكَتَهَا وَهُدَاهَا، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِيهَا وَشَرِّ مَا بَعْدَهَا',
+        transliteration:
+            "Amsainaa wa amsal mulku lillaahi rabbil 'aalamiin. Allaahumma innii as-aluka khaira haadzihil lailah, fathahaa wa nashrahaa wa nuurahaa wa barakatahaa wa hudaahaa. Wa a'uudzu bika min syarri maa fiihaa wa syarri maa ba'dahaa.",
+        translation: id
+            ? 'Kami memasuki petang dan kerajaan di petang ini milik Allah, Rabb semesta alam. Ya Allah, aku memohon kepada-Mu kebaikan malam ini: kemenangannya, pertolongannya, cahayanya, berkahnya, dan petunjuknya. Dan aku berlindung kepada-Mu dari keburukan yang ada di dalamnya dan keburukan sesudahnya.'
+            : 'We have entered the evening and the dominion this evening belongs to Allah, Lord of the worlds. O Allah, I ask You for the good of this night: its victory, its help, its light, its blessing, and its guidance. And I seek refuge in You from the evil in it and the evil after it.',
+        count: 1,
+        source: id ? 'HR. Abu Dawud' : 'Abu Dawud',
+      ),
+      AdhkarContent(
+        id: 'fitrah-masa',
+        arabic:
+            'أَمْسَيْنَا عَلَىٰ فِطْرَةِ الْإِسْلَامِ، وَعَلَىٰ كَلِمَةِ الْإِخْلَاصِ، وَعَلَىٰ دِينِ نَبِيِّنَا مُحَمَّدٍ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ، وَعَلَىٰ مِلَّةِ أَبِينَا إِبْرَاهِيمَ حَنِيفًا مُسْلِمًا وَمَا كَانَ مِنَ الْمُشْرِكِينَ',
+        transliteration:
+            "Amsainaa 'alaa fithratil islaam, wa 'alaa kalimatil ikhlaash, wa 'alaa diini nabiyyinaa muhammadin shallallaahu 'alaihi wa sallam, wa 'alaa millati abiinaa ibraahiima haniifan musliman wa maa kaana minal musyrikiin.",
+        translation: id
+            ? 'Kami memasuki petang di atas fitrah Islam, di atas kalimat ikhlas, di atas agama nabi kami Muhammad ﷺ, dan di atas agama ayah kami Ibrahim yang lurus, muslim, dan bukan termasuk orang-orang musyrik.'
+            : 'We have entered the evening upon the natural way of Islam, upon the word of sincerity, upon the religion of our prophet Muhammad ﷺ, and upon the way of our father Abraham, upright, a Muslim, and not of those who associate partners with Allah.',
+        count: 1,
+        source: id ? "HR. Ahmad, an-Nasa'i" : "Ahmad, an-Nasa'i",
+      ),
+      pick('subhanallah-wabihamdihi'),
+      pick('tahlil'),
+      AdhkarContent(
+        id: 'istighfar',
+        arabic: 'أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ',
+        transliteration: 'Astaghfirullaaha wa atuubu ilaih.',
+        translation: id
+            ? 'Aku memohon ampun kepada Allah dan bertobat kepada-Nya.'
+            : 'I seek Allah\'s forgiveness and I repent to Him.',
+        count: 100,
+        source: id ? 'HR. al-Bukhari, Muslim' : 'al-Bukhari, Muslim',
+      ),
+      AdhkarContent(
+        id: 'kalimatillah',
+        arabic: 'أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ',
+        transliteration:
+            "A'uudzu bikalimaatillaahit taammaati min syarri maa khalaq.",
+        translation: id
+            ? 'Aku berlindung dengan kalimat-kalimat Allah yang sempurna dari keburukan makhluk yang Dia ciptakan.'
+            : 'I seek refuge in the perfect words of Allah from the evil of what He has created.',
+        count: 3,
+        source: id ? 'HR. Muslim' : 'Muslim',
+      ),
+      AdhkarContent(
+        id: 'salawat',
+        arabic: 'اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَىٰ نَبِيِّنَا مُحَمَّدٍ',
+        transliteration: "Allaahumma shalli wa sallim 'alaa nabiyyinaa muhammad.",
+        translation: id
+            ? 'Ya Allah, limpahkan selawat dan salam kepada nabi kami Muhammad.'
+            : 'O Allah, send prayers and peace upon our prophet Muhammad.',
+        count: 10,
+        source: id ? 'HR. at-Tabarani' : 'at-Tabarani',
+      ),
+    ];
+  }
 
   /// The counted tasbih and tahlil that close both sets.
   static List<AdhkarContent> _closing(bool id) => [
