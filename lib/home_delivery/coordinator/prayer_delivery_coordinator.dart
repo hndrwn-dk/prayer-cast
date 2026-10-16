@@ -785,55 +785,39 @@ final class PrayerDeliveryCoordinator {
 
     if (!_castFailureOutcomes.contains(result.outcome)) return false;
 
-    final confidentHome = result.presenceState == 'HOME';
     final castDetail =
         '${result.outcome.code}${result.detail == null ? '' : ': ${result.detail}'}';
     if (DeliveryTiming.isTooLate(scheduledAzan: azanEpoch, now: _clock.now())) {
       return false;
     }
 
-    if (confidentHome) {
-      _logger.info(
-        'Cast failed (${result.outcome.code}); falling back to phone Adhan',
-        tag: 'PrayerDeliveryCoordinator',
-      );
-      await _playPhoneAdhanForFallback(
-        event: event,
-        azanEpoch: azanEpoch,
-        voiceId: voiceId,
-      );
-      await _replaceCastLogWithFallback(
-        sessionId: result.sessionId,
-        event: event,
-        azanEpoch: azanEpoch,
-        detail: 'full_adhan; cast=$castDetail',
-        presenceState: result.presenceState,
-      );
-      await _notifyPhoneFallback(
-        prayerName: event.prayer,
-        castOutcome: result.outcome,
-        fullAdhan: true,
-      );
-    } else {
-      _logger.info(
-        'Cast failed (${result.outcome.code}); presence='
-        '${result.presenceState ?? 'unknown'} — chime fallback only',
-        tag: 'PrayerDeliveryCoordinator',
-      );
-      await _localPlayer.playBeep();
-      await _replaceCastLogWithFallback(
-        sessionId: result.sessionId,
-        event: event,
-        azanEpoch: azanEpoch,
-        detail: 'chime; cast=$castDetail; presence=${result.presenceState}',
-        presenceState: result.presenceState,
-      );
-      await _notifyPhoneFallback(
-        prayerName: event.prayer,
-        castOutcome: result.outcome,
-        fullAdhan: false,
-      );
-    }
+    // A headless wake often cannot confirm HOME (Maghrib 2026-10-16: Cast
+    // failed, presence was not HOME, and only a chime played). The speaker
+    // already failed, so the phone plays the full Adhan whenever fallback
+    // is on — including UNKNOWN.
+    _logger.info(
+      'Cast failed (${result.outcome.code}); presence='
+      '${result.presenceState ?? 'unknown'} — phone Adhan fallback',
+      tag: 'PrayerDeliveryCoordinator',
+    );
+    await _playPhoneAdhanForFallback(
+      event: event,
+      azanEpoch: azanEpoch,
+      voiceId: voiceId,
+    );
+    await _replaceCastLogWithFallback(
+      sessionId: result.sessionId,
+      event: event,
+      azanEpoch: azanEpoch,
+      detail:
+          'full_adhan; cast=$castDetail; presence=${result.presenceState}',
+      presenceState: result.presenceState,
+    );
+    await _notifyPhoneFallback(
+      prayerName: event.prayer,
+      castOutcome: result.outcome,
+      fullAdhan: true,
+    );
     return true;
   }
 

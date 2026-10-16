@@ -1,0 +1,27 @@
+---
+description: Prayer Cast Coolors 5-swatch + 60-30-10 theme tokens
+globs: "**/theme/**/*.dart,**/*colors*.dart,**/*tokens*.dart"
+alwaysApply: false
+---
+
+# Prayer Cast color palette
+
+Concrete swatches live in `lib/home_delivery/ui/theme/prayer_cast_colors.dart`.
+Do not invent new brand hexes; extend via tokens.
+
+## Forest (5)
+
+`#10261F` ink · `#0A3D2E` canopyDeep · `#0F5C45` canopy · `#2F8F6B` leaf · `#C9852A` dawn  
+https://coolors.co/10261f-0a3d2e-0f5c45-2f8f6b-c9852a
+
+## Light (5)
+
+`#F3F7F4` surface · `#EAF3EE` atmosphere · `#3D6A58` canopyQuiet · `#2F8F6B` leaf · `#C9852A` dawn  
+https://coolors.co/f3f7f4-eaf3ee-3d6a58-2f8f6b-c9852a
+
+## 60-30-10
+
+- Forest: 60% ink/canopyDeep · 30% canopy/leaf/canopyQuiet · 10% dawn
+- Light: 60% surface/atmosphere/surfaceRaised · 30% leaf/canopyQuiet · 10% dawn/dawnSoft
+
+UI goes through `PrayerCastTokens` / `PrayerCastTheme`, not raw `Color(0xFF…)`.

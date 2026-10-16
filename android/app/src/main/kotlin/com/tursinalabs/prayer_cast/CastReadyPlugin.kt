@@ -32,16 +32,23 @@ class CastReadyPlugin(
     }
 
     private fun ensureCastContext(result: MethodChannel.Result) {
-        // getSharedInstance can block on Dynamite module load — keep it off
-        // the platform thread. Calling this at T-120 warms GMS before prepare.
-        executor.execute {
-            val ok = try {
-                CastContext.getSharedInstance(context) != null
+        // SDK 21.5 checks the main thread on both getSharedInstance overloads
+        // before it loads the Cast module. A worker thread throws
+        // IllegalStateException and the warm-up never creates a context
+        // (Maghrib 2026-10-16: speaker never started).
+        mainHandler.post {
+            try {
+                CastContext.getSharedInstance(context, executor)
+                    .addOnCompleteListener(executor) { task ->
+                        if (!task.isSuccessful) {
+                            Log.w(TAG, "ensureCastContext failed", task.exception)
+                        }
+                        mainHandler.post { result.success(task.isSuccessful) }
+                    }
             } catch (e: Exception) {
                 Log.w(TAG, "ensureCastContext failed", e)
-                false
+                result.success(false)
             }
-            mainHandler.post { result.success(ok) }
         }
     }
 

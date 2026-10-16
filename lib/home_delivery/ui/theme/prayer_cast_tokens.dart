@@ -6,9 +6,10 @@ import 'prayer_cast_theme.dart';
 
 /// Brightness-aware surfaces so every screen follows MaterialApp.
 ///
-/// Forest is dark brightness: ink fill, raised type, light status icons.
-/// Light is mist: stone fill, ink type, dark status icons. Dawn hairlines
-/// stay dawn in both.
+/// Maps [PrayerCastColors] into the 60-30-10 roles documented there:
+/// Forest = ink/canopyDeep ground (60), canopy/leaf brand (30), dawn (10).
+/// Light = surface/atmosphere ground (60), leaf/canopyQuiet brand (30),
+/// dawn/dawnSoft (10). Dawn hairlines stay dawn in both.
 abstract final class PrayerCastTokens {
   static bool isForest(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark;

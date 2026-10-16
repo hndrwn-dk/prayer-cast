@@ -10,6 +10,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.embedding.engine.dart.DartExecutor
 import java.util.HashSet
+import java.util.concurrent.Executors
 
 /**
  * Shared FlutterEngine for alarm wake. Pixel / API 34+ BAL-blocks
@@ -41,6 +42,7 @@ object PrayerCastFlutter {
     private var hangContext: Context? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val castWarmExecutor = Executors.newSingleThreadExecutor()
     private val destroyedIds = HashSet<Int>()
 
     private val hangRestart = Runnable { recoverHungEngine() }
@@ -238,16 +240,25 @@ object PrayerCastFlutter {
     }
 
     /**
-     * Load GMS Cast on a worker thread. Do not call the Dart Cast plugin
-     * here — that can block the Flutter UI isolate before [runApp].
+     * Warm GMS Cast without touching the Dart Cast plugin — that can block
+     * the Flutter UI isolate before [runApp].
+     *
+     * Both [CastContext.getSharedInstance] overloads in SDK 21.5 require the
+     * main thread. The executor overload then loads the module off that
+     * thread. Calling the sync overload from a worker throws and the
+     * warm-up is a no-op.
      */
     private fun warmCastOffThread(context: Context) {
-        Thread({
+        val appContext = context.applicationContext
+        mainHandler.post {
             try {
-                CastContext.getSharedInstance(context)
+                CastContext.getSharedInstance(appContext, castWarmExecutor)
+                    .addOnFailureListener { e ->
+                        Log.w(TAG, "Cast warm-up skipped", e)
+                    }
             } catch (e: Exception) {
                 Log.w(TAG, "Cast warm-up skipped", e)
             }
-        }, "prayer-cast-cast-warm").start()
+        }
     }
 }

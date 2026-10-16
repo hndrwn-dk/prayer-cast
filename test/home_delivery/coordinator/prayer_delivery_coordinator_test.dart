@@ -1667,7 +1667,7 @@ void main() {
     },
   );
 
-  test('cast fail UNKNOWN uses chime fallback', () async {
+  test('cast fail UNKNOWN plays full phone Adhan', () async {
     final db = DeliveryDatabase.memory();
     addTearDown(db.close);
     final dao = DeliveryLogDao(db);
@@ -1722,12 +1722,16 @@ void main() {
     for (var i = 0; i < 80 && local.calls.isEmpty; i++) {
       await Future<void>.delayed(const Duration(milliseconds: 10));
     }
-    expect(local.calls, ['beep']);
+    expect(local.calls, ['adhan:makkah']);
     final rows = await dao.latest();
     expect(rows.single.outcome, Outcome.playedPhoneFallback.code);
-    expect(rows.single.detail, contains('chime'));
+    expect(rows.single.detail, contains('full_adhan'));
+    expect(rows.single.detail, contains('UNKNOWN'));
     expect(alarm.failureNotifications, isNotEmpty);
-    expect(alarm.failureNotifications.single.title, contains('short chime'));
+    expect(
+      alarm.failureNotifications.single.title,
+      contains('played on phone'),
+    );
   });
 
   test('start drains pending iqamah chime logs into delivery_log', () async {

@@ -177,6 +177,11 @@ void main() {
       'PrayerCastFlutter.kt',
     ).readAsStringSync();
     expect(flutter, contains('warmCastOffThread'));
+    expect(flutter, contains('mainHandler.post'));
+    expect(
+      flutter,
+      contains('CastContext.getSharedInstance(appContext, castWarmExecutor)'),
+    );
     expect(flutter, contains('engineForActivity'));
     expect(flutter, contains('discardHungEngine'));
     expect(flutter, contains('markDeliveryReady'));
