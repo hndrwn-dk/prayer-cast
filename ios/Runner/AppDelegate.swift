@@ -17,6 +17,9 @@ import UIKit
     if let registrar = self.registrar(forPlugin: "NetworkPrefixPlugin") {
       NetworkPrefixPlugin.register(with: registrar)
     }
+    if let registrar = self.registrar(forPlugin: "DhikrDevicePlugin") {
+      DhikrDevicePlugin.register(with: registrar)
+    }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }

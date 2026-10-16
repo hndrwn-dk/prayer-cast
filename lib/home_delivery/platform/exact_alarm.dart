@@ -97,6 +97,13 @@ abstract interface class ExactAlarmPlatform {
   /// Cancel any armed iqamah reminder.
   Future<void> cancelIqamahReminder();
 
+  /// Arm the next adhkar playback. [type] is `morning` or `evening`.
+  /// Wakes the same headless engine as the adzan alarm.
+  Future<void> scheduleAdhkar({required String type, required int atMs});
+
+  /// Cancel the adhkar alarm for [type] (`morning` or `evening`).
+  Future<void> cancelAdhkar(String type);
+
   /// Consume native pending iqamah chime log rows (empty when none / silent).
   Future<List<PendingIqamahLog>> drainPendingIqamahLogs();
 
@@ -128,11 +135,11 @@ final class ExactAlarm implements ExactAlarmPlatform {
     MethodChannel? methodChannel,
     EventChannel? eventChannel,
     HomeDeliveryLogger logger = const SilentLogger(),
-  })  : _methods = methodChannel ??
-            const MethodChannel('prayer_cast/exact_alarm'),
-        _events = eventChannel ??
-            const EventChannel('prayer_cast/exact_alarm_events'),
-        _logger = logger;
+  }) : _methods =
+           methodChannel ?? const MethodChannel('prayer_cast/exact_alarm'),
+       _events =
+           eventChannel ?? const EventChannel('prayer_cast/exact_alarm_events'),
+       _logger = logger;
 
   final MethodChannel _methods;
   final EventChannel _events;
@@ -514,6 +521,51 @@ final class ExactAlarm implements ExactAlarmPlatform {
     } on PlatformException catch (e, st) {
       _logger.warn(
         'cancelIqamahReminder failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  @override
+  Future<void> scheduleAdhkar({required String type, required int atMs}) async {
+    try {
+      await _methods.invokeMethod<void>('scheduleAdhkar', {
+        'type': type,
+        'atMs': atMs,
+      });
+    } on MissingPluginException catch (e, st) {
+      _logger.warn(
+        'scheduleAdhkar: exact_alarm plugin missing (no-op)',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'scheduleAdhkar failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  @override
+  Future<void> cancelAdhkar(String type) async {
+    try {
+      await _methods.invokeMethod<void>('cancelAdhkar', {'type': type});
+    } on MissingPluginException catch (e, st) {
+      _logger.warn(
+        'cancelAdhkar: exact_alarm plugin missing (no-op)',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'cancelAdhkar failed',
         tag: 'ExactAlarm',
         error: e,
         stackTrace: st,

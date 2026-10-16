@@ -202,6 +202,27 @@ class ExactAlarmPlugin(
                 IqamahAlert.cancel(context)
                 result.success(null)
             }
+            "scheduleAdhkar" -> {
+                val type = call.argument<String>("type") ?: ""
+                val atMs = call.argument<Number>("atMs")?.toLong() ?: 0L
+                if (type.isEmpty() || atMs <= 0L) {
+                    result.success(null)
+                    return
+                }
+                try {
+                    AdhkarAlarm.schedule(context, type, atMs)
+                    result.success(null)
+                } catch (e: SecurityException) {
+                    result.error("no_permission", e.message, null)
+                } catch (e: Exception) {
+                    result.error("schedule_failed", e.message, null)
+                }
+            }
+            "cancelAdhkar" -> {
+                val type = call.argument<String>("type") ?: ""
+                AdhkarAlarm.cancel(context, type)
+                result.success(null)
+            }
             "drainPendingIqamahLogs" -> {
                 result.success(IqamahAlert.drainPendingChimeLogs(context))
             }
@@ -241,6 +262,13 @@ class ExactAlarmPlugin(
             events?.success(it)
             pendingFire = null
         }
+        // Adhkar uses its own pending slot so it cannot overwrite, or be
+        // cleared by, an unacked adzan fire.
+        val memoryAdhkar = pendingAdhkar
+        pendingAdhkar = null
+        val diskAdhkar = AdhkarAlarm.takePending(context)
+        val adhkar = memoryAdhkar ?: diskAdhkar
+        adhkar?.let { events?.success(it) }
     }
 
     override fun onCancel(arguments: Any?) {
@@ -298,6 +326,7 @@ class ExactAlarmPlugin(
 
         @Volatile
         private var pendingFire: Map<String, Any>? = null
+        private var pendingAdhkar: Map<String, Any>? = null
 
         fun requestStopLocalPlayback() {
             instance?.notifyStopLocalPlayback()
@@ -330,6 +359,7 @@ class ExactAlarmPlugin(
             instance?.attachActivity(null)
             instance = null
             pendingFire = null
+            pendingAdhkar = null
         }
 
         fun emitFromBackground(
@@ -354,6 +384,40 @@ class ExactAlarmPlugin(
             persistPendingFire(context, payload)
             instance?.emitAlarmFired(prayer, scheduledEpochMs, firedAtMs, voiceId)
                 ?: run { pendingFire = payload }
+        }
+
+        /**
+         * Deliver an adhkar fire on the same event channel without writing
+         * the adzan pending keys. [acknowledgeAlarmFire] must not clear it.
+         */
+        @JvmStatic
+        fun emitAdhkarFromBackground(
+            context: Context,
+            prayer: String,
+            scheduledEpochMs: Long,
+            firedAtMs: Long,
+            voiceId: String,
+        ) {
+            val payload = mapOf(
+                "prayer" to prayer,
+                "scheduledEpochMs" to scheduledEpochMs,
+                "firedAtMs" to firedAtMs,
+                "voiceId" to voiceId,
+            )
+            AdhkarAlarm.rememberPending(
+                context,
+                prayer,
+                scheduledEpochMs,
+                firedAtMs,
+                voiceId,
+            )
+            val sink = instance?.eventSink
+            if (sink != null) {
+                sink.success(payload)
+                AdhkarAlarm.takePending(context)
+            } else {
+                pendingAdhkar = payload
+            }
         }
 
         private const val KEY_PENDING_PRAYER = "pending_prayer"

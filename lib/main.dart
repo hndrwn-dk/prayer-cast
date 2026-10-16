@@ -6,6 +6,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:prayer_cast/dhikr/scheduling/adhkar_alarm_handler.dart';
+import 'package:prayer_cast/dhikr/scheduling/adhkar_alarm_names.dart';
+import 'package:prayer_cast/dhikr/scheduling/adhkar_alarm_sync.dart';
+import 'package:prayer_cast/dhikr/scheduling/adhkar_audio_loader.dart';
+import 'package:prayer_cast/dhikr/scheduling/adhkar_delivery_coordinator.dart';
+import 'package:prayer_cast/dhikr/storage/adhkar_prefs.dart';
+import 'package:prayer_cast/dhikr/storage/dhikr_counter_store.dart';
+import 'package:prayer_cast/dhikr/ui/adhkar_providers.dart';
+import 'package:prayer_cast/dhikr/ui/dhikr_counter_providers.dart';
 import 'package:prayer_cast/home_delivery/common/console_logger.dart';
 import 'package:prayer_cast/home_delivery/coordinator/active_delivery_hero.dart';
 import 'package:prayer_cast/home_delivery/coordinator/adzan_audio_loader.dart';
@@ -17,6 +26,7 @@ import 'package:prayer_cast/home_delivery/coordinator/next_prayer_provider.dart'
 import 'package:prayer_cast/home_delivery/coordinator/prayer_delivery_coordinator.dart';
 import 'package:prayer_cast/home_delivery/delivery/cast_client.dart';
 import 'package:prayer_cast/home_delivery/logging/delivery_database.dart';
+import 'package:prayer_cast/home_delivery/logging/delivery_log_dao.dart';
 import 'package:prayer_cast/home_delivery/logging/delivery_database_open.dart';
 import 'package:prayer_cast/home_delivery/platform/exact_alarm.dart';
 import 'package:prayer_cast/home_delivery/platform/launch_prayer.dart';
@@ -37,6 +47,7 @@ import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_colors.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_theme.dart';
 import 'package:prayer_cast/home_delivery/ui/theme/prayer_cast_tokens.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/adhan_countdown.dart';
+import 'package:prayer_cast/home_delivery/ui/widgets/home_menu_grid.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/editorial_chrome.dart';
 import 'package:prayer_cast/home_delivery/ui/widgets/spiritual_benefits_teaser.dart';
 import 'package:prayer_cast/l10n/l10n_ext.dart';
@@ -46,6 +57,7 @@ import 'package:prayer_cast/prayer_tracker/prayer_tracker_providers.dart';
 import 'package:prayer_cast/prayer_tracker/prayer_tracker_store.dart';
 import 'package:prayer_cast/prayer_tracker/ui/prayer_tracker_page.dart';
 import 'package:prayer_cast/prayer_times/adhan_next_prayer_provider.dart';
+import 'package:prayer_cast/prayer_times/aladhan_client.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 import 'package:prayer_cast/prayer_times/prayer_times_providers.dart';
 import 'package:prayer_cast/prayer_times/spiritual_benefits.dart';
@@ -60,7 +72,7 @@ import 'package:prayer_cast/setup/ui/onboarding_gate.dart';
 import 'package:prayer_cast/support/support_icon_button.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
-const String kAppVersion = '1.0.34+35';
+const String kAppVersion = '1.0.35+36';
 
 /// Android 13+ [POST_NOTIFICATIONS]. Default true so widget tests stay clean.
 final postNotificationsGrantedProvider = StateProvider<bool>((ref) => true);
@@ -97,6 +109,14 @@ Future<void> main() async {
       File(p.join(docs.path, 'onboarding.txt')),
     );
 
+    final adhkarPrefs = FileAdhkarPrefs(
+      File(p.join(docs.path, 'adhkar_prefs.txt')),
+    );
+    await adhkarPrefs.load();
+    final dhikrCounterStore = FileDhikrCounterStore(
+      File(p.join(docs.path, 'dhikr_counter.json')),
+    );
+
     const logger = ConsoleLogger();
     final nextPrayer = AdhanNextPrayerProvider(
       store: prayerPrefsStore,
@@ -108,6 +128,8 @@ Future<void> main() async {
     final presenceHolder = _PresenceHolder();
     final fingerprintHolder = _FingerprintHolder();
     final activeHeroHolder = _ActiveHeroHolder();
+    final adhkarCoordinatorHolder = _AdhkarCoordinatorHolder();
+    final adhkarAlarmSyncHolder = _AdhkarAlarmSyncHolder();
 
     final appContainer = ProviderContainer(
       overrides: [
@@ -118,6 +140,14 @@ Future<void> main() async {
         prayerTrackerStoreProvider.overrideWithValue(prayerTrackerStore),
         mosqueCacheStoreProvider.overrideWithValue(mosqueCacheStore),
         onboardingStoreProvider.overrideWithValue(onboardingStore),
+        adhkarPrefsProvider.overrideWithValue(adhkarPrefs),
+        dhikrCounterStoreProvider.overrideWithValue(dhikrCounterStore),
+        adhkarDeliveryCoordinatorProvider.overrideWith(
+          (ref) => adhkarCoordinatorHolder.value,
+        ),
+        adhkarAlarmSyncProvider.overrideWith(
+          (ref) => adhkarAlarmSyncHolder.value,
+        ),
         adhanNextPrayerProvider.overrideWithValue(nextPrayer),
         activeDeliveryHeroProvider.overrideWith((ref) {
           final hero = activeHeroHolder.value;
@@ -174,6 +204,64 @@ Future<void> main() async {
     presenceHolder.value = runtime.presence;
     fingerprintHolder.value = runtime.fingerprintStore;
     activeHeroHolder.value = runtime.activeHero;
+    final adhkarPlayback = AdhkarDeliveryCoordinator(
+      audioLoader: AdhkarAudioLoader(),
+      castClient: runtime.castClient,
+      readHomeCastId: runtime.fingerprintStore.readHomeCastIdResilient,
+    );
+    adhkarCoordinatorHolder.value = adhkarPlayback;
+    final adhkarSync = AdhkarAlarmSync(
+      adhkarPrefs: adhkarPrefs,
+      alarm: runtime.exactAlarm,
+      readPrayerPrefs: prayerPrefsStore.read,
+      readPrayerTimes: (day) async {
+        final prefs = await prayerPrefsStore.read();
+        final daySchedule = await nextPrayer.scheduleForDay(
+          prefs: prefs,
+          day: day,
+        );
+        return {
+          for (final slot in daySchedule.slots) slot.name: slot.scheduledAt,
+        };
+      },
+    );
+    final adhkarLog = DeliveryLogDao(db);
+    final adhkarHandler = AdhkarAlarmHandler(
+      play: adhkarPlayback.playAdhkar,
+      readPresence: () async {
+        await runtime.presence.scan();
+        return runtime.presence.state;
+      },
+      speakerConnected: () async {
+        if (runtime.castClient.connected != null) return true;
+        final id = await runtime.fingerprintStore.readHomeCastIdResilient();
+        return id != null && id.isNotEmpty;
+      },
+      castBusy: () async {
+        try {
+          final media = await runtime.castPlatform.currentMedia();
+          return media?.isPlaying ?? false;
+        } catch (_) {
+          return false;
+        }
+      },
+      log: ({required outcome, required type, required scheduledAtMs, detail}) {
+        return adhkarLog.insertAttempt(
+          sessionId: 'adhkar-${type.name}-$scheduledAtMs',
+          prayer: AdhkarAlarmNames.of(type),
+          scheduledAtMs: scheduledAtMs,
+          outcome: outcome,
+          detail: detail,
+        );
+      },
+      sync: adhkarSync.sync,
+    );
+    adhkarAlarmSyncHolder.value = adhkarSync;
+    runtime.coordinator.attachAdhkar(
+      sync: adhkarSync.sync,
+      handler: adhkarHandler,
+    );
+    appContainer.invalidate(adhkarDeliveryCoordinatorProvider);
 
     // Listen before the real shell so buffered pendingFire is not missed.
     // Mark delivery ready only after listen is armed — MainActivity may then
@@ -266,6 +354,14 @@ final class _FingerprintHolder {
 
 final class _ActiveHeroHolder {
   ActiveDeliveryHero? value;
+}
+
+final class _AdhkarCoordinatorHolder {
+  AdhkarDeliveryCoordinator? value;
+}
+
+final class _AdhkarAlarmSyncHolder {
+  AdhkarAlarmSync? value;
 }
 
 /// App shell with speaker setup, prayer times, and delivery log.
@@ -660,7 +756,7 @@ class _HomeShellState extends ConsumerState<_HomeShell>
               SliverToBoxAdapter(
                 child: FadeSlideIn(
                   delay: const Duration(milliseconds: 240),
-                  child: _HomeDestinationsStrip(
+                  child: HomeMenuGrid(
                     onPrayerTimes: _openPrayerSettings,
                     onPrayerTracker: _openPrayerTracker,
                     onQibla: _openQibla,
@@ -1048,39 +1144,43 @@ class _PlaceAndPresence extends StatelessWidget {
             style: countryStyle,
           ),
         const SizedBox(height: 28),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const EditorialHairline(vertical: true, height: 28, width: 1),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  EditorialEyebrow(
-                    presenceLabel,
-                    color: presenceLabel == l10n.speakerNotSelected
-                        ? PrayerCastColors.dawn
-                        : _heroMistDeep(context),
-                  ),
-                  if (placeDetail != null && placeDetail!.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      placeDetail!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: PrayerCastTheme.displayFont,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        color: _heroInk(context),
-                      ),
+        // Hero copy sits at 28. Pull the rule left onto the speaker card edge.
+        Transform.translate(
+          offset: const Offset(homeContentInset - 28, 0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const EditorialHairline(vertical: true, height: 28, width: 1),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    EditorialEyebrow(
+                      presenceLabel,
+                      color: presenceLabel == l10n.speakerNotSelected
+                          ? PrayerCastColors.dawn
+                          : _heroMistDeep(context),
                     ),
+                    if (placeDetail != null && placeDetail!.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        placeDetail!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: PrayerCastTheme.displayFont,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w400,
+                          color: _heroInk(context),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -1122,216 +1222,88 @@ class _SpeakerBand extends StatelessWidget {
     return ColoredBox(
       color: PrayerCastTokens.slab(context),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 4, 16, 20),
+        padding: const EdgeInsets.fromLTRB(
+          homeContentInset,
+          4,
+          homeContentInset,
+          20,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             EditorialEyebrow(l10n.deviceEyebrow, color: PrayerCastColors.dawn),
             const SizedBox(height: 10),
-            Semantics(
-              button: true,
-              label: l10n.changeHomeSpeaker,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: onTap,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      children: [
-                        IconWell(
-                          child: PremiumIcons.speaker(
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: PrayerCastTokens.isForest(context)
+                    ? PrayerCastColors.canopyDeep
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: PrayerCastColors.dawn.withValues(alpha: 0.45),
+                ),
+                boxShadow: homeMenuCardShadow(context),
+              ),
+              child: Semantics(
+                button: true,
+                label: l10n.changeHomeSpeaker,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onTap,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 8, 0, 8),
+                      child: Row(
+                        children: [
+                          IconWell(
+                            child: PremiumIcons.speaker(
+                              size: 18,
+                              color: PrayerCastTokens.onMark(context),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  l10n.changeHomeSpeaker,
+                                  style: TextStyle(
+                                    fontFamily: PrayerCastTheme.displayFont,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: -0.1,
+                                    height: 1.2,
+                                    color: PrayerCastTokens.onSurface(context),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  subtitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontFamily: PrayerCastTheme.bodyFont,
+                                    fontSize: 13,
+                                    height: 1.35,
+                                    color: PrayerCastTokens.glyphMuted(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          PremiumIcons.caretRight(
                             size: 18,
-                            color: PrayerCastTokens.onMark(context),
+                            color: PrayerCastTokens.glyph(context),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                l10n.changeHomeSpeaker,
-                                style: TextStyle(
-                                  fontFamily: PrayerCastTheme.displayFont,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: -0.1,
-                                  height: 1.2,
-                                  color: PrayerCastTokens.onSurface(context),
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                subtitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontFamily: PrayerCastTheme.bodyFont,
-                                  fontSize: 13,
-                                  height: 1.35,
-                                  color: PrayerCastTokens.glyphMuted(context),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        PremiumIcons.caretRight(
-                          size: 18,
-                          color: PrayerCastTokens.glyph(context),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _HomeDestinationsStrip extends StatelessWidget {
-  const _HomeDestinationsStrip({
-    required this.onPrayerTimes,
-    required this.onPrayerTracker,
-    required this.onQibla,
-  });
-
-  final VoidCallback onPrayerTimes;
-  final VoidCallback onPrayerTracker;
-  final VoidCallback onQibla;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return Padding(
-      key: const ValueKey<String>('home_destinations_strip'),
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: _DestinationCell(
-                cellKey: const ValueKey<String>('home_prayer_times_slab'),
-                eyebrow: l10n.scheduleEyebrow,
-                title: l10n.prayerTimes,
-                onTap: onPrayerTimes,
-              ),
-            ),
-            const _PipeDivider(slot: 0),
-            Expanded(
-              child: _DestinationCell(
-                cellKey: const ValueKey<String>('home_prayer_tracker_slab'),
-                eyebrow: l10n.worshipEyebrow,
-                title: l10n.prayerTracker,
-                onTap: onPrayerTracker,
-              ),
-            ),
-            const _PipeDivider(slot: 1),
-            Expanded(
-              child: _DestinationCell(
-                cellKey: const ValueKey<String>('home_qibla_slab'),
-                eyebrow: l10n.directionEyebrow,
-                title: l10n.qibla,
-                onTap: onQibla,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PipeDivider extends StatelessWidget {
-  const _PipeDivider({required this.slot});
-
-  final int slot;
-
-  static const double slotWidth = 24;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      key: ValueKey<String>('home_destination_pipe_$slot'),
-      width: slotWidth,
-      child: Center(
-        child: ColoredBox(
-          color: PrayerCastTokens.isForest(context)
-              ? PrayerCastColors.mistDeep.withValues(alpha: 0.55)
-              : PrayerCastColors.dawn,
-          child: const SizedBox(width: 1, height: 20),
-        ),
-      ),
-    );
-  }
-}
-
-class _DestinationCell extends StatelessWidget {
-  const _DestinationCell({
-    required this.cellKey,
-    required this.eyebrow,
-    required this.title,
-    required this.onTap,
-  });
-
-  final Key cellKey;
-  final String eyebrow;
-  final String title;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: title,
-      child: Material(
-        key: cellKey,
-        color: PrayerCastTokens.surface(context),
-        child: InkWell(
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              minHeight: PrayerCastTheme.minTap,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  EditorialEyebrow(eyebrow, color: PrayerCastColors.dawn),
-                  const SizedBox(height: 4),
-                  // One line on every width — avoid uneven wrap (narrow phones
-                  // used to break "Prayer times" while "Qibla" stayed single).
-                  SizedBox(
-                    width: double.infinity,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        softWrap: false,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: PrayerCastTheme.displayFont,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          height: 1.2,
-                          letterSpacing: -0.2,
-                          color: PrayerCastTokens.onSurface(context),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ),
       ),
     );
@@ -1467,6 +1439,23 @@ class PrayerCastAppForTest extends StatelessWidget {
         adhanNextPrayerProvider.overrideWithValue(
           AdhanNextPrayerProvider(store: prefsStore),
         ),
+        todayScheduleProvider.overrideWith((ref) async {
+          return AladhanDaySchedule(
+            date: DateTime(2000, 1, 1),
+            timezone: 'UTC',
+            latitude: 0,
+            longitude: 0,
+            methodName: 'test',
+            slots: [
+              for (final name in ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'])
+                NextPrayer(
+                  name: name,
+                  scheduledAt: DateTime(2000, 1, 1, 5),
+                  voiceId: 'standard_adhan',
+                ),
+            ],
+          );
+        }),
         activeDeliveryHeroProvider.overrideWithValue(ActiveDeliveryHero()),
         if (nextPrayer != null)
           nextPrayerSnapshotProvider.overrideWith((ref) async => nextPrayer),
@@ -1492,6 +1481,8 @@ class PrayerCastAppForTest extends StatelessWidget {
         ),
         localeStoreProvider.overrideWithValue(MemoryLocaleStore('id')),
         appThemeStoreProvider.overrideWithValue(MemoryAppThemeStore()),
+        adhkarPrefsProvider.overrideWithValue(MemoryAdhkarPrefs()),
+        dhikrCounterStoreProvider.overrideWithValue(MemoryDhikrCounterStore()),
         prayerTrackerStoreProvider.overrideWithValue(
           MemoryPrayerTrackerStore(),
         ),

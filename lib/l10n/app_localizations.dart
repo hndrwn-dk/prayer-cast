@@ -878,6 +878,24 @@ abstract class AppLocalizations {
   /// **'Speaker did not fetch audio from the phone (0 requests). Check same Wi‑Fi, turn off VPN, and reselect the home speaker.'**
   String get castNoFetch;
 
+  /// No description provided for @adhkarSpeakerOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Home speaker is offline. Check it is on and on the same Wi‑Fi.'**
+  String get adhkarSpeakerOffline;
+
+  /// No description provided for @adhkarAudioMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Adhkar audio is not available yet.'**
+  String get adhkarAudioMissing;
+
+  /// No description provided for @adhkarPlayFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not play adhkar on the speaker.'**
+  String get adhkarPlayFailed;
+
   /// No description provided for @castFailed.
   ///
   /// In en, this message translates to:
@@ -1723,6 +1741,462 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Turn off battery limits for the adhan'**
   String get onboardingRecoveryBattery;
+
+  /// Section title for dhikr features on home screen
+  ///
+  /// In en, this message translates to:
+  /// **'Dhikr & Remembrance'**
+  String get dhikrSectionTitle;
+
+  /// Title for morning adhkar after Fajr
+  ///
+  /// In en, this message translates to:
+  /// **'Morning Adhkar'**
+  String get morningAdhkar;
+
+  /// Title for evening adhkar after Asr
+  ///
+  /// In en, this message translates to:
+  /// **'Evening Adhkar'**
+  String get eveningAdhkar;
+
+  /// Title for general dhikr counter page
+  ///
+  /// In en, this message translates to:
+  /// **'Dhikr Counter'**
+  String get generalDhikr;
+
+  /// Badge on the adhkar tile that is inside its prayer-time window
+  ///
+  /// In en, this message translates to:
+  /// **'NOW'**
+  String get dhikrNowBadge;
+
+  /// Subtitle indicating timing after Fajr prayer
+  ///
+  /// In en, this message translates to:
+  /// **'After Fajr'**
+  String get afterFajr;
+
+  /// Subtitle indicating timing after Asr prayer
+  ///
+  /// In en, this message translates to:
+  /// **'After Asr'**
+  String get afterAsr;
+
+  /// Status when adhkar reminder is enabled
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get adhkarEnabled;
+
+  /// Status when adhkar reminder is disabled
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get adhkarDisabled;
+
+  /// Toggle label to enable adhkar reminder
+  ///
+  /// In en, this message translates to:
+  /// **'Enable this adhkar'**
+  String get enableAdhkar;
+
+  /// Label for delay timing configuration
+  ///
+  /// In en, this message translates to:
+  /// **'Delay (minutes)'**
+  String get delayMinutes;
+
+  /// Guidance for optimal morning adhkar timing
+  ///
+  /// In en, this message translates to:
+  /// **'Best time: After Fajr until sunrise. Can be read until Dhuhr.'**
+  String get timingGuidanceMorning;
+
+  /// Guidance for optimal evening adhkar timing
+  ///
+  /// In en, this message translates to:
+  /// **'Best time: After Asr until Maghrib. Can be read until Isha.'**
+  String get timingGuidanceEvening;
+
+  /// Button to test adhkar playback immediately
+  ///
+  /// In en, this message translates to:
+  /// **'Test now'**
+  String get testAdhkarNow;
+
+  /// Section title for adhkar reading content
+  ///
+  /// In en, this message translates to:
+  /// **'Adhkar to Recite'**
+  String get adhkarContentSection;
+
+  /// Label for current dhikr count
+  ///
+  /// In en, this message translates to:
+  /// **'Count'**
+  String get dhikrCount;
+
+  /// Label for target dhikr count
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get dhikrTarget;
+
+  /// Button to reset counter
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get dhikrReset;
+
+  /// Instruction to tap counter area
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to count'**
+  String get tapToCount;
+
+  /// No description provided for @dhikrSubhanallah.
+  ///
+  /// In en, this message translates to:
+  /// **'SubhanAllah'**
+  String get dhikrSubhanallah;
+
+  /// No description provided for @dhikrSubhanallahArabic.
+  ///
+  /// In en, this message translates to:
+  /// **'سُبْحَانَ اللهِ'**
+  String get dhikrSubhanallahArabic;
+
+  /// No description provided for @dhikrSubhanallahTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Glory be to Allah'**
+  String get dhikrSubhanallahTranslation;
+
+  /// No description provided for @dhikrAlhamdulillah.
+  ///
+  /// In en, this message translates to:
+  /// **'Alhamdulillah'**
+  String get dhikrAlhamdulillah;
+
+  /// No description provided for @dhikrAlhamdulillahArabic.
+  ///
+  /// In en, this message translates to:
+  /// **'اَلْحَمْدُ لِلَّه'**
+  String get dhikrAlhamdulillahArabic;
+
+  /// No description provided for @dhikrAlhamdulillahTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'All praise is due to Allah'**
+  String get dhikrAlhamdulillahTranslation;
+
+  /// No description provided for @dhikrAllahuAkbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Allahu Akbar'**
+  String get dhikrAllahuAkbar;
+
+  /// No description provided for @dhikrAllahuAkbarArabic.
+  ///
+  /// In en, this message translates to:
+  /// **'اَللهُ أَكْبَرُ'**
+  String get dhikrAllahuAkbarArabic;
+
+  /// No description provided for @dhikrAllahuAkbarTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Allah is the Greatest'**
+  String get dhikrAllahuAkbarTranslation;
+
+  /// No description provided for @dhikrLaIlahaIllallah.
+  ///
+  /// In en, this message translates to:
+  /// **'La ilaha illallah'**
+  String get dhikrLaIlahaIllallah;
+
+  /// No description provided for @dhikrLaIlahaIllallahArabic.
+  ///
+  /// In en, this message translates to:
+  /// **'لَا إِلٰهَ إِلَّا اللهُ'**
+  String get dhikrLaIlahaIllallahArabic;
+
+  /// No description provided for @dhikrLaIlahaIllallahTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no god but Allah'**
+  String get dhikrLaIlahaIllallahTranslation;
+
+  /// No description provided for @dhikrSubhanallahWabihamdihi.
+  ///
+  /// In en, this message translates to:
+  /// **'Subhanallah wa bihamdihi'**
+  String get dhikrSubhanallahWabihamdihi;
+
+  /// No description provided for @dhikrSubhanallahWabihamdihiArabic.
+  ///
+  /// In en, this message translates to:
+  /// **'سُبْحَانَ اللهِ وَبِحَمْدِهِ'**
+  String get dhikrSubhanallahWabihamdihiArabic;
+
+  /// No description provided for @dhikrSubhanallahWabihamdihiTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Glory be to Allah and praise Him'**
+  String get dhikrSubhanallahWabihamdihiTranslation;
+
+  /// No description provided for @dhikrSubhanallahWabihamdihiAdzim.
+  ///
+  /// In en, this message translates to:
+  /// **'Subhanallah wabihamdihi, subhanallahil \'adzim'**
+  String get dhikrSubhanallahWabihamdihiAdzim;
+
+  /// No description provided for @dhikrSubhanallahWabihamdihiAdzimArabic.
+  ///
+  /// In en, this message translates to:
+  /// **'سُبْحَانَ اللهِ وَبِحَمْدِهِ ، سُبْحَانَ اللهِ الْعَظِيْم'**
+  String get dhikrSubhanallahWabihamdihiAdzimArabic;
+
+  /// No description provided for @dhikrSubhanallahWabihamdihiAdzimTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Glory be to Allah and praise Him, Glory be to Allah the Almighty'**
+  String get dhikrSubhanallahWabihamdihiAdzimTranslation;
+
+  /// No description provided for @dhikrAstaghfirullah.
+  ///
+  /// In en, this message translates to:
+  /// **'Astaghfirullah'**
+  String get dhikrAstaghfirullah;
+
+  /// No description provided for @dhikrAstaghfirullahArabic.
+  ///
+  /// In en, this message translates to:
+  /// **'أَسْتَغْفِرُ اللهَ'**
+  String get dhikrAstaghfirullahArabic;
+
+  /// No description provided for @dhikrAstaghfirullahTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'I seek forgiveness from Allah'**
+  String get dhikrAstaghfirullahTranslation;
+
+  /// Suggested target count for dhikr
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested: {count}x'**
+  String dhikrSuggestedTarget(int count);
+
+  /// Label for custom user-defined dhikr
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Dhikr'**
+  String get dhikrCustom;
+
+  /// No description provided for @countYourRemembrance.
+  ///
+  /// In en, this message translates to:
+  /// **'Count your remembrance'**
+  String get countYourRemembrance;
+
+  /// Tooltip/title for the adhkar settings sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Adhkar settings'**
+  String get adhkarSettings;
+
+  /// Toggle: play adhkar audio on the home speaker on schedule
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-play on speaker'**
+  String get adhkarAutoPlaySpeaker;
+
+  /// Helper text under the auto-play toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Plays the adhkar audio on your home speaker when you are at home.'**
+  String get adhkarAutoPlayHint;
+
+  /// Delay slider value for morning adhkar
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min after Fajr'**
+  String adhkarDelayAfterFajr(int minutes);
+
+  /// Effective adhkar playback time under the delay slider
+  ///
+  /// In en, this message translates to:
+  /// **'Plays at {time}'**
+  String adhkarPlaysAt(String time);
+
+  /// Playback time when the iqamah offset is later than the delay
+  ///
+  /// In en, this message translates to:
+  /// **'Plays at {time} (after iqamah)'**
+  String adhkarPlaysAtAfterIqamah(String time);
+
+  /// Delay slider value for evening adhkar
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min after Asr'**
+  String adhkarDelayAfterAsr(int minutes);
+
+  /// Button that plays the adhkar audio on the speaker immediately
+  ///
+  /// In en, this message translates to:
+  /// **'Play on speaker now'**
+  String get adhkarPlayOnSpeakerNow;
+
+  /// Reading progress through a list
+  ///
+  /// In en, this message translates to:
+  /// **'{current} of {total}'**
+  String adhkarProgress(int current, int total);
+
+  /// Counter button hint inside an adhkar card
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to count'**
+  String get adhkarTapToCount;
+
+  /// Button for adhkar read once
+  ///
+  /// In en, this message translates to:
+  /// **'Read, next'**
+  String get adhkarMarkRead;
+
+  /// Button on the last adhkar card
+  ///
+  /// In en, this message translates to:
+  /// **'Finish'**
+  String get adhkarFinish;
+
+  /// Title of the completion card
+  ///
+  /// In en, this message translates to:
+  /// **'Adhkar complete'**
+  String get adhkarCompleteTitle;
+
+  /// Body of the completion card
+  ///
+  /// In en, this message translates to:
+  /// **'May Allah accept your remembrance.'**
+  String get adhkarCompleteBody;
+
+  /// Restart the adhkar from the first card
+  ///
+  /// In en, this message translates to:
+  /// **'Read again'**
+  String get adhkarReadAgain;
+
+  /// Toggle for Latin transliteration
+  ///
+  /// In en, this message translates to:
+  /// **'Transliteration'**
+  String get adhkarShowTransliteration;
+
+  /// Toggle for translation
+  ///
+  /// In en, this message translates to:
+  /// **'Translation'**
+  String get adhkarShowTranslation;
+
+  /// Slider label for Arabic font size
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic text size'**
+  String get adhkarTextSize;
+
+  /// How many times an item is read
+  ///
+  /// In en, this message translates to:
+  /// **'Read {count}x'**
+  String adhkarRepeatTimes(int count);
+
+  /// Guided tasbih sequence after the obligatory prayer
+  ///
+  /// In en, this message translates to:
+  /// **'After prayer'**
+  String get dhikrAfterPrayerTitle;
+
+  /// Subtitle of the after-prayer sequence
+  ///
+  /// In en, this message translates to:
+  /// **'Tasbih, tahmid and takbir 33x each, then tahlil, for 100'**
+  String get dhikrAfterPrayerSubtitle;
+
+  /// Section of standalone counters
+  ///
+  /// In en, this message translates to:
+  /// **'Free dhikr'**
+  String get dhikrFreeTitle;
+
+  /// Subtitle of the free dhikr section
+  ///
+  /// In en, this message translates to:
+  /// **'For waiting, walking or commuting'**
+  String get dhikrFreeSubtitle;
+
+  /// Undo one count
+  ///
+  /// In en, this message translates to:
+  /// **'Undo last tap'**
+  String get dhikrUndo;
+
+  /// Confirm dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Reset this counter?'**
+  String get dhikrResetConfirmTitle;
+
+  /// Confirm dialog body
+  ///
+  /// In en, this message translates to:
+  /// **'The count goes back to 0.'**
+  String get dhikrResetConfirmBody;
+
+  /// Dismiss a dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get dhikrCancel;
+
+  /// Shown when the after-prayer sequence is finished
+  ///
+  /// In en, this message translates to:
+  /// **'Dhikr after prayer complete'**
+  String get dhikrSequenceDone;
+
+  /// Restart a finished counter or sequence
+  ///
+  /// In en, this message translates to:
+  /// **'Start again'**
+  String get dhikrStartAgain;
+
+  /// Hint in focus mode
+  ///
+  /// In en, this message translates to:
+  /// **'Tap anywhere to count'**
+  String get dhikrTapAnywhere;
+
+  /// Hint that hardware volume keys increment
+  ///
+  /// In en, this message translates to:
+  /// **'Volume buttons count too'**
+  String get dhikrVolumeKeysHint;
+
+  /// Shown when a free counter hits its target
+  ///
+  /// In en, this message translates to:
+  /// **'Target reached'**
+  String get dhikrTargetReached;
+
+  /// Eyebrow over the Dhikr Counter cell on home
+  ///
+  /// In en, this message translates to:
+  /// **'Anytime'**
+  String get dhikrAnytimeEyebrow;
 }
 
 class _AppLocalizationsDelegate

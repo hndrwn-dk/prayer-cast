@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:prayer_cast/dhikr/models/adhkar_type.dart';
+import 'package:prayer_cast/dhikr/scheduling/adhkar_alarm_handler.dart';
+import 'package:prayer_cast/dhikr/scheduling/adhkar_delivery_coordinator.dart';
 import 'package:prayer_cast/home_delivery/common/clock.dart';
 import 'package:prayer_cast/home_delivery/common/logger.dart';
 import 'package:prayer_cast/home_delivery/coordination/device_identity.dart';
@@ -20,6 +23,7 @@ import 'package:prayer_cast/home_delivery/logging/outcome.dart';
 import 'package:prayer_cast/home_delivery/platform/device_conditions.dart';
 import 'package:prayer_cast/home_delivery/platform/exact_alarm.dart';
 import 'package:prayer_cast/home_delivery/presence/presence_schedule.dart';
+import 'package:prayer_cast/home_delivery/presence/presence_state.dart';
 import 'package:prayer_cast/prayer_times/prayer_prefs.dart';
 
 final class _FakeClock implements Clock {
@@ -147,6 +151,21 @@ final class _FakeExactAlarm implements ExactAlarmPlatform {
 
   @override
   Future<void> cancelIqamahReminder() async {}
+
+  final scheduledAdhkar = <String, int>{};
+  final cancelledAdhkar = <String>[];
+
+  @override
+  Future<void> scheduleAdhkar({required String type, required int atMs}) async {
+    cancelledAdhkar.remove(type);
+    scheduledAdhkar[type] = atMs;
+  }
+
+  @override
+  Future<void> cancelAdhkar(String type) async {
+    scheduledAdhkar.remove(type);
+    cancelledAdhkar.add(type);
+  }
 
   List<PendingIqamahLog> pendingIqamahLogs = [];
 
@@ -434,6 +453,64 @@ void main() {
   );
 
   test(
+    'adhkar fire does not deliver adzan or acknowledge the prayer alarm',
+    () async {
+      final played = <AdhkarType>[];
+      var syncs = 0;
+      final coordinator = buildCoordinator();
+      coordinator.attachAdhkar(
+        sync: () async {
+          syncs += 1;
+        },
+        handler: AdhkarAlarmHandler(
+          play: (type) async {
+            played.add(type);
+            return AdhkarDeliveryResult.success;
+          },
+          readPresence: () async => PresenceState.home,
+          speakerConnected: () async => true,
+          castBusy: () async => false,
+          log:
+              ({
+                required outcome,
+                required type,
+                required scheduledAtMs,
+                detail,
+              }) async {},
+          sync: () async {
+            syncs += 1;
+          },
+        ),
+      );
+      await coordinator.start();
+      final syncsAfterStart = syncs;
+      final acks = alarm.callOrder
+          .where((call) => call == 'acknowledgeAlarmFire')
+          .length;
+      final stops = alarm.stopForegroundCalls;
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'adhkar-evening',
+          scheduledEpochMs: 42,
+          firedAtMs: 42,
+          voiceId: '',
+        ),
+      );
+      for (var i = 0; i < 50 && played.isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(played, [AdhkarType.evening]);
+      expect(deliveries, isEmpty);
+      expect(
+        alarm.callOrder.where((call) => call == 'acknowledgeAlarmFire').length,
+        acks,
+      );
+      expect(alarm.stopForegroundCalls, greaterThan(stops));
+      expect(syncs, syncsAfterStart + 1);
+    },
+  );
+
+  test(
     'start 30s after T-120 still arms that prayer to fire immediately',
     () async {
       final maghribWake = maghrib.scheduledAt.add(PresenceSchedule.scanOffset);
@@ -581,9 +658,7 @@ void main() {
       final wakeMs = alarm.scheduled.single.epochMs;
       alarm.callOrder.clear();
 
-      clock.advanceTo(
-        DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true),
-      );
+      clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
       alarm.emit(
         AlarmFiredEvent(
           prayer: 'maghrib',

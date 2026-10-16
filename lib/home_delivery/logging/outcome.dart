@@ -56,7 +56,19 @@ enum Outcome {
   failedReschedule('FAILED_RESCHEDULE'),
 
   /// Reschedule retry armed (15-second wake) after a failed reschedule.
-  rescheduleRetryArmed('RESCHEDULE_RETRY_ARMED');
+  rescheduleRetryArmed('RESCHEDULE_RETRY_ARMED'),
+
+  /// Scheduled adhkar played on the home speaker.
+  adhkarPlayed('ADHKAR_PLAYED'),
+
+  /// Scheduled adhkar skipped because presence was not home.
+  adhkarSkippedAway('ADHKAR_SKIPPED_AWAY'),
+
+  /// Scheduled adhkar skipped because the speaker was not connected.
+  adhkarSkippedOffline('ADHKAR_SKIPPED_OFFLINE'),
+
+  /// Scheduled adhkar failed (audio missing, Cast error, or still busy).
+  adhkarFailed('ADHKAR_FAILED');
 
   const Outcome(this.code);
 

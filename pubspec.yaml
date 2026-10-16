@@ -1,7 +1,7 @@
 name: prayer_cast
 description: Tursina Labs prayer times app — offline adzan cast to home speakers.
 publish_to: 'none'
-version: 1.0.34+35
+version: 1.0.35+36
 
 environment:
   sdk: ^3.12.0
@@ -67,6 +67,7 @@ flutter:
   assets:
     # Adzan recordings: fajr_adhan.mp3 (Subuh), standard_adhan.mp3 (other prayers).
     - assets/audio/
+    - assets/audio/Adhkar/
   fonts:
     - family: Fraunces
       fonts:
@@ -83,3 +84,7 @@ flutter:
         - asset: assets/fonts/AtkinsonHyperlegible-BoldItalic.ttf
           weight: 700
           style: italic
+    # Same mushaf font as Quran Offline, for all Arabic dhikr text.
+    - family: DigitalKhatt
+      fonts:
+        - asset: assets/fonts/DigitalKhattV2.otf

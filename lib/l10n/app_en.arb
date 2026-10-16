@@ -226,6 +226,9 @@
     }
   },
   "castNoFetch": "Speaker did not fetch audio from the phone (0 requests). Check same Wi‑Fi, turn off VPN, and reselect the home speaker.",
+  "adhkarSpeakerOffline": "Home speaker is offline. Check it is on and on the same Wi‑Fi.",
+  "adhkarAudioMissing": "Adhkar audio is not available yet.",
+  "adhkarPlayFailed": "Could not play adhkar on the speaker.",
   "castFailed": "Failed to cast to speaker: {error}",
   "@castFailed": {
     "placeholders": {
@@ -440,5 +443,289 @@
   "onboardingBatterySkip": "Not now",
   "onboardingRecoveryNotifications": "Allow notifications for the adhan",
   "onboardingRecoveryAlarm": "Allow exact alarms for the adhan",
-  "onboardingRecoveryBattery": "Turn off battery limits for the adhan"
+  "onboardingRecoveryBattery": "Turn off battery limits for the adhan",
+  "dhikrSectionTitle": "Dhikr & Remembrance",
+  "@dhikrSectionTitle": {
+    "description": "Section title for dhikr features on home screen"
+  },
+  "morningAdhkar": "Morning Adhkar",
+  "@morningAdhkar": {
+    "description": "Title for morning adhkar after Fajr"
+  },
+  "eveningAdhkar": "Evening Adhkar",
+  "@eveningAdhkar": {
+    "description": "Title for evening adhkar after Asr"
+  },
+  "generalDhikr": "Dhikr Counter",
+  "@generalDhikr": {
+    "description": "Title for general dhikr counter page"
+  },
+  "dhikrNowBadge": "NOW",
+  "@dhikrNowBadge": {
+    "description": "Badge on the adhkar tile that is inside its prayer-time window"
+  },
+  "afterFajr": "After Fajr",
+  "@afterFajr": {
+    "description": "Subtitle indicating timing after Fajr prayer"
+  },
+  "afterAsr": "After Asr",
+  "@afterAsr": {
+    "description": "Subtitle indicating timing after Asr prayer"
+  },
+  "adhkarEnabled": "Enabled",
+  "@adhkarEnabled": {
+    "description": "Status when adhkar reminder is enabled"
+  },
+  "adhkarDisabled": "Disabled",
+  "@adhkarDisabled": {
+    "description": "Status when adhkar reminder is disabled"
+  },
+  "enableAdhkar": "Enable this adhkar",
+  "@enableAdhkar": {
+    "description": "Toggle label to enable adhkar reminder"
+  },
+  "delayMinutes": "Delay (minutes)",
+  "@delayMinutes": {
+    "description": "Label for delay timing configuration"
+  },
+  "timingGuidanceMorning": "Best time: After Fajr until sunrise. Can be read until Dhuhr.",
+  "@timingGuidanceMorning": {
+    "description": "Guidance for optimal morning adhkar timing"
+  },
+  "timingGuidanceEvening": "Best time: After Asr until Maghrib. Can be read until Isha.",
+  "@timingGuidanceEvening": {
+    "description": "Guidance for optimal evening adhkar timing"
+  },
+  "testAdhkarNow": "Test now",
+  "@testAdhkarNow": {
+    "description": "Button to test adhkar playback immediately"
+  },
+  "adhkarContentSection": "Adhkar to Recite",
+  "@adhkarContentSection": {
+    "description": "Section title for adhkar reading content"
+  },
+  "dhikrCount": "Count",
+  "@dhikrCount": {
+    "description": "Label for current dhikr count"
+  },
+  "dhikrTarget": "Target",
+  "@dhikrTarget": {
+    "description": "Label for target dhikr count"
+  },
+  "dhikrReset": "Reset",
+  "@dhikrReset": {
+    "description": "Button to reset counter"
+  },
+  "tapToCount": "Tap to count",
+  "@tapToCount": {
+    "description": "Instruction to tap counter area"
+  },
+  "dhikrSubhanallah": "SubhanAllah",
+  "dhikrSubhanallahArabic": "سُبْحَانَ اللهِ",
+  "dhikrSubhanallahTranslation": "Glory be to Allah",
+  "dhikrAlhamdulillah": "Alhamdulillah",
+  "dhikrAlhamdulillahArabic": "اَلْحَمْدُ لِلَّه",
+  "dhikrAlhamdulillahTranslation": "All praise is due to Allah",
+  "dhikrAllahuAkbar": "Allahu Akbar",
+  "dhikrAllahuAkbarArabic": "اَللهُ أَكْبَرُ",
+  "dhikrAllahuAkbarTranslation": "Allah is the Greatest",
+  "dhikrLaIlahaIllallah": "La ilaha illallah",
+  "dhikrLaIlahaIllallahArabic": "لَا إِلٰهَ إِلَّا اللهُ",
+  "dhikrLaIlahaIllallahTranslation": "There is no god but Allah",
+  "dhikrSubhanallahWabihamdihi": "Subhanallah wa bihamdihi",
+  "dhikrSubhanallahWabihamdihiArabic": "سُبْحَانَ اللهِ وَبِحَمْدِهِ",
+  "dhikrSubhanallahWabihamdihiTranslation": "Glory be to Allah and praise Him",
+  "dhikrSubhanallahWabihamdihiAdzim": "Subhanallah wabihamdihi, subhanallahil 'adzim",
+  "dhikrSubhanallahWabihamdihiAdzimArabic": "سُبْحَانَ اللهِ وَبِحَمْدِهِ ، سُبْحَانَ اللهِ الْعَظِيْم",
+  "dhikrSubhanallahWabihamdihiAdzimTranslation": "Glory be to Allah and praise Him, Glory be to Allah the Almighty",
+  "dhikrAstaghfirullah": "Astaghfirullah",
+  "dhikrAstaghfirullahArabic": "أَسْتَغْفِرُ اللهَ",
+  "dhikrAstaghfirullahTranslation": "I seek forgiveness from Allah",
+  "dhikrSuggestedTarget": "Suggested: {count}x",
+  "@dhikrSuggestedTarget": {
+    "description": "Suggested target count for dhikr",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "100"
+      }
+    }
+  },
+  "dhikrCustom": "Custom Dhikr",
+  "@dhikrCustom": {
+    "description": "Label for custom user-defined dhikr"
+  },
+  "countYourRemembrance": "Count your remembrance",
+  "adhkarSettings": "Adhkar settings",
+  "@adhkarSettings": {
+    "description": "Tooltip/title for the adhkar settings sheet"
+  },
+  "adhkarAutoPlaySpeaker": "Auto-play on speaker",
+  "@adhkarAutoPlaySpeaker": {
+    "description": "Toggle: play adhkar audio on the home speaker on schedule"
+  },
+  "adhkarAutoPlayHint": "Plays the adhkar audio on your home speaker when you are at home.",
+  "@adhkarAutoPlayHint": {
+    "description": "Helper text under the auto-play toggle"
+  },
+  "adhkarDelayAfterFajr": "{minutes} min after Fajr",
+  "@adhkarDelayAfterFajr": {
+    "description": "Delay slider value for morning adhkar",
+    "placeholders": {
+      "minutes": {
+        "type": "int",
+        "example": "10"
+      }
+    }
+  },
+  "adhkarPlaysAt": "Plays at {time}",
+  "@adhkarPlaysAt": {
+    "description": "Effective adhkar playback time under the delay slider",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "16:36"
+      }
+    }
+  },
+  "adhkarPlaysAtAfterIqamah": "Plays at {time} (after iqamah)",
+  "@adhkarPlaysAtAfterIqamah": {
+    "description": "Playback time when the iqamah offset is later than the delay",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "16:36"
+      }
+    }
+  },
+  "adhkarDelayAfterAsr": "{minutes} min after Asr",
+  "@adhkarDelayAfterAsr": {
+    "description": "Delay slider value for evening adhkar",
+    "placeholders": {
+      "minutes": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "adhkarPlayOnSpeakerNow": "Play on speaker now",
+  "@adhkarPlayOnSpeakerNow": {
+    "description": "Button that plays the adhkar audio on the speaker immediately"
+  },
+  "adhkarProgress": "{current} of {total}",
+  "@adhkarProgress": {
+    "description": "Reading progress through a list",
+    "placeholders": {
+      "current": {
+        "type": "int",
+        "example": "3"
+      },
+      "total": {
+        "type": "int",
+        "example": "14"
+      }
+    }
+  },
+  "adhkarTapToCount": "Tap to count",
+  "@adhkarTapToCount": {
+    "description": "Counter button hint inside an adhkar card"
+  },
+  "adhkarMarkRead": "Read, next",
+  "@adhkarMarkRead": {
+    "description": "Button for adhkar read once"
+  },
+  "adhkarFinish": "Finish",
+  "@adhkarFinish": {
+    "description": "Button on the last adhkar card"
+  },
+  "adhkarCompleteTitle": "Adhkar complete",
+  "@adhkarCompleteTitle": {
+    "description": "Title of the completion card"
+  },
+  "adhkarCompleteBody": "May Allah accept your remembrance.",
+  "@adhkarCompleteBody": {
+    "description": "Body of the completion card"
+  },
+  "adhkarReadAgain": "Read again",
+  "@adhkarReadAgain": {
+    "description": "Restart the adhkar from the first card"
+  },
+  "adhkarShowTransliteration": "Transliteration",
+  "@adhkarShowTransliteration": {
+    "description": "Toggle for Latin transliteration"
+  },
+  "adhkarShowTranslation": "Translation",
+  "@adhkarShowTranslation": {
+    "description": "Toggle for translation"
+  },
+  "adhkarTextSize": "Arabic text size",
+  "@adhkarTextSize": {
+    "description": "Slider label for Arabic font size"
+  },
+  "adhkarRepeatTimes": "Read {count}x",
+  "@adhkarRepeatTimes": {
+    "description": "How many times an item is read",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "dhikrAfterPrayerTitle": "After prayer",
+  "@dhikrAfterPrayerTitle": {
+    "description": "Guided tasbih sequence after the obligatory prayer"
+  },
+  "dhikrAfterPrayerSubtitle": "Tasbih, tahmid and takbir 33x each, then tahlil, for 100",
+  "@dhikrAfterPrayerSubtitle": {
+    "description": "Subtitle of the after-prayer sequence"
+  },
+  "dhikrFreeTitle": "Free dhikr",
+  "@dhikrFreeTitle": {
+    "description": "Section of standalone counters"
+  },
+  "dhikrFreeSubtitle": "For waiting, walking or commuting",
+  "@dhikrFreeSubtitle": {
+    "description": "Subtitle of the free dhikr section"
+  },
+  "dhikrUndo": "Undo last tap",
+  "@dhikrUndo": {
+    "description": "Undo one count"
+  },
+  "dhikrResetConfirmTitle": "Reset this counter?",
+  "@dhikrResetConfirmTitle": {
+    "description": "Confirm dialog title"
+  },
+  "dhikrResetConfirmBody": "The count goes back to 0.",
+  "@dhikrResetConfirmBody": {
+    "description": "Confirm dialog body"
+  },
+  "dhikrCancel": "Cancel",
+  "@dhikrCancel": {
+    "description": "Dismiss a dialog"
+  },
+  "dhikrSequenceDone": "Dhikr after prayer complete",
+  "@dhikrSequenceDone": {
+    "description": "Shown when the after-prayer sequence is finished"
+  },
+  "dhikrStartAgain": "Start again",
+  "@dhikrStartAgain": {
+    "description": "Restart a finished counter or sequence"
+  },
+  "dhikrTapAnywhere": "Tap anywhere to count",
+  "@dhikrTapAnywhere": {
+    "description": "Hint in focus mode"
+  },
+  "dhikrVolumeKeysHint": "Volume buttons count too",
+  "@dhikrVolumeKeysHint": {
+    "description": "Hint that hardware volume keys increment"
+  },
+  "dhikrTargetReached": "Target reached",
+  "@dhikrTargetReached": {
+    "description": "Shown when a free counter hits its target"
+  },
+  "dhikrAnytimeEyebrow": "Anytime",
+  "@dhikrAnytimeEyebrow": {
+    "description": "Eyebrow over the Dhikr Counter cell on home"
+  }
 }

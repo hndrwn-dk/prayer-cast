@@ -120,13 +120,23 @@ class AdzanForegroundService : Service() {
         timeoutHandler.postDelayed(stopAfterWindow, DELIVERY_WINDOW_MS)
 
         if (scheduledEpochMs > 0L) {
-            ExactAlarmPlugin.emitFromBackground(
-                this,
-                prayer,
-                scheduledEpochMs,
-                firedAtMs,
-                voiceId,
-            )
+            if (prayer.startsWith("adhkar-")) {
+                ExactAlarmPlugin.emitAdhkarFromBackground(
+                    this,
+                    prayer,
+                    scheduledEpochMs,
+                    firedAtMs,
+                    voiceId,
+                )
+            } else {
+                ExactAlarmPlugin.emitFromBackground(
+                    this,
+                    prayer,
+                    scheduledEpochMs,
+                    firedAtMs,
+                    voiceId,
+                )
+            }
         }
 
         // Dart runs in this process via [PrayerCastFlutter.ensureStarted].

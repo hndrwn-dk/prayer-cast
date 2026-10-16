@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -32,6 +33,7 @@ class MainActivity : FlutterFragmentActivity() {
     override fun onDestroy() {
         ExactAlarmPlugin.attachActivity(null)
         OemBatteryPlugin.attachActivity(null)
+        DhikrDevicePlugin.release()
         // Before super, so the hang restart is posted after Flutter detaches
         // the view. Destroying the engine while the view is still in layout
         // is the setViewportMetrics crash.
@@ -55,6 +57,12 @@ class MainActivity : FlutterFragmentActivity() {
         return DeliveryEnginePolicy.destroyEngineWithHost()
     }
 
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // Dhikr focus mode counts with the volume buttons.
+        if (DhikrDevicePlugin.handleKey(event)) return true
+        return super.dispatchKeyEvent(event)
+    }
+
     override fun onResume() {
         super.onResume()
         // Re-bind after Settings / OEM screens return (BAL-safe startActivity).
@@ -67,6 +75,7 @@ class MainActivity : FlutterFragmentActivity() {
         // Always bind: a cached FGS engine would otherwise skip this channel.
         LaunchPrayerPlugin.bind(flutterEngine, this)
         ShareTextPlugin.bind(flutterEngine, this)
+        DhikrDevicePlugin.bind(flutterEngine, this)
         if (PrayerCastFlutter.cached() !== flutterEngine) {
             PrayerCastFlutter.registerAppPlugins(flutterEngine, applicationContext)
             PrayerCastFlutter.cacheIfAbsent(flutterEngine)

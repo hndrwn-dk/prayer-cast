@@ -193,6 +193,42 @@ final class OutcomeStatus {
           foreground: PrayerCastColors.quiet,
           background: Color(0xFFE4EBE6),
         );
+      case Outcome.adhkarPlayed:
+        return const OutcomeStatus(
+          kind: OutcomeKind.success,
+          shortLabelBi: 'Dzikir',
+          shortLabelEn: 'Adhkar',
+          icon: PremiumIcons.speaker,
+          foreground: PrayerCastColors.canopyDeep,
+          background: PrayerCastColors.mist,
+        );
+      case Outcome.adhkarSkippedAway:
+        return const OutcomeStatus(
+          kind: OutcomeKind.quiet,
+          shortLabelBi: 'Di luar rumah',
+          shortLabelEn: 'Away',
+          icon: PremiumIcons.house,
+          foreground: PrayerCastColors.quiet,
+          background: Color(0xFFE4EBE6),
+        );
+      case Outcome.adhkarSkippedOffline:
+        return const OutcomeStatus(
+          kind: OutcomeKind.quiet,
+          shortLabelBi: 'Speaker mati',
+          shortLabelEn: 'Speaker offline',
+          icon: PremiumIcons.plug,
+          foreground: PrayerCastColors.quiet,
+          background: Color(0xFFE4EBE6),
+        );
+      case Outcome.adhkarFailed:
+        return const OutcomeStatus(
+          kind: OutcomeKind.problem,
+          shortLabelBi: 'Dzikir gagal',
+          shortLabelEn: 'Adhkar failed',
+          icon: PremiumIcons.musicMinus,
+          foreground: PrayerCastColors.danger,
+          background: PrayerCastColors.dangerSoft,
+        );
     }
   }
 }

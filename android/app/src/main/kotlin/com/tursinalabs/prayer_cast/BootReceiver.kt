@@ -38,6 +38,10 @@ class BootReceiver : BroadcastReceiver() {
         val healed = ExactAlarmPlugin.healPersistedWake(app)
         val preHealed = PrePrayerAlert.rearmFromPrefsIfFuture(app)
         val iqamahHealed = IqamahAlert.rearmFromPrefsIfFuture(app)
+        val adhkarHealed = AdhkarAlarm.rearmFromPrefsIfFuture(app)
+        if (adhkarHealed) {
+            Log.i(TAG, "Re-armed adhkar alarms after $action")
+        }
         NextPrayerWidget.refresh(app)
         Log.i(
             TAG,

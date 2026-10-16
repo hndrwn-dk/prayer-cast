@@ -451,6 +451,16 @@ class AppLocalizationsId extends AppLocalizations {
       'Speaker tidak mengambil audio dari HP (0 request). Cek Wi‑Fi yang sama, matikan VPN, dan pilih ulang speaker rumah.';
 
   @override
+  String get adhkarSpeakerOffline =>
+      'Speaker rumah tidak terhubung. Pastikan menyala dan satu Wi‑Fi.';
+
+  @override
+  String get adhkarAudioMissing => 'Audio adzkar belum tersedia.';
+
+  @override
+  String get adhkarPlayFailed => 'Gagal memutar adzkar di speaker.';
+
+  @override
   String castFailed(String error) {
     return 'Gagal cast ke speaker: $error';
   }
@@ -918,4 +928,255 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get onboardingRecoveryBattery => 'Matikan batasan baterai untuk adzan';
+
+  @override
+  String get dhikrSectionTitle => 'Dzikir & Wirid';
+
+  @override
+  String get morningAdhkar => 'Dzikir Pagi';
+
+  @override
+  String get eveningAdhkar => 'Dzikir Petang';
+
+  @override
+  String get generalDhikr => 'Counter Dzikir';
+
+  @override
+  String get dhikrNowBadge => 'SEKARANG';
+
+  @override
+  String get afterFajr => 'Setelah Subuh';
+
+  @override
+  String get afterAsr => 'Setelah Ashar';
+
+  @override
+  String get adhkarEnabled => 'Aktif';
+
+  @override
+  String get adhkarDisabled => 'Nonaktif';
+
+  @override
+  String get enableAdhkar => 'Aktifkan dzikir ini';
+
+  @override
+  String get delayMinutes => 'Tunda (menit)';
+
+  @override
+  String get timingGuidanceMorning =>
+      'Waktu utama: Setelah Subuh hingga terbit matahari. Bisa dibaca hingga Zuhur.';
+
+  @override
+  String get timingGuidanceEvening =>
+      'Waktu utama: Setelah Ashar hingga Maghrib. Bisa dibaca hingga Isya.';
+
+  @override
+  String get testAdhkarNow => 'Tes sekarang';
+
+  @override
+  String get adhkarContentSection => 'Dzikir untuk Dibaca';
+
+  @override
+  String get dhikrCount => 'Hitungan';
+
+  @override
+  String get dhikrTarget => 'Target';
+
+  @override
+  String get dhikrReset => 'Reset';
+
+  @override
+  String get tapToCount => 'Ketuk untuk hitung';
+
+  @override
+  String get dhikrSubhanallah => 'SubhanAllah';
+
+  @override
+  String get dhikrSubhanallahArabic => 'سُبْحَانَ اللهِ';
+
+  @override
+  String get dhikrSubhanallahTranslation => 'Maha Suci Allah';
+
+  @override
+  String get dhikrAlhamdulillah => 'Alhamdulillah';
+
+  @override
+  String get dhikrAlhamdulillahArabic => 'اَلْحَمْدُ لِلَّه';
+
+  @override
+  String get dhikrAlhamdulillahTranslation => 'Segala puji bagi Allah';
+
+  @override
+  String get dhikrAllahuAkbar => 'Allahu Akbar';
+
+  @override
+  String get dhikrAllahuAkbarArabic => 'اَللهُ أَكْبَرُ';
+
+  @override
+  String get dhikrAllahuAkbarTranslation => 'Allah Maha Besar';
+
+  @override
+  String get dhikrLaIlahaIllallah => 'La ilaha illallah';
+
+  @override
+  String get dhikrLaIlahaIllallahArabic => 'لَا إِلٰهَ إِلَّا اللهُ';
+
+  @override
+  String get dhikrLaIlahaIllallahTranslation => 'Tiada tuhan selain Allah';
+
+  @override
+  String get dhikrSubhanallahWabihamdihi => 'Subhanallah wa bihamdihi';
+
+  @override
+  String get dhikrSubhanallahWabihamdihiArabic =>
+      'سُبْحَانَ اللهِ وَبِحَمْدِهِ';
+
+  @override
+  String get dhikrSubhanallahWabihamdihiTranslation =>
+      'Maha Suci Allah dengan segala pujian-Nya';
+
+  @override
+  String get dhikrSubhanallahWabihamdihiAdzim =>
+      'Subhanallah wabihamdihi, subhanallahil \'adzim';
+
+  @override
+  String get dhikrSubhanallahWabihamdihiAdzimArabic =>
+      'سُبْحَانَ اللهِ وَبِحَمْدِهِ ، سُبْحَانَ اللهِ الْعَظِيْم';
+
+  @override
+  String get dhikrSubhanallahWabihamdihiAdzimTranslation =>
+      'Maha Suci Allah dengan segala pujian-Nya, Maha Suci Allah Yang Maha Agung';
+
+  @override
+  String get dhikrAstaghfirullah => 'Astaghfirullah';
+
+  @override
+  String get dhikrAstaghfirullahArabic => 'أَسْتَغْفِرُ اللهَ';
+
+  @override
+  String get dhikrAstaghfirullahTranslation => 'Aku memohon ampun kepada Allah';
+
+  @override
+  String dhikrSuggestedTarget(int count) {
+    return 'Saran: ${count}x';
+  }
+
+  @override
+  String get dhikrCustom => 'Dzikir Kustom';
+
+  @override
+  String get countYourRemembrance => 'Hitung dzikirmu';
+
+  @override
+  String get adhkarSettings => 'Pengaturan dzikir';
+
+  @override
+  String get adhkarAutoPlaySpeaker => 'Putar otomatis di speaker';
+
+  @override
+  String get adhkarAutoPlayHint =>
+      'Audio dzikir diputar di speaker rumah saat Anda sedang di rumah.';
+
+  @override
+  String adhkarDelayAfterFajr(int minutes) {
+    return '$minutes menit setelah Subuh';
+  }
+
+  @override
+  String adhkarPlaysAt(String time) {
+    return 'Diputar $time';
+  }
+
+  @override
+  String adhkarPlaysAtAfterIqamah(String time) {
+    return 'Diputar $time (setelah iqamah)';
+  }
+
+  @override
+  String adhkarDelayAfterAsr(int minutes) {
+    return '$minutes menit setelah Asar';
+  }
+
+  @override
+  String get adhkarPlayOnSpeakerNow => 'Putar sekarang di speaker';
+
+  @override
+  String adhkarProgress(int current, int total) {
+    return '$current dari $total';
+  }
+
+  @override
+  String get adhkarTapToCount => 'Ketuk untuk menghitung';
+
+  @override
+  String get adhkarMarkRead => 'Sudah dibaca, lanjut';
+
+  @override
+  String get adhkarFinish => 'Selesai';
+
+  @override
+  String get adhkarCompleteTitle => 'Dzikir selesai';
+
+  @override
+  String get adhkarCompleteBody => 'Semoga Allah menerima dzikir Anda.';
+
+  @override
+  String get adhkarReadAgain => 'Baca lagi';
+
+  @override
+  String get adhkarShowTransliteration => 'Transliterasi';
+
+  @override
+  String get adhkarShowTranslation => 'Terjemahan';
+
+  @override
+  String get adhkarTextSize => 'Ukuran teks Arab';
+
+  @override
+  String adhkarRepeatTimes(int count) {
+    return 'Baca ${count}x';
+  }
+
+  @override
+  String get dhikrAfterPrayerTitle => 'Setelah salat';
+
+  @override
+  String get dhikrAfterPrayerSubtitle =>
+      'Tasbih, tahmid, takbir masing-masing 33x, lalu tahlil, genap 100';
+
+  @override
+  String get dhikrFreeTitle => 'Dzikir bebas';
+
+  @override
+  String get dhikrFreeSubtitle => 'Saat menunggu, berjalan, atau di perjalanan';
+
+  @override
+  String get dhikrUndo => 'Batalkan ketukan terakhir';
+
+  @override
+  String get dhikrResetConfirmTitle => 'Reset hitungan ini?';
+
+  @override
+  String get dhikrResetConfirmBody => 'Hitungan kembali ke 0.';
+
+  @override
+  String get dhikrCancel => 'Batal';
+
+  @override
+  String get dhikrSequenceDone => 'Dzikir setelah salat selesai';
+
+  @override
+  String get dhikrStartAgain => 'Mulai lagi';
+
+  @override
+  String get dhikrTapAnywhere => 'Ketuk di mana saja untuk menghitung';
+
+  @override
+  String get dhikrVolumeKeysHint => 'Tombol volume juga menghitung';
+
+  @override
+  String get dhikrTargetReached => 'Target tercapai';
+
+  @override
+  String get dhikrAnytimeEyebrow => 'Kapan saja';
 }

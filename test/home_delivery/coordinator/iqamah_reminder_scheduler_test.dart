@@ -36,8 +36,10 @@ void main() {
       NextPrayer(name: 'maghrib', scheduledAt: azan, voiceId: 'standard_adhan'),
       azan.subtract(const Duration(hours: 1)),
     );
-    expect(alarm.scheduledEpochMs, azan.add(const Duration(minutes: 5))
-        .millisecondsSinceEpoch);
+    expect(
+      alarm.scheduledEpochMs,
+      azan.add(const Duration(minutes: 5)).millisecondsSinceEpoch,
+    );
     expect(alarm.sound, 'silent');
     expect(alarm.title, contains('Maghrib'));
   });
@@ -61,45 +63,48 @@ void main() {
     expect(alarm.scheduledEpochMs, isNull);
   });
 
-  test('syncAfterDelivery keeps just-fired iqamah over the next prayer', () async {
-    final alarm = _RecordingExactAlarm();
-    final store = MemoryPrayerPrefsStore(
-      PrayerPrefs.defaults.copyWith(
-        iqamahMinutesByPrayer: {
-          'fajr': 5,
-          'dhuhr': 5,
-          'asr': 5,
-          'maghrib': 5,
-          'isha': 5,
-        },
-      ),
-    );
-    final scheduler = IqamahReminderScheduler(
-      exactAlarm: alarm,
-      prayerPrefs: store,
-      readLocaleCode: () async => 'en',
-    );
-    final dhuhrAzan = DateTime.utc(2026, 9, 9, 13, 0);
-    final asrAzan = DateTime.utc(2026, 9, 9, 16, 0);
-    await scheduler.syncAfterDelivery(
-      delivered: NextPrayer(
-        name: 'dhuhr',
-        scheduledAt: dhuhrAzan,
-        voiceId: 'standard_adhan',
-      ),
-      next: NextPrayer(
-        name: 'asr',
-        scheduledAt: asrAzan,
-        voiceId: 'standard_adhan',
-      ),
-      now: dhuhrAzan.add(const Duration(seconds: 30)),
-    );
-    expect(alarm.prayer, 'dhuhr');
-    expect(
-      alarm.scheduledEpochMs,
-      dhuhrAzan.add(const Duration(minutes: 5)).millisecondsSinceEpoch,
-    );
-  });
+  test(
+    'syncAfterDelivery keeps just-fired iqamah over the next prayer',
+    () async {
+      final alarm = _RecordingExactAlarm();
+      final store = MemoryPrayerPrefsStore(
+        PrayerPrefs.defaults.copyWith(
+          iqamahMinutesByPrayer: {
+            'fajr': 5,
+            'dhuhr': 5,
+            'asr': 5,
+            'maghrib': 5,
+            'isha': 5,
+          },
+        ),
+      );
+      final scheduler = IqamahReminderScheduler(
+        exactAlarm: alarm,
+        prayerPrefs: store,
+        readLocaleCode: () async => 'en',
+      );
+      final dhuhrAzan = DateTime.utc(2026, 9, 9, 13, 0);
+      final asrAzan = DateTime.utc(2026, 9, 9, 16, 0);
+      await scheduler.syncAfterDelivery(
+        delivered: NextPrayer(
+          name: 'dhuhr',
+          scheduledAt: dhuhrAzan,
+          voiceId: 'standard_adhan',
+        ),
+        next: NextPrayer(
+          name: 'asr',
+          scheduledAt: asrAzan,
+          voiceId: 'standard_adhan',
+        ),
+        now: dhuhrAzan.add(const Duration(seconds: 30)),
+      );
+      expect(alarm.prayer, 'dhuhr');
+      expect(
+        alarm.scheduledEpochMs,
+        dhuhrAzan.add(const Duration(minutes: 5)).millisecondsSinceEpoch,
+      );
+    },
+  );
 }
 
 final class _RecordingExactAlarm implements ExactAlarmPlatform {
@@ -128,6 +133,15 @@ final class _RecordingExactAlarm implements ExactAlarmPlatform {
     cancelled = true;
     scheduledEpochMs = null;
   }
+
+  @override
+  Future<void> scheduleAdhkar({
+    required String type,
+    required int atMs,
+  }) async {}
+
+  @override
+  Future<void> cancelAdhkar(String type) async {}
 
   @override
   Future<List<PendingIqamahLog>> drainPendingIqamahLogs() async => const [];
