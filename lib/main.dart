@@ -79,7 +79,7 @@ import 'package:prayer_cast/support/support_sheet.dart';
 import 'package:prayer_cast/support/support_state_store.dart';
 
 /// Mirrors pubspec.yaml `version:`. Bump both together.
-const String kAppVersion = '1.0.36+38';
+const String kAppVersion = '1.0.36+39';
 
 /// Android 13+ [POST_NOTIFICATIONS]. Default true so widget tests stay clean.
 final postNotificationsGrantedProvider = StateProvider<bool>((ref) => true);
