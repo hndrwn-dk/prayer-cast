@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -70,9 +71,7 @@ void main() {
   });
 
   test('next returns asr after dhuhr', () async {
-    final next = await provider.next(
-      after: DateTime(2026, 8, 13, 12, 1),
-    );
+    final next = await provider.next(after: DateTime(2026, 8, 13, 12, 1));
     expect(next.name, 'asr');
     expect(next.voiceId, 'standard_adhan');
   });
@@ -111,8 +110,7 @@ void main() {
     mockHttp = MockClient((request) async {
       final school = request.url.queryParameters['school'];
       final asr = school == '1' ? '17:31' : '16:29';
-      return http.Response(
-        '''
+      return http.Response('''
 {
   "code": 200,
   "status": "OK",
@@ -132,9 +130,7 @@ void main() {
     }
   }
 }
-''',
-        200,
-      );
+''', 200);
     });
     client = AladhanClient(httpClient: mockHttp);
     store = MemoryPrayerPrefsStore(
@@ -155,7 +151,10 @@ void main() {
     final asr = day.slots.firstWhere((s) => s.name == 'asr');
     expect(asr.scheduledAt.hour, 17);
     expect(asr.scheduledAt.minute, 31);
-    expect(day.slots.firstWhere((s) => s.name == 'maghrib').scheduledAt.hour, 19);
+    expect(
+      day.slots.firstWhere((s) => s.name == 'maghrib').scheduledAt.hour,
+      19,
+    );
   });
 
   test('AladhanClient timingsByCoordinates parses response', () async {
@@ -280,16 +279,65 @@ void main() {
       preferCache: true,
     );
     expect(next.name, 'asr');
-    expect(networkCalls, 0, reason: 'preferCache: true should skip network when cache covers window');
+    expect(
+      networkCalls,
+      0,
+      reason: 'preferCache: true should skip network when cache covers window',
+    );
   });
 
-  test('preferCache: true with no covering disk cache falls through to network', () async {
+  test(
+    'preferCache: true with no covering disk cache falls through to network',
+    () async {
+      final cacheFile = File(
+        '${Directory.systemTemp.path}/prayer_schedule_cache_${DateTime.now().microsecondsSinceEpoch}.json',
+      );
+      addTearDown(() {
+        if (cacheFile.existsSync()) cacheFile.deleteSync();
+      });
+
+      var networkCalls = 0;
+      final trackingClient = AladhanClient(
+        httpClient: MockClient((request) async {
+          networkCalls++;
+          return http.Response(_sampleBody, 200);
+        }),
+      );
+
+      final preferCacheProvider = AdhanNextPrayerProvider(
+        store: store,
+        client: trackingClient,
+        scheduleCacheFile: cacheFile,
+      );
+
+      // No cache exists, should fall through to network
+      final next = await preferCacheProvider.next(
+        after: DateTime(2026, 8, 13, 12, 1),
+        preferCache: true,
+      );
+      expect(next.name, 'asr');
+      expect(
+        networkCalls,
+        greaterThan(0),
+        reason: 'preferCache: true should use network when cache is missing',
+      );
+    },
+  );
+
+  test('preferCache: true ignores yesterday\'s day pair', () async {
     final cacheFile = File(
       '${Directory.systemTemp.path}/prayer_schedule_cache_${DateTime.now().microsecondsSinceEpoch}.json',
     );
     addTearDown(() {
       if (cacheFile.existsSync()) cacheFile.deleteSync();
     });
+
+    // Written on Aug 13: holds Aug 13 + Aug 14 only.
+    await AdhanNextPrayerProvider(
+      store: store,
+      client: client,
+      scheduleCacheFile: cacheFile,
+    ).next(after: DateTime(2026, 8, 13, 12, 1));
 
     var networkCalls = 0;
     final trackingClient = AladhanClient(
@@ -298,20 +346,19 @@ void main() {
         return http.Response(_sampleBody, 200);
       }),
     );
-
-    final preferCacheProvider = AdhanNextPrayerProvider(
+    final next = await AdhanNextPrayerProvider(
       store: store,
       client: trackingClient,
       scheduleCacheFile: cacheFile,
-    );
+    ).next(after: DateTime(2026, 8, 14, 12, 1), preferCache: true);
 
-    // No cache exists, should fall through to network
-    final next = await preferCacheProvider.next(
-      after: DateTime(2026, 8, 13, 12, 1),
-      preferCache: true,
-    );
     expect(next.name, 'asr');
-    expect(networkCalls, greaterThan(0), reason: 'preferCache: true should use network when cache is missing');
+    expect(next.scheduledAt.day, 14);
+    expect(
+      networkCalls,
+      greaterThan(0),
+      reason: 'Aug 15 is missing from the Aug 13 cache',
+    );
   });
 
   test('preferCache: false (default) keeps fetch-first behavior', () async {
@@ -347,8 +394,133 @@ void main() {
     );
 
     // Should still hit network first (default behavior)
-    final next = await defaultProvider.next(after: DateTime(2026, 8, 13, 12, 1));
+    final next = await defaultProvider.next(
+      after: DateTime(2026, 8, 13, 12, 1),
+    );
     expect(next.name, 'asr');
-    expect(networkCalls, greaterThan(0), reason: 'preferCache: false should hit network first (regression test)');
+    expect(
+      networkCalls,
+      greaterThan(0),
+      reason: 'preferCache: false should hit network first (regression test)',
+    );
   });
+
+  test(
+    'valid today+tomorrow cache returns isha after maghrib with no network',
+    () async {
+      final cacheFile = File(
+        '${Directory.systemTemp.path}/prayer_schedule_cache_${DateTime.now().microsecondsSinceEpoch}.json',
+      );
+      addTearDown(() {
+        if (cacheFile.existsSync()) cacheFile.deleteSync();
+      });
+
+      await AdhanNextPrayerProvider(
+        store: store,
+        client: client,
+        scheduleCacheFile: cacheFile,
+      ).next(after: DateTime(2026, 8, 13, 12, 1));
+
+      var networkCalls = 0;
+      final next = await AdhanNextPrayerProvider(
+        store: store,
+        client: AladhanClient(
+          httpClient: MockClient((request) async {
+            networkCalls++;
+            return http.Response(_sampleBody, 200);
+          }),
+        ),
+        scheduleCacheFile: cacheFile,
+      ).next(after: DateTime(2026, 8, 13, 18, 1), preferCache: true);
+
+      expect(next.name, 'isha');
+      expect(next.scheduledAt, DateTime(2026, 8, 13, 19, 30));
+      expect(networkCalls, 0);
+    },
+  );
+
+  test('cache missing isha refetches instead of arming tomorrow fajr', () async {
+    final cacheFile = File(
+      '${Directory.systemTemp.path}/prayer_schedule_cache_${DateTime.now().microsecondsSinceEpoch}.json',
+    );
+    addTearDown(() {
+      if (cacheFile.existsSync()) cacheFile.deleteSync();
+    });
+
+    await AdhanNextPrayerProvider(
+      store: store,
+      client: client,
+      scheduleCacheFile: cacheFile,
+    ).next(after: DateTime(2026, 8, 13, 12, 1));
+    _dropPrayer(cacheFile, day: DateTime(2026, 8, 13), prayer: 'isha');
+
+    var networkCalls = 0;
+    final next = await AdhanNextPrayerProvider(
+      store: store,
+      client: AladhanClient(
+        httpClient: MockClient((request) async {
+          networkCalls++;
+          return http.Response(_sampleBody, 200);
+        }),
+      ),
+      scheduleCacheFile: cacheFile,
+    ).next(after: DateTime(2026, 8, 13, 18, 1), preferCache: true);
+
+    expect(next.name, 'isha');
+    expect(next.scheduledAt.day, 13);
+    expect(networkCalls, greaterThan(0));
+  });
+
+  test('wrong-day cache does not arm fajr when the network is down', () async {
+    final cacheFile = File(
+      '${Directory.systemTemp.path}/prayer_schedule_cache_${DateTime.now().microsecondsSinceEpoch}.json',
+    );
+    addTearDown(() {
+      if (cacheFile.existsSync()) cacheFile.deleteSync();
+    });
+
+    // File holds Aug 14 + Aug 15. Asking after Maghrib on Aug 13 must not
+    // treat Aug 14 Fajr as the next prayer.
+    await AdhanNextPrayerProvider(
+      store: store,
+      client: client,
+      scheduleCacheFile: cacheFile,
+    ).next(after: DateTime(2026, 8, 14, 12, 1));
+
+    final offline = AdhanNextPrayerProvider(
+      store: store,
+      client: AladhanClient(
+        httpClient: MockClient((request) async {
+          throw const SocketException('offline');
+        }),
+      ),
+      scheduleCacheFile: cacheFile,
+    );
+
+    expect(
+      () =>
+          offline.next(after: DateTime(2026, 8, 13, 18, 1), preferCache: true),
+      throwsA(isA<Exception>()),
+    );
+  });
+}
+
+void _dropPrayer(
+  File cacheFile, {
+  required DateTime day,
+  required String prayer,
+}) {
+  final decoded = jsonDecode(cacheFile.readAsStringSync());
+  final days = (decoded as Map)['days'] as List;
+  for (final raw in days) {
+    final date = DateTime.parse((raw as Map)['date'].toString());
+    if (date.year != day.year ||
+        date.month != day.month ||
+        date.day != day.day) {
+      continue;
+    }
+    final slots = raw['slots'] as List;
+    slots.removeWhere((slot) => (slot as Map)['name'] == prayer);
+  }
+  cacheFile.writeAsStringSync(jsonEncode(decoded));
 }

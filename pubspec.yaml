@@ -1,7 +1,7 @@
 name: prayer_cast
 description: Tursina Labs prayer times app — offline adzan cast to home speakers.
 publish_to: 'none'
-version: 1.0.36+39
+version: 1.0.37+40
 
 environment:
   sdk: ^3.12.0

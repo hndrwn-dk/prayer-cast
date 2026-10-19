@@ -194,44 +194,138 @@ final class CastLoadReadiness {
 /// DynamiteModulesC load (group speakers / cold Fajr) can take longer than
 /// one short wait. Retry startSession once without ending the in-flight
 /// session; second wait is longer for Dynamite.
+///
+/// MediaRouter can also drop the selected route within ~50 ms and fall back
+/// to the phone route ("starting session" then "ending session"). Waiting the
+/// full [firstWait] for that dead session burns the T-20 prepare window, so
+/// [sessionAlive] is polled and a dropped session is restarted early.
 final class CastSessionConnect {
   static const Duration firstWait = Duration(seconds: 20);
   static const Duration retryWait = Duration(seconds: 40);
+
+  /// Time a fresh selectRoute gets before an absent session counts as dropped.
+  static const Duration dropGrace = Duration(seconds: 2);
+  static const Duration dropPoll = Duration(milliseconds: 500);
+
+  /// Early restarts after a dropped session, on top of the normal retry.
+  static const int maxDropRestarts = 2;
 
   static Future<void> run({
     required Future<bool> Function() startSession,
     required Future<void> Function(Duration timeout) waitUntilReady,
     required Future<bool> Function() sessionConnected,
+    Future<bool> Function()? sessionAlive,
+    Future<void> Function(Duration delay)? delay,
     void Function(String message)? log,
   }) async {
-    for (var attempt = 1; attempt <= 2; attempt++) {
+    final sleep = delay ?? Future<void>.delayed;
+    var attempt = 1;
+    var dropRestarts = 0;
+    var restartAfterDrop = false;
+    while (true) {
       final connected = await sessionConnected();
-      if (attempt == 1 || !connected) {
+      if (attempt == 1 || restartAfterDrop || !connected) {
         final ok = await startSession();
         if (!ok) {
           throw CastConnectFailure('startSessionWithDevice returned false');
         }
       }
+      restartAfterDrop = false;
       final wait = attempt == 1 ? firstWait : retryWait;
-      try {
-        await waitUntilReady(wait);
-        return;
-      } on CastConnectFailure {
-        if (attempt == 2) rethrow;
-        if (await sessionConnected()) {
+      final dropped = await _waitOrDrop(
+        wait: wait,
+        waitUntilReady: waitUntilReady,
+        sessionConnected: sessionConnected,
+        sessionAlive: sessionAlive,
+        sleep: sleep,
+      );
+      if (dropped == null) return;
+      if (dropped is _SessionDropped) {
+        if (dropRestarts < maxDropRestarts) {
+          dropRestarts += 1;
+          restartAfterDrop = true;
           log?.call(
-            'Cast session connected but not loadable after '
-            '${wait.inSeconds}s; waiting longer (no restart)',
+            'Cast session dropped right after startSession; '
+            'restarting (early restart $dropRestarts/$maxDropRestarts)',
           );
-        } else {
-          log?.call(
-            'Cast session not connected after ${wait.inSeconds}s; '
-            'retrying startSession (GMS Dynamite / session init)',
+          continue;
+        }
+        if (attempt == 2) {
+          throw CastConnectFailure(
+            'Cast session dropped after startSession '
+            '($dropRestarts early restarts)',
           );
         }
+      } else if (attempt == 2) {
+        throw dropped;
+      }
+      attempt = 2;
+      if (await sessionConnected()) {
+        log?.call(
+          'Cast session connected but not loadable after '
+          '${wait.inSeconds}s; waiting longer (no restart)',
+        );
+      } else {
+        log?.call(
+          'Cast session not connected after ${wait.inSeconds}s; '
+          'retrying startSession (GMS Dynamite / session init)',
+        );
       }
     }
   }
+
+  /// Null when ready; [_SessionDropped] or the [CastConnectFailure] otherwise.
+  static Future<Object?> _waitOrDrop({
+    required Duration wait,
+    required Future<void> Function(Duration timeout) waitUntilReady,
+    required Future<bool> Function() sessionConnected,
+    required Future<bool> Function()? sessionAlive,
+    required Future<void> Function(Duration delay) sleep,
+  }) async {
+    final done = Completer<Object?>();
+    unawaited(
+      waitUntilReady(wait).then<void>(
+        (_) {
+          if (!done.isCompleted) done.complete(null);
+        },
+        onError: (Object e) {
+          if (done.isCompleted) return;
+          if (e is CastConnectFailure) {
+            done.complete(e);
+          } else {
+            done.completeError(e);
+          }
+        },
+      ),
+    );
+    final alive = sessionAlive;
+    if (alive != null) {
+      unawaited(() async {
+        await sleep(dropGrace);
+        var misses = 0;
+        while (!done.isCompleted) {
+          bool present;
+          try {
+            present = await alive() || await sessionConnected();
+          } catch (_) {
+            present = true;
+          }
+          if (done.isCompleted) return;
+          misses = present ? 0 : misses + 1;
+          if (misses >= 2) {
+            done.complete(const _SessionDropped());
+            return;
+          }
+          await sleep(dropPoll);
+        }
+      }());
+    }
+    return done.future;
+  }
+}
+
+final class _SessionDropped {
+  const _SessionDropped();
 }
 
 /// flutter_chrome_cast wrapper with volume save/restore (spec §5.3, §4.8).
@@ -453,6 +547,21 @@ final class CastClient {
       'adzan:$sessionId:$voiceId';
 }
 
+/// How long to hold selectRoute after a discovery restart.
+///
+/// Foreground test 2026-10-18: startDiscovery ran ~20 ms before selectRoute;
+/// MediaRouter republished an empty route list ~50 ms later and the session
+/// ended immediately. Only the 20 s retry, with no restart in between, worked.
+abstract final class CastRouteSettle {
+  static const Duration afterKick = Duration(milliseconds: 1500);
+
+  static Duration remaining({required DateTime? lastKick, required DateTime now}) {
+    if (lastKick == null) return Duration.zero;
+    final left = lastKick.add(afterKick).difference(now);
+    return left.isNegative ? Duration.zero : left;
+  }
+}
+
 /// Production [CastPlatform] backed by `flutter_chrome_cast` + NSD for IPs.
 final class FlutterCastPlatform implements CastPlatform {
   FlutterCastPlatform({
@@ -467,9 +576,29 @@ final class FlutterCastPlatform implements CastPlatform {
   final _playbackController =
       StreamController<CastPlaybackEvent>.broadcast(sync: true);
   StreamSubscription<cast.GoggleCastMediaStatus?>? _mediaSub;
+  DateTime? _lastDiscoveryKick;
+  bool _castContextReady = false;
 
   @override
   Stream<CastPlaybackEvent> get playbackEvents => _playbackController.stream;
+
+  /// The plugin's startDiscovery removes and re-adds the MediaRouter
+  /// callback. Route publication then lands asynchronously, and a route
+  /// selected in that window is unselected for the phone route.
+  Future<void> _kickDiscovery() async {
+    _lastDiscoveryKick = DateTime.now();
+    await cast.GoogleCastDiscoveryManager.instance.startDiscovery();
+  }
+
+  Future<void> _settleRoutes() async {
+    final remaining = CastRouteSettle.remaining(
+      lastKick: _lastDiscoveryKick,
+      now: DateTime.now(),
+    );
+    if (remaining > Duration.zero) {
+      await Future<void>.delayed(remaining);
+    }
+  }
 
   @override
   Future<List<CastReceiver>> discover({
@@ -480,7 +609,7 @@ final class FlutterCastPlatform implements CastPlatform {
     final hostsById = <String, InternetAddress>{};
     final discovery = cast.GoogleCastDiscoveryManager.instance;
     try {
-      await discovery.startDiscovery();
+      await _kickDiscovery();
     } catch (e, st) {
       _logger.error(
         'Cast discovery start failed',
@@ -569,7 +698,7 @@ final class FlutterCastPlatform implements CastPlatform {
           tag: 'FlutterCastPlatform',
         );
         try {
-          await discovery.startDiscovery();
+          await _kickDiscovery();
         } catch (_) {}
         ingestSdk(discovery.devices);
       }
@@ -631,7 +760,7 @@ final class FlutterCastPlatform implements CastPlatform {
   Future<void> warmUp() async {
     await _ensureCastContext();
     try {
-      await cast.GoogleCastDiscoveryManager.instance.startDiscovery();
+      await _kickDiscovery();
     } catch (e, st) {
       _logger.warn(
         'Cast warm-up discovery failed',
@@ -651,7 +780,7 @@ final class FlutterCastPlatform implements CastPlatform {
     await _ensureCastContext();
     final discovery = cast.GoogleCastDiscoveryManager.instance;
     try {
-      await discovery.startDiscovery();
+      await _kickDiscovery();
     } catch (e, st) {
       _logger.warn(
         'Cast SDK sighting discovery failed',
@@ -702,11 +831,16 @@ final class FlutterCastPlatform implements CastPlatform {
   @override
   Future<void> connect(CastReceiver receiver) async {
     await _ensureCastContext();
-    try {
-      await cast.GoogleCastDiscoveryManager.instance.startDiscovery();
-    } catch (_) {}
-
     final discovery = cast.GoogleCastDiscoveryManager.instance;
+    final listed = discovery.devices.any(
+      (d) => d.deviceID == receiver.deviceId,
+    );
+    if (!listed) {
+      try {
+        await _kickDiscovery();
+      } catch (_) {}
+    }
+
     // Cold Fajr: NSD may have returned the id while MediaRouter is still
     // empty — keep restarting discovery until the SDK lists the device.
     final match = await CastSdkDeviceWait.untilPresent(
@@ -716,16 +850,43 @@ final class FlutterCastPlatform implements CastPlatform {
       timeout: const Duration(seconds: 40),
       refresh: () async {
         try {
-          await discovery.startDiscovery();
+          await _kickDiscovery();
         } catch (_) {}
       },
     );
     final mgr = cast.GoogleCastSessionManager.instance;
     await CastSessionConnect.run(
-      startSession: () => mgr.startSessionWithDevice(match),
+      startSession: () async {
+        await _settleRoutes();
+        var current = discovery.devices
+            .where((d) => d.deviceID == receiver.deviceId)
+            .firstOrNull;
+        if (current == null) {
+          // A dropped route empties the list; selecting the stale route
+          // object is a silent no-op.
+          try {
+            current = await CastSdkDeviceWait.untilPresent<cast.GoogleCastDevice>(
+              deviceId: receiver.deviceId,
+              devices: () => discovery.devices,
+              idOf: (d) => d.deviceID,
+              timeout: const Duration(seconds: 10),
+              refresh: () async {
+                try {
+                  await _kickDiscovery();
+                } catch (_) {}
+              },
+            );
+            await _settleRoutes();
+          } on CastConnectFailure {
+            current = null;
+          }
+        }
+        return mgr.startSessionWithDevice(current ?? match);
+      },
       waitUntilReady: (timeout) => waitUntilReady(timeout: timeout),
       sessionConnected: () async =>
           mgr.hasConnectedSession || await _isSessionConnected(),
+      sessionAlive: _hasCastSession,
       log: (msg) => _logger.warn(msg, tag: 'FlutterCastPlatform'),
     );
     await _mediaSub?.cancel();
@@ -794,6 +955,9 @@ final class FlutterCastPlatform implements CastPlatform {
   }
 
   Future<void> _ensureCastContext() async {
+    // Once per isolate. Each setSharedInstance adds another session listener
+    // and ran twice within ~20 ms of selectRoute in the dropped-session log.
+    if (_castContextReady) return;
     // Native getSharedInstance warms GMS Dynamite off the UI isolate.
     // Do not skip Dart setSharedInstanceWithOptions when native succeeds:
     // the plugin's devicesStream is empty until the Dart Cast context exists
@@ -821,6 +985,7 @@ final class FlutterCastPlatform implements CastPlatform {
     }
     try {
       await initGoogleCast().timeout(const Duration(seconds: 4));
+      _castContextReady = true;
     } catch (e, st) {
       _logger.warn(
         'initGoogleCast during connect failed',
@@ -828,6 +993,20 @@ final class FlutterCastPlatform implements CastPlatform {
         error: e,
         stackTrace: st,
       );
+    }
+  }
+
+  /// False once the session is gone and MediaRouter fell back to the phone.
+  /// True when the probe is unavailable so callers never abort on it.
+  Future<bool> _hasCastSession() async {
+    try {
+      final present =
+          await _mediaReadyChannel.invokeMethod<bool>('hasCastSession');
+      return present ?? true;
+    } on MissingPluginException {
+      return true;
+    } on PlatformException {
+      return true;
     }
   }
 

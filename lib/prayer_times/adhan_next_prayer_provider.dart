@@ -19,10 +19,10 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
     AladhanClient? client,
     KemenagClient? kemenagClient,
     File? scheduleCacheFile,
-  })  : _store = store,
-        _client = client ?? AladhanClient(),
-        _kemenag = kemenagClient ?? KemenagClient(),
-        _scheduleCacheFile = scheduleCacheFile;
+  }) : _store = store,
+       _client = client ?? AladhanClient(),
+       _kemenag = kemenagClient ?? KemenagClient(),
+       _scheduleCacheFile = scheduleCacheFile;
 
   final PrayerPrefsStore _store;
   final AladhanClient _client;
@@ -60,12 +60,18 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
         }
       }
     }
-    final last = schedules.last.slots.first;
-    return NextPrayer(
-      name: last.name,
-      scheduledAt: last.scheduledAt.add(const Duration(days: 1)),
-      voiceId: prefs.voiceFor(last.name),
-    );
+    // Only after a complete day's Isha is behind [after]. Jumping to Fajr
+    // while Isha is missing would arm tomorrow and skip that prayer.
+    final lastIsha = _named(schedules.last, 'isha');
+    if (lastIsha != null && !lastIsha.scheduledAt.isAfter(localAfter)) {
+      final fajr = schedules.last.slots.first;
+      return NextPrayer(
+        name: fajr.name,
+        scheduledAt: fajr.scheduledAt.add(const Duration(days: 1)),
+        voiceId: prefs.voiceFor(fajr.name),
+      );
+    }
+    throw StateError('No prayer slot after $localAfter');
   }
 
   /// Today’s schedule for UI (uses cache when possible).
@@ -101,14 +107,18 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
         if (disk != null &&
             disk.days.isNotEmpty &&
             _diskCovers(disk, prefs: prefs, after: after)) {
-          _cachedToday = disk.days[0];
-          _cachedTomorrow =
-              disk.days.length > 1 ? disk.days[1] : disk.days[0];
-          _cacheKey = key;
-          return [
-            _withVoices(_cachedToday!, prefs),
-            _withVoices(_cachedTomorrow!, prefs),
-          ];
+          final pair = _trustedPair(disk.days, today, tomorrow);
+          // Exact today+tomorrow, each with fajr through isha. A wrong-day
+          // file or a day missing Isha must not arm the next Fajr.
+          if (pair != null) {
+            _cachedToday = pair.today;
+            _cachedTomorrow = pair.tomorrow;
+            _cacheKey = key;
+            return [
+              _withVoices(pair.today, prefs),
+              _withVoices(pair.tomorrow, prefs),
+            ];
+          }
         }
         // Disk cache miss or doesn't cover needed window - fall through to network
       }
@@ -121,19 +131,21 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
         _cachedToday = fetchedToday;
         _cachedTomorrow = fetchedTomorrow;
         _cacheKey = key;
-        await _writeDiskCache(
-          key,
-          [fetchedToday, fetchedTomorrow],
-          locationKey: locationKeyFor(prefs),
-        );
+        await _writeDiskCache(key, [
+          fetchedToday,
+          fetchedTomorrow,
+        ], locationKey: locationKeyFor(prefs));
       } catch (e) {
         final disk = await _readDiskCache();
-        if (disk != null &&
-            disk.days.isNotEmpty &&
-            _diskCovers(disk, prefs: prefs, after: after)) {
-          _cachedToday = disk.days[0];
-          _cachedTomorrow =
-              disk.days.length > 1 ? disk.days[1] : disk.days[0];
+        final pair =
+            disk != null &&
+                disk.days.isNotEmpty &&
+                _diskCovers(disk, prefs: prefs, after: after)
+            ? _trustedPair(disk.days, today, tomorrow)
+            : null;
+        if (pair != null) {
+          _cachedToday = pair.today;
+          _cachedTomorrow = pair.tomorrow;
           _cacheKey = key;
         } else {
           rethrow;
@@ -260,14 +272,60 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
       '${prefs.administrativeArea}|${prefs.latitude}|${prefs.longitude}|'
       '${prefs.methodId}|${prefs.madhabId.name}';
 
+  static const _obligatory = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+
+  /// Today and tomorrow by calendar date, and only when both list every
+  /// obligatory prayer. Index order is not a date.
+  static ({AladhanDaySchedule today, AladhanDaySchedule tomorrow})?
+  _trustedPair(
+    List<AladhanDaySchedule> days,
+    DateTime today,
+    DateTime tomorrow,
+  ) {
+    final diskToday = _dayIn(days, today);
+    final diskTomorrow = _dayIn(days, tomorrow);
+    if (diskToday == null ||
+        diskTomorrow == null ||
+        !_hasObligatorySlots(diskToday) ||
+        !_hasObligatorySlots(diskTomorrow)) {
+      return null;
+    }
+    return (today: diskToday, tomorrow: diskTomorrow);
+  }
+
+  static bool _hasObligatorySlots(AladhanDaySchedule day) {
+    final names = day.slots.map((slot) => slot.name).toSet();
+    return _obligatory.every(names.contains);
+  }
+
+  static NextPrayer? _named(AladhanDaySchedule day, String name) {
+    for (final slot in day.slots) {
+      if (slot.name == name) return slot;
+    }
+    return null;
+  }
+
+  static AladhanDaySchedule? _dayIn(
+    List<AladhanDaySchedule> days,
+    DateTime day,
+  ) {
+    for (final d in days) {
+      if (d.date.year == day.year &&
+          d.date.month == day.month &&
+          d.date.day == day.day) {
+        return d;
+      }
+    }
+    return null;
+  }
+
   bool _diskCovers(
     ({String key, String locationKey, List<AladhanDaySchedule> days}) disk, {
     required PrayerPrefs prefs,
     required DateTime after,
   }) {
     final loc = locationKeyFor(prefs);
-    final locationOk =
-        disk.locationKey == loc || disk.key.startsWith('$loc|');
+    final locationOk = disk.locationKey == loc || disk.key.startsWith('$loc|');
     if (!locationOk) return false;
     final localAfter = after.toLocal();
     return disk.days.any(
@@ -295,7 +353,7 @@ final class AdhanNextPrayerProvider implements NextPrayerProvider {
   }
 
   Future<({String key, String locationKey, List<AladhanDaySchedule> days})?>
-      _readDiskCache() async {
+  _readDiskCache() async {
     final file = _scheduleCacheFile;
     if (file == null || !await file.exists()) return null;
     try {

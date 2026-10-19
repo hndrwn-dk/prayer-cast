@@ -24,6 +24,11 @@ final class _FakePlatform implements CastPlatform {
   String? loadedTitle;
   int loadCalls = 0;
   bool emitPlaying = true;
+  bool fetchMedia = true;
+  int connectCalls = 0;
+
+  /// Loads that fail before the receiver is ready (dead kept-open session).
+  int deadLoads = 0;
 
   @override
   Stream<CastPlaybackEvent> get playbackEvents => playback.stream;
@@ -33,7 +38,9 @@ final class _FakePlatform implements CastPlatform {
     String? matchId,
   }) async => [receiver];
   @override
-  Future<void> connect(CastReceiver receiver) async {}
+  Future<void> connect(CastReceiver receiver) async {
+    connectCalls++;
+  }
   @override
   Future<void> warmUp() async {}
   @override
@@ -51,9 +58,23 @@ final class _FakePlatform implements CastPlatform {
   }) async {
     loadCalls++;
     if (loadError != null) throw loadError!;
+    if (deadLoads > 0) {
+      deadLoads--;
+      throw CastConnectFailure('RemoteMediaClient not ready');
+    }
     loadedUrl = contentUrl;
     loadedType = contentType;
     loadedTitle = title;
+    if (fetchMedia) {
+      final client = HttpClient();
+      try {
+        final request = await client.getUrl(contentUrl);
+        final response = await request.close();
+        await response.drain<void>();
+      } finally {
+        client.close();
+      }
+    }
     if (emitPlaying) playback.add(CastPlaybackEvent.playing);
   }
 
@@ -162,6 +183,42 @@ void main() {
           .thenAnswer((_) async => Uint8List.fromList([1, 2, 3, 4]));
 
       final result = await coordinator.playAdhkar(AdhkarType.morning);
+
+      expect(result, AdhkarDeliveryResult.castFailed);
+    });
+
+    test('reconnects once when the kept-open session is dead', () async {
+      when(() => audioLoader.load(AdhkarType.morning))
+          .thenAnswer((_) async => Uint8List.fromList([1, 2, 3, 4]));
+      coordinator = AdhkarDeliveryCoordinator(
+        audioLoader: audioLoader,
+        castClient: castClient,
+        resolveHost: (_) async => InternetAddress.loopbackIPv4,
+        readHomeCastId: () async => 'cast-1',
+      );
+      await connect();
+      platform.deadLoads = 1;
+
+      final result = await coordinator.playAdhkar(AdhkarType.morning);
+
+      expect(result, AdhkarDeliveryResult.success);
+      expect(platform.connectCalls, 2);
+      expect(platform.loadCalls, 2);
+    });
+
+    test('PLAYING without a fetch of this file is not success', () async {
+      when(() => audioLoader.load(AdhkarType.evening))
+          .thenAnswer((_) async => Uint8List.fromList([1, 2, 3, 4]));
+      coordinator = AdhkarDeliveryCoordinator(
+        audioLoader: audioLoader,
+        castClient: castClient,
+        resolveHost: (_) async => InternetAddress.loopbackIPv4,
+        playbackGrace: const Duration(milliseconds: 300),
+      );
+      await connect();
+      platform.fetchMedia = false;
+
+      final result = await coordinator.playAdhkar(AdhkarType.evening);
 
       expect(result, AdhkarDeliveryResult.castFailed);
     });

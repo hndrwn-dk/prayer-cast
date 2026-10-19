@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import androidx.mediarouter.media.MediaRouter
 import com.google.android.gms.cast.framework.CastContext
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
@@ -26,6 +27,7 @@ class CastReadyPlugin(
         when (call.method) {
             "isMediaClientReady" -> result.success(isMediaClientReady())
             "isSessionConnected" -> result.success(isSessionConnected())
+            "hasCastSession" -> result.success(hasCastSession())
             "ensureCastContext" -> ensureCastContext(result)
             else -> result.notImplemented()
         }
@@ -60,6 +62,24 @@ class CastReadyPlugin(
                 ?.isConnected == true
         } catch (_: Exception) {
             false
+        }
+    }
+
+    /**
+     * False only when no CastSession exists and MediaRouter is back on the
+     * phone route: the drop seen within ~50 ms of selectRoute (2026-10-18).
+     * A session still loading Dynamite keeps the Cast route selected, so it
+     * stays alive. Probe failures answer true so they never abort a connect.
+     */
+    private fun hasCastSession(): Boolean {
+        return try {
+            val session = CastContext.getSharedInstance(context)
+                ?.sessionManager
+                ?.currentCastSession
+            if (session != null) return true
+            !MediaRouter.getInstance(context).selectedRoute.isDefaultOrBluetooth
+        } catch (_: Exception) {
+            true
         }
     }
 

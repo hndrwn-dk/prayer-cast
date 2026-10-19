@@ -541,4 +541,112 @@ void main() {
       );
     });
   });
+
+  group('CastSessionConnect dropped session', () {
+    Future<void> tick(Duration _) => Future<void>.delayed(Duration.zero);
+
+    test('restarts early when the route drops right after startSession',
+        () async {
+      var starts = 0;
+      var connected = false;
+      await CastSessionConnect.run(
+        startSession: () async {
+          starts += 1;
+          return true;
+        },
+        waitUntilReady: (timeout) async {
+          if (starts == 1) {
+            // Dead session: would only time out after the full wait.
+            await Completer<void>().future;
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+          connected = true;
+        },
+        sessionConnected: () async => connected,
+        sessionAlive: () async => starts > 1,
+        delay: tick,
+      );
+      expect(starts, 2);
+      expect(connected, isTrue);
+    });
+
+    test('a live slow session is never restarted', () async {
+      var starts = 0;
+      await CastSessionConnect.run(
+        startSession: () async {
+          starts += 1;
+          return true;
+        },
+        waitUntilReady: (timeout) =>
+            Future<void>.delayed(const Duration(milliseconds: 30)),
+        sessionConnected: () async => false,
+        sessionAlive: () async => true,
+        delay: tick,
+      );
+      expect(starts, 1);
+    });
+
+    test('fails after early restarts and the normal retry all drop',
+        () async {
+      var starts = 0;
+      await expectLater(
+        CastSessionConnect.run(
+          startSession: () async {
+            starts += 1;
+            return true;
+          },
+          waitUntilReady: (timeout) => Completer<void>().future,
+          sessionConnected: () async => false,
+          sessionAlive: () async => false,
+          delay: tick,
+        ),
+        throwsA(isA<CastConnectFailure>()),
+      );
+      expect(starts, CastSessionConnect.maxDropRestarts + 2);
+    });
+
+    test('a failing probe counts as alive', () async {
+      var starts = 0;
+      await CastSessionConnect.run(
+        startSession: () async {
+          starts += 1;
+          return true;
+        },
+        waitUntilReady: (timeout) =>
+            Future<void>.delayed(const Duration(milliseconds: 20)),
+        sessionConnected: () async => false,
+        sessionAlive: () async => throw StateError('probe'),
+        delay: tick,
+      );
+      expect(starts, 1);
+    });
+  });
+
+  group('CastRouteSettle', () {
+    final t0 = DateTime(2026, 10, 18, 13, 59, 13);
+
+    test('no wait without a discovery restart', () {
+      expect(CastRouteSettle.remaining(lastKick: null, now: t0), Duration.zero);
+    });
+
+    test('holds selectRoute until routes settle after a restart', () {
+      expect(
+        CastRouteSettle.remaining(
+          lastKick: t0,
+          now: t0.add(const Duration(milliseconds: 20)),
+        ),
+        const Duration(milliseconds: 1480),
+      );
+    });
+
+    test('no wait once the settle window has passed', () {
+      expect(
+        CastRouteSettle.remaining(
+          lastKick: t0,
+          now: t0.add(const Duration(seconds: 3)),
+        ),
+        Duration.zero,
+      );
+    });
+  });
 }

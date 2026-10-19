@@ -60,7 +60,11 @@ final nextPrayerSnapshotProvider =
     FutureProvider.autoDispose<NextPrayer?>((ref) async {
   final prefs = await ref.watch(prayerPrefsProvider.future);
   if (!prefs.configured) return null;
-  return ref.watch(adhanNextPrayerProvider).next(after: DateTime.now());
+  // Disk cache first: a cold process should not wait on two Aladhan fetches
+  // before painting the hero. A missing day pair still goes to the network.
+  return ref
+      .watch(adhanNextPrayerProvider)
+      .next(after: DateTime.now(), preferCache: true);
 });
 
 /// Re-resolve home next-adhan UI after resume / notification open.

@@ -51,6 +51,7 @@ final class AdhkarDeliveryCoordinator {
   }
 
   Future<AdhkarDeliveryResult> _play(AdhkarType type) async {
+    final reused = _castClient.connected != null;
     final receiver = await _receiver();
     if (receiver == null) return AdhkarDeliveryResult.speakerOffline;
 
@@ -59,6 +60,22 @@ final class AdhkarDeliveryCoordinator {
       return AdhkarDeliveryResult.audioMissing;
     }
 
+    final first = await _cast(type, receiver, audio);
+    if (first != AdhkarDeliveryResult.castFailed || !reused) return first;
+
+    // The kept-open session can die hours before the next adhkar while the
+    // process is frozen; the stale receiver then fails every load.
+    await _castClient.endSession(restoreVolumeFirst: false);
+    final fresh = await _receiver();
+    if (fresh == null) return AdhkarDeliveryResult.castFailed;
+    return _cast(type, fresh, audio);
+  }
+
+  Future<AdhkarDeliveryResult> _cast(
+    AdhkarType type,
+    CastReceiver receiver,
+    Uint8List audio,
+  ) async {
     try {
       await _stopServer();
       final voiceId = 'adhkar_${type.name}';
@@ -115,8 +132,9 @@ final class AdhkarDeliveryCoordinator {
     }
   }
 
-  /// True when the receiver reports playback, or at least fetches the file.
-  /// A loadMedia ack with zero HTTP hits is the silent-speaker failure.
+  /// True once the receiver fetches the file. A loadMedia ack with zero
+  /// HTTP hits is the silent-speaker failure, and a PLAYING status alone can
+  /// still belong to the media that was on the speaker before this load.
   Future<bool> _confirmPlayback({
     required Future<CastPlaybackEvent> playingOrDone,
     required Future<CastPlaybackEvent> failed,
@@ -133,8 +151,15 @@ final class AdhkarDeliveryCoordinator {
         timedOut.future,
       ]);
       if (outcome == CastPlaybackEvent.error) return false;
-      if (outcome == 'timeout' && server.hitCount == 0) return false;
-      return true;
+      while (server.hitCount == 0 && !timedOut.isCompleted) {
+        final next = await Future.any<Object>([
+          failed,
+          timedOut.future,
+          Future<String>.delayed(const Duration(milliseconds: 200), () => ''),
+        ]);
+        if (next == CastPlaybackEvent.error) return false;
+      }
+      return server.hitCount > 0;
     } finally {
       timer.cancel();
     }
