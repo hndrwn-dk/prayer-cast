@@ -338,11 +338,24 @@ final class CastClient {
   CastClient({
     required CastPlatform platform,
     HomeDeliveryLogger logger = const SilentLogger(),
+    DateTime Function()? now,
   })  : _platform = platform,
-        _logger = logger;
+        _logger = logger,
+        _now = now ?? DateTime.now;
 
   final CastPlatform _platform;
   final HomeDeliveryLogger _logger;
+  final DateTime Function() _now;
+
+  DateTime? _lastLoadAt;
+
+  /// When this process last loaded its own media (adzan or adhkar).
+  ///
+  /// The SDK's cached media status is not refreshed while the process is
+  /// frozen, so a PLAYING status for our own adhan can outlive the adhan by
+  /// hours. Callers compare against this to tell a live status from a stale
+  /// one. Null until the first successful load in this process.
+  DateTime? get lastLoadAt => _lastLoadAt;
 
   double? _savedVolume;
   double? _playbackVolume;
@@ -508,6 +521,7 @@ final class CastClient {
         contentType: contentType,
         title: title ?? contentId,
       );
+      _lastLoadAt = _now();
     } catch (e, st) {
       if (e is CastLoadMediaFailure || e is CastConnectFailure) rethrow;
       _logger.error(

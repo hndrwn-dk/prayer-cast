@@ -132,4 +132,54 @@ void main() {
     expect(details, ['cast busy']);
     expect(syncs, 1);
   });
+
+  test('holds after logging and syncing a successful start', () async {
+    final order = <String>[];
+    final handler = AdhkarAlarmHandler(
+      play: (type) async => AdhkarDeliveryResult.success,
+      readPresence: () async => PresenceState.home,
+      speakerConnected: () async => true,
+      castBusy: () async => false,
+      log:
+          ({
+            required outcome,
+            required type,
+            required scheduledAtMs,
+            detail,
+          }) async {
+            order.add('log');
+          },
+      sync: () async {
+        order.add('sync');
+      },
+      hold: (type) async {
+        order.add('hold:${type.name}');
+      },
+    );
+    await handler.onFired(AdhkarType.morning, scheduledEpochMs: 16);
+    expect(order, ['log', 'sync', 'hold:morning']);
+  });
+
+  test('does not hold when the recitation never started', () async {
+    var holds = 0;
+    final handler = AdhkarAlarmHandler(
+      play: (type) async => AdhkarDeliveryResult.castFailed,
+      readPresence: () async => PresenceState.home,
+      speakerConnected: () async => true,
+      castBusy: () async => false,
+      log:
+          ({
+            required outcome,
+            required type,
+            required scheduledAtMs,
+            detail,
+          }) async {},
+      sync: () async {},
+      hold: (type) async {
+        holds += 1;
+      },
+    );
+    await handler.onFired(AdhkarType.evening, scheduledEpochMs: 17);
+    expect(holds, 0);
+  });
 }

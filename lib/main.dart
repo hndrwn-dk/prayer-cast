@@ -11,6 +11,7 @@ import 'package:prayer_cast/dhikr/scheduling/adhkar_alarm_handler.dart';
 import 'package:prayer_cast/dhikr/scheduling/adhkar_alarm_names.dart';
 import 'package:prayer_cast/dhikr/scheduling/adhkar_alarm_sync.dart';
 import 'package:prayer_cast/dhikr/scheduling/adhkar_audio_loader.dart';
+import 'package:prayer_cast/dhikr/scheduling/adhkar_cast_busy.dart';
 import 'package:prayer_cast/dhikr/scheduling/adhkar_delivery_coordinator.dart';
 import 'package:prayer_cast/dhikr/storage/adhkar_prefs.dart';
 import 'package:prayer_cast/dhikr/storage/dhikr_counter_store.dart';
@@ -257,7 +258,13 @@ Future<void> main() async {
       castBusy: () async {
         try {
           final media = await runtime.castPlatform.currentMedia();
-          return media?.isPlaying ?? false;
+          // The cached status can be a frozen-process leftover of our own
+          // adhan; only a live or foreign PLAYING counts as busy.
+          return AdhkarCastBusy.isBusy(
+            media: media,
+            lastOwnLoadAt: runtime.castClient.lastLoadAt,
+            now: DateTime.now(),
+          );
         } catch (_) {
           return false;
         }
@@ -272,6 +279,18 @@ Future<void> main() async {
         );
       },
       sync: adhkarSync.sync,
+      // Keep the FGS, wake lock and Wi-Fi lock for the whole recitation:
+      // the speaker streams the 20–30 min file from this phone in ranges.
+      hold: (type) async {
+        final duration = adhkarPlayback.lastPlaybackDuration;
+        final alarm = runtime.exactAlarm;
+        if (duration != null && alarm is ExactAlarm) {
+          await alarm.extendForegroundWindow(
+            duration + const Duration(minutes: 3),
+          );
+        }
+        await adhkarPlayback.holdUntilFinished();
+      },
     );
     adhkarAlarmSyncHolder.value = adhkarSync;
     runtime.coordinator.attachAdhkar(

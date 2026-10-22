@@ -648,5 +648,20 @@ void main() {
         Duration.zero,
       );
     });
+  
+    test('records when this process last loaded its own media', () async {
+      final at = DateTime.utc(2026, 10, 22, 5, 30);
+      final platform = FakeCastPlatform();
+      final client = CastClient(platform: platform, now: () => at);
+      await client.connectById('cast-home-1');
+      expect(client.lastLoadAt, isNull);
+
+      await client.loadAdzan(
+        contentId: 'adzan:sess:makkah',
+        contentUrl: Uri.parse('http://192.168.1.20:8080/a.mp3'),
+      );
+
+      expect(client.lastLoadAt, at);
+    });
   });
 }

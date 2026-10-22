@@ -223,4 +223,68 @@ void main() {
       expect(result, AdhkarDeliveryResult.castFailed);
     });
   });
+
+  group('AdhkarDeliveryCoordinator hold', () {
+    test('estimates the bundled 128 kbps recitation lengths', () {
+      // assets/audio/Adhkar/adhkar_morning.mpeg is 20283976 bytes, 21:07.
+      final morning = AdhkarDeliveryCoordinator.estimateDuration(20283976);
+      expect(morning.inSeconds, inInclusiveRange(1265, 1270));
+      expect(AdhkarDeliveryCoordinator.estimateDuration(0), Duration.zero);
+    });
+
+    test('ignores an early finished and stops serving on the real one', () async {
+      var now = DateTime.utc(2026, 10, 22, 6, 0);
+      coordinator = AdhkarDeliveryCoordinator(
+        audioLoader: audioLoader,
+        castClient: castClient,
+        resolveHost: (_) async => InternetAddress.loopbackIPv4,
+        holdMargin: const Duration(minutes: 10),
+        now: () => now,
+      );
+      await connect();
+      when(() => audioLoader.load(AdhkarType.morning))
+          .thenAnswer((_) async => Uint8List.fromList([1, 2, 3, 4]));
+      expect(
+        await coordinator.playAdhkar(AdhkarType.morning),
+        AdhkarDeliveryResult.success,
+      );
+      expect(coordinator.lastPlaybackDuration, isNotNull);
+
+      var held = true;
+      final hold = coordinator.holdUntilFinished().then((_) => held = false);
+      await Future<void>.delayed(Duration.zero);
+
+      // Nest-style spurious finished right after load.
+      now = now.add(const Duration(seconds: 5));
+      platform.playback.add(CastPlaybackEvent.finished);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(held, isTrue);
+
+      now = now.add(const Duration(minutes: 20));
+      platform.playback.add(CastPlaybackEvent.finished);
+      await hold;
+      expect(held, isFalse);
+      expect(coordinator.lastPlaybackDuration, isNull);
+    });
+
+    test('gives up when the estimated length runs out', () async {
+      coordinator = AdhkarDeliveryCoordinator(
+        audioLoader: audioLoader,
+        castClient: castClient,
+        resolveHost: (_) async => InternetAddress.loopbackIPv4,
+        holdMargin: const Duration(milliseconds: 50),
+      );
+      await connect();
+      when(() => audioLoader.load(AdhkarType.evening))
+          .thenAnswer((_) async => Uint8List.fromList([1, 2, 3, 4]));
+      await coordinator.playAdhkar(AdhkarType.evening);
+
+      await coordinator.holdUntilFinished().timeout(const Duration(seconds: 2));
+      expect(coordinator.lastPlaybackDuration, isNull);
+    });
+
+    test('is a no-op when nothing was started', () async {
+      await coordinator.holdUntilFinished().timeout(const Duration(seconds: 1));
+    });
+  });
 }

@@ -15,6 +15,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 
@@ -53,11 +54,15 @@ class AdzanForegroundService : Service() {
     private var wifiLock: WifiManager.WifiLock? = null
     private val timeoutHandler = Handler(Looper.getMainLooper())
     private val stopAfterWindow = Runnable {
+        windowEndsAtElapsed = 0L
         Log.w(TAG, "Delivery window elapsed without Dart stop — stopping FGS")
         releaseLocks()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
+
+    /** Elapsed-realtime when [stopAfterWindow] fires (0 = not armed). */
+    private var windowEndsAtElapsed: Long = 0L
 
     private var lastPrayer: String = "adzan"
     private var lastLaunchPi: PendingIntent? = null
@@ -65,9 +70,16 @@ class AdzanForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        current = this
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        current = this
         if (intent?.action == ACTION_STOP) {
             timeoutHandler.removeCallbacks(stopAfterWindow)
+            windowEndsAtElapsed = 0L
             releaseLocks()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -115,9 +127,10 @@ class AdzanForegroundService : Service() {
         lastLaunchPi = launchPi
         startForegroundCompat(notification)
 
+        // Never shorten a window an adhkar recitation already extended
+        // (an adzan fire can land while morning/evening adhkar still plays).
+        armWindow(DELIVERY_WINDOW_MS)
         acquireLocks()
-        timeoutHandler.removeCallbacks(stopAfterWindow)
-        timeoutHandler.postDelayed(stopAfterWindow, DELIVERY_WINDOW_MS)
 
         if (scheduledEpochMs > 0L) {
             if (prayer.startsWith("adhkar-")) {
@@ -154,20 +167,60 @@ class AdzanForegroundService : Service() {
 
     override fun onDestroy() {
         timeoutHandler.removeCallbacks(stopAfterWindow)
+        windowEndsAtElapsed = 0L
         releaseLocks()
+        if (current === this) current = null
         super.onDestroy()
     }
 
+    /**
+     * Keep the FGS (and its wake lock) for at least [durationMs] from now.
+     * Only ever lengthens the current window.
+     */
+    private fun armWindow(durationMs: Long) {
+        val now = SystemClock.elapsedRealtime()
+        val requestedEnd = now + durationMs
+        if (windowEndsAtElapsed > requestedEnd) return
+        windowEndsAtElapsed = requestedEnd
+        timeoutHandler.removeCallbacks(stopAfterWindow)
+        timeoutHandler.postDelayed(stopAfterWindow, durationMs)
+    }
+
+    private fun remainingWindowMs(): Long {
+        val remaining = windowEndsAtElapsed - SystemClock.elapsedRealtime()
+        return remaining.coerceAtLeast(DELIVERY_WINDOW_MS)
+    }
+
+    /**
+     * Adhkar recitations run 20–30 minutes from the in-process media server.
+     * Dropping the FGS after the first HTTP hit lets the cached-apps freezer
+     * / Doze stop that server and the speaker stalls after a few du'a.
+     */
+    private fun extendWindow(durationMs: Long) {
+        val capped = durationMs.coerceIn(DELIVERY_WINDOW_MS, MAX_WINDOW_MS)
+        armWindow(capped)
+        acquireLocks()
+        Log.i(TAG, "Delivery window extended to ${remainingWindowMs() / 1000}s")
+    }
+
     private fun acquireLocks() {
-        val pm = getSystemService(PowerManager::class.java)
-        wakeLock = pm?.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK,
-            "prayer_cast:adzan_wake",
-        )?.also {
-            it.setReferenceCounted(false)
-            it.acquire(10 * 60 * 1000L)
+        val wakeMs = remainingWindowMs()
+        val held = wakeLock
+        if (held != null) {
+            // Non-reference-counted: re-acquire re-arms the timeout.
+            held.acquire(wakeMs)
+        } else {
+            val pm = getSystemService(PowerManager::class.java)
+            wakeLock = pm?.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "prayer_cast:adzan_wake",
+            )?.also {
+                it.setReferenceCounted(false)
+                it.acquire(wakeMs)
+            }
         }
 
+        if (wifiLock?.isHeld == true) return
         @Suppress("DEPRECATION")
         val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         @Suppress("DEPRECATION")
@@ -334,6 +387,22 @@ class AdzanForegroundService : Service() {
         private const val REQ_LAUNCH = 1003
         private const val REQ_STOP_PLAYBACK = 1004
         private const val DELIVERY_WINDOW_MS = 10 * 60 * 1000L
+
+        /** Longest hold Dart may request (evening adhkar is ~28 min). */
+        private const val MAX_WINDOW_MS = 40 * 60 * 1000L
+
+        @Volatile
+        private var current: AdzanForegroundService? = null
+
+        /**
+         * Lengthen the running service's window. False when no adzan /
+         * adhkar FGS is running (nothing to extend; caller logs it).
+         */
+        fun extendRunning(durationMs: Long): Boolean {
+            val service = current ?: return false
+            Handler(Looper.getMainLooper()).post { service.extendWindow(durationMs) }
+            return true
+        }
 
         fun showPhonePlayback(context: Context, prayer: String) {
             val intent = Intent(context, AdzanForegroundService::class.java).apply {

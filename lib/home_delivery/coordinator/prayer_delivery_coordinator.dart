@@ -71,6 +71,8 @@ final class PrayerDeliveryCoordinator {
     void Function(bool granted)? onPermissionChanged,
     ActiveDeliveryHero? activeHero,
     HomeDeliveryLogger logger = const SilentLogger(),
+    Duration deliveryHardTimeout = defaultDeliveryHardTimeout,
+    Duration preDeliveryRescheduleBudget = defaultPreDeliveryRescheduleBudget,
   }) : _exactAlarm = exactAlarm,
        _nextPrayer = nextPrayer,
        _deviceConditions = deviceConditions,
@@ -87,7 +89,36 @@ final class PrayerDeliveryCoordinator {
        _readLocaleCode = readLocaleCode ?? (() async => null),
        _onPermissionChanged = onPermissionChanged,
        _activeHero = activeHero,
-       _logger = logger;
+       _logger = logger,
+       _deliveryHardTimeout = deliveryHardTimeout,
+       _preDeliveryRescheduleBudget = preDeliveryRescheduleBudget;
+
+  /// Upper bound on one [_deliver] call.
+  ///
+  /// Without it, a platform call that never returns (Cast, NSD, election
+  /// while the process was frozen) leaves [_handling] true for the life of
+  /// the cached engine: every later fire is "already in progress" and the
+  /// one-slot alarm chain is never re-armed. Must exceed the longest real
+  /// path: wait to T (~2 min) plus a full phone adhan (~5 min).
+  static const Duration defaultDeliveryHardTimeout = Duration(minutes: 15);
+
+  /// Budget for arming the next prayer before delivery starts.
+  ///
+  /// The wake is T−120, so a slow next-prayer lookup must not eat the
+  /// pre-azan window. On timeout the post-delivery reschedule still runs.
+  static const Duration defaultPreDeliveryRescheduleBudget =
+      Duration(seconds: 20);
+
+  /// Upper bound on one adhkar fire, including the hold for the whole
+  /// recitation (evening is ~28 min). Keeps [_adhkarInFlight] from sticking.
+  static const Duration adhkarHardTimeout = Duration(minutes: 45);
+
+  final Duration _deliveryHardTimeout;
+  final Duration _preDeliveryRescheduleBudget;
+
+  /// Adhkar fires currently being handled (they hold the FGS for the whole
+  /// recitation). An adzan fire must not stop the shared service under them.
+  int _adhkarInFlight = 0;
 
   /// Fallback when a fired event has no voiceId (legacy prefs / corruption).
   static const String defaultVoiceId = 'standard_adhan';
@@ -432,14 +463,22 @@ final class PrayerDeliveryCoordinator {
   Future<void> _onFired(AlarmFiredEvent event) async {
     final adhkarType = AdhkarAlarmNames.parse(event.prayer);
     if (adhkarType != null) {
+      _adhkarInFlight += 1;
       try {
-        await _adhkarHandler?.onFired(
-          adhkarType,
-          scheduledEpochMs: event.scheduledEpochMs,
+        await _adhkarHandler
+            ?.onFired(adhkarType, scheduledEpochMs: event.scheduledEpochMs)
+            .timeout(adhkarHardTimeout);
+      } catch (e, st) {
+        _logger.error(
+          'Adhkar fire for ${adhkarType.name} did not finish cleanly',
+          tag: 'PrayerDeliveryCoordinator',
+          error: e,
+          stackTrace: st,
         );
       } finally {
+        _adhkarInFlight -= 1;
         // Leave the service up while an adzan delivery still owns it.
-        if (!_handling) {
+        if (!_handling && _adhkarInFlight == 0) {
           await _exactAlarm.stopForegroundService();
         }
       }
@@ -483,10 +522,45 @@ final class PrayerDeliveryCoordinator {
     );
 
     try {
-      // 1) Run delivery — log failures, do not let them skip reschedule.
+      // 1) Arm the next prayer FIRST. The alarm is a single slot that only
+      //    Dart re-arms; if delivery hangs or the OEM kills the process
+      //    mid-adhan, the next prayer must already be armed. Bounded so a
+      //    slow lookup cannot eat the T−120 window; step 3 retries.
+      var rescheduled = false;
       if (!isRescheduleRetry(event.prayer)) {
         try {
-          await _deliver(event, azanEpoch: azanEpoch, firedAt: firedAt);
+          await _rescheduleAfterFire(
+            event,
+            azanEpoch,
+          ).timeout(_preDeliveryRescheduleBudget);
+          rescheduled = true;
+        } catch (e, st) {
+          _logger.warn(
+            'Pre-delivery reschedule did not finish — retrying after delivery',
+            tag: 'PrayerDeliveryCoordinator',
+            error: e,
+            stackTrace: st,
+          );
+        }
+      }
+
+      // 2) Run delivery — log failures, do not let them skip reschedule.
+      //    Hard timeout so a hung platform call cannot wedge [_handling].
+      if (!isRescheduleRetry(event.prayer)) {
+        try {
+          await _deliver(
+            event,
+            azanEpoch: azanEpoch,
+            firedAt: firedAt,
+          ).timeout(_deliveryHardTimeout);
+        } on TimeoutException catch (e, st) {
+          _logger.error(
+            'Delivery for ${event.prayer} exceeded '
+            '${_deliveryHardTimeout.inMinutes}m — releasing the fire',
+            tag: 'PrayerDeliveryCoordinator',
+            error: e,
+            stackTrace: st,
+          );
         } catch (e, st) {
           _logger.error(
             'Delivery attempt failed after alarm fire',
@@ -497,44 +571,55 @@ final class PrayerDeliveryCoordinator {
         }
       }
 
-      // 2) Reschedule next wake while FGS / wake / Wi-Fi locks are still held.
-      try {
-        final canSchedule = await _exactAlarm.canScheduleExactAlarms();
-        _onPermissionChanged?.call(canSchedule);
-        if (canSchedule) {
-          final after = isRescheduleRetry(event.prayer)
-              ? _clock.now()
-              : azanEpoch;
-          final delivered =
-              isRescheduleRetry(event.prayer) || isDryRunPrayer(event.prayer)
-              ? null
-              : NextPrayer(
-                  name: event.prayer,
-                  scheduledAt: azanEpoch,
-                  voiceId: _resolveVoiceId(event.voiceId),
-                );
-          await _scheduleNextAfter(after, justDelivered: delivered);
+      // 3) Reschedule (if step 1 did not) while FGS / locks are still held.
+      if (!rescheduled) {
+        try {
+          await _rescheduleAfterFire(event, azanEpoch);
+        } catch (e, st) {
+          _logger.error(
+            'Reschedule after fire failed',
+            tag: 'PrayerDeliveryCoordinator',
+            error: e,
+            stackTrace: st,
+          );
+          await _logRescheduleFailure(
+            event: event,
+            azanEpoch: azanEpoch,
+            exception: e,
+          );
+          await _armRescheduleRetry();
         }
-      } catch (e, st) {
-        _logger.error(
-          'Reschedule after fire failed',
-          tag: 'PrayerDeliveryCoordinator',
-          error: e,
-          stackTrace: st,
-        );
-        await _logRescheduleFailure(
-          event: event,
-          azanEpoch: azanEpoch,
-          exception: e,
-        );
-        await _armRescheduleRetry();
       }
     } finally {
-      // 3) Always release FGS locks — even if delivery or reschedule threw.
+      // 4) Always release FGS locks — even if delivery or reschedule threw.
+      //    An adhkar recitation may still be holding the shared service.
       _handling = false;
       await _exactAlarm.acknowledgeAlarmFire();
-      await _exactAlarm.stopForegroundService();
+      if (_adhkarInFlight == 0) {
+        await _exactAlarm.stopForegroundService();
+      }
     }
+  }
+
+  /// Arm the wake after [event]. Without exact-alarm permission there is
+  /// nothing to arm; the permission callback lets the UI prompt.
+  Future<void> _rescheduleAfterFire(
+    AlarmFiredEvent event,
+    DateTime azanEpoch,
+  ) async {
+    final canSchedule = await _exactAlarm.canScheduleExactAlarms();
+    _onPermissionChanged?.call(canSchedule);
+    if (!canSchedule) return;
+    final after = isRescheduleRetry(event.prayer) ? _clock.now() : azanEpoch;
+    final delivered =
+        isRescheduleRetry(event.prayer) || isDryRunPrayer(event.prayer)
+        ? null
+        : NextPrayer(
+            name: event.prayer,
+            scheduledAt: azanEpoch,
+            voiceId: _resolveVoiceId(event.voiceId),
+          );
+    await _scheduleNextAfter(after, justDelivered: delivered);
   }
 
   /// Branch on per-prayer mode before the Cast orchestrator.
