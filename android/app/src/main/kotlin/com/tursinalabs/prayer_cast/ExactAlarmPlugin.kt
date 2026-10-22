@@ -101,6 +101,14 @@ class ExactAlarmPlugin(
                 context.stopService(intent)
                 result.success(null)
             }
+            "extendForegroundWindow" -> {
+                val durationMs = call.argument<Number>("durationMs")?.toLong()
+                if (durationMs == null || durationMs <= 0L) {
+                    result.error("bad_args", "durationMs required", null)
+                    return
+                }
+                result.success(AdzanForegroundService.extendRunning(durationMs))
+            }
             "showPhonePlaybackControls" -> {
                 val prayer = call.argument<String>("prayer") ?: "adzan"
                 AdzanForegroundService.showPhonePlayback(context, prayer)

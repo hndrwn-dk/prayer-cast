@@ -738,13 +738,16 @@ void main() {
       await coordinator.start();
       await enteredDelivery.future;
 
+      // The next prayer (Isha) is armed before delivery; the in-flight
+      // Maghrib wake itself must never be re-armed.
       expect(
-        alarm.callOrder.where((c) => c == 'scheduleNext'),
-        isEmpty,
+        alarm.scheduled.map((s) => s.prayer),
+        isNot(contains('maghrib')),
         reason:
             're-arming past-eligible Maghrib fires AlarmManager immediately '
             'and races the in-flight pending token',
       );
+      expect(alarm.scheduled.single.prayer, 'isha');
       expect(
         alarm.callOrder.where((c) => c == 'acknowledgeAlarmFire'),
         isEmpty,
@@ -2324,4 +2327,188 @@ void main() {
       );
     },
   );
+
+  test('next prayer is armed before delivery runs', () async {
+    String? armedDuringDelivery;
+    final deliveryDone = Completer<void>();
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      runDelivery: (request) async {
+        armedDuringDelivery = alarm.scheduled.single.prayer;
+        deliveries.add(request);
+        deliveryDone.complete();
+        return const DeliveryAttemptResult(
+          sessionId: 'sess',
+          outcome: Outcome.played,
+          role: 'SOLO',
+        );
+      },
+      clock: clock,
+    );
+    await coordinator.start();
+    final wakeMs = alarm.scheduled.single.epochMs;
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
+    );
+    await deliveryDone.future;
+
+    expect(
+      armedDuringDelivery,
+      'isha',
+      reason: 'a delivery that hangs or is killed must not break the chain',
+    );
+  });
+
+  test(
+    'hung delivery is released by the hard timeout and the next fire runs',
+    () async {
+      var calls = 0;
+      final coordinator = PrayerDeliveryCoordinator(
+        exactAlarm: alarm,
+        nextPrayer: _FakeNextPrayer([maghrib, isha]),
+        deviceConditions: _FakeConditions(),
+        settings: _FakeSettings(),
+        audioLoader: _FakeAudio(),
+        deliveryHardTimeout: const Duration(milliseconds: 50),
+        runDelivery: (request) async {
+          calls += 1;
+          deliveries.add(request);
+          if (calls == 1) {
+            // Platform call that never returns (frozen process, dead socket).
+            await Completer<void>().future;
+          }
+          return const DeliveryAttemptResult(
+            sessionId: 'sess',
+            outcome: Outcome.played,
+            role: 'SOLO',
+          );
+        },
+        clock: clock,
+      );
+      await coordinator.start();
+      final maghribWake = alarm.scheduled.single.epochMs;
+      clock.advanceTo(
+        DateTime.fromMillisecondsSinceEpoch(maghribWake, isUtc: true),
+      );
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'maghrib',
+          scheduledEpochMs: maghribWake,
+          firedAtMs: maghribWake,
+          voiceId: 'makkah',
+        ),
+      );
+      for (var i = 0; i < 100 && alarm.stopForegroundCalls == 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(alarm.stopForegroundCalls, 1);
+      expect(alarm.scheduled.single.prayer, 'isha');
+
+      final ishaWake = alarm.scheduled.single.epochMs;
+      clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(ishaWake, isUtc: true));
+      alarm.emit(
+        AlarmFiredEvent(
+          prayer: 'isha',
+          scheduledEpochMs: ishaWake,
+          firedAtMs: ishaWake,
+          voiceId: 'madinah',
+        ),
+      );
+      for (var i = 0; i < 100 && alarm.stopForegroundCalls < 2; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(
+        deliveries.map((d) => d.prayerName),
+        ['maghrib', 'isha'],
+        reason: 'the Isha fire must not be dropped as "already in progress"',
+      );
+    },
+  );
+
+  test('adzan fire does not stop the service while adhkar is holding it', () async {
+    final releaseAdhkar = Completer<void>();
+    final adhkarStarted = Completer<void>();
+    final deliveryDone = Completer<void>();
+    final coordinator = PrayerDeliveryCoordinator(
+      exactAlarm: alarm,
+      nextPrayer: _FakeNextPrayer([maghrib, isha]),
+      deviceConditions: _FakeConditions(),
+      settings: _FakeSettings(),
+      audioLoader: _FakeAudio(),
+      runDelivery: (request) async {
+        deliveries.add(request);
+        deliveryDone.complete();
+        return const DeliveryAttemptResult(
+          sessionId: 'sess',
+          outcome: Outcome.played,
+          role: 'SOLO',
+        );
+      },
+      clock: clock,
+    );
+    coordinator.attachAdhkar(
+      sync: () async {},
+      handler: AdhkarAlarmHandler(
+        play: (type) async {
+          adhkarStarted.complete();
+          await releaseAdhkar.future;
+          return AdhkarDeliveryResult.success;
+        },
+        readPresence: () async => PresenceState.home,
+        speakerConnected: () async => true,
+        castBusy: () async => false,
+        log:
+            ({
+              required outcome,
+              required type,
+              required scheduledAtMs,
+              detail,
+            }) async {},
+        sync: () async {},
+      ),
+    );
+    await coordinator.start();
+    alarm.emit(
+      const AlarmFiredEvent(
+        prayer: 'adhkar-evening',
+        scheduledEpochMs: 42,
+        firedAtMs: 42,
+        voiceId: '',
+      ),
+    );
+    await adhkarStarted.future;
+
+    final wakeMs = alarm.scheduled.single.epochMs;
+    clock.advanceTo(DateTime.fromMillisecondsSinceEpoch(wakeMs, isUtc: true));
+    alarm.emit(
+      AlarmFiredEvent(
+        prayer: 'maghrib',
+        scheduledEpochMs: wakeMs,
+        firedAtMs: wakeMs,
+        voiceId: 'makkah',
+      ),
+    );
+    await deliveryDone.future;
+    for (var i = 0; i < 20; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(alarm.callOrder, contains('acknowledgeAlarmFire'));
+    expect(alarm.stopForegroundCalls, 0);
+
+    releaseAdhkar.complete();
+    for (var i = 0; i < 50 && alarm.stopForegroundCalls == 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(alarm.stopForegroundCalls, 1);
+  });
 }

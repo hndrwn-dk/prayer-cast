@@ -371,6 +371,38 @@ final class ExactAlarm implements ExactAlarmPlatform {
     return _stopLocalPlayback.stream;
   }
 
+  /// Keep the running adzan/adhkar FGS (wake + Wi-Fi locks) up for at least
+  /// [duration]. Native caps it at 40 minutes and never shortens a window.
+  ///
+  /// Adhkar audio is 20–30 minutes served from this process; without the
+  /// longer window the FGS drops at 10 minutes and the speaker stalls.
+  /// Returns false when no service is running or the plugin is missing.
+  Future<bool> extendForegroundWindow(Duration duration) async {
+    try {
+      final extended = await _methods.invokeMethod<bool>(
+        'extendForegroundWindow',
+        {'durationMs': duration.inMilliseconds},
+      );
+      return extended ?? false;
+    } on MissingPluginException catch (e, st) {
+      _logger.warn(
+        'extendForegroundWindow: exact_alarm plugin missing (no-op)',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+      return false;
+    } on PlatformException catch (e, st) {
+      _logger.warn(
+        'extendForegroundWindow failed',
+        tag: 'ExactAlarm',
+        error: e,
+        stackTrace: st,
+      );
+      return false;
+    }
+  }
+
   @override
   Future<void> stopForegroundService() async {
     try {

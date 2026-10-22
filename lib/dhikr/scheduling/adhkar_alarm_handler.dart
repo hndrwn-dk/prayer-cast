@@ -16,6 +16,10 @@ typedef AdhkarAlarmLog =
 ///
 /// A busy Cast session (adzan or anything else still playing) is retried
 /// once. The next day's alarm is armed after every terminal result.
+///
+/// After a successful start, [hold] keeps this fire open until the
+/// recitation ends, so the caller does not drop the foreground service
+/// (and the phone's media server) while the speaker is still streaming.
 final class AdhkarAlarmHandler {
   AdhkarAlarmHandler({
     required Future<AdhkarDeliveryResult> Function(AdhkarType type) play,
@@ -25,8 +29,10 @@ final class AdhkarAlarmHandler {
     required AdhkarAlarmLog log,
     required Future<void> Function() sync,
     Future<void> Function(Duration delay)? wait,
+    Future<void> Function(AdhkarType type)? hold,
     this.retryAfter = const Duration(minutes: 2),
   }) : _play = play,
+       _hold = hold,
        _readPresence = readPresence,
        _speakerConnected = speakerConnected,
        _castBusy = castBusy,
@@ -41,6 +47,7 @@ final class AdhkarAlarmHandler {
   final AdhkarAlarmLog _log;
   final Future<void> Function() _sync;
   final Future<void> Function(Duration delay) _wait;
+  final Future<void> Function(AdhkarType type)? _hold;
   final Duration retryAfter;
 
   final Set<String> _handled = {};
@@ -100,6 +107,13 @@ final class AdhkarAlarmHandler {
       AdhkarDeliveryResult.castFailed => Outcome.adhkarFailed,
     };
     await _finish(type, scheduledEpochMs, outcome, detail: result.name);
+    if (result == AdhkarDeliveryResult.success) {
+      final hold = _hold;
+      if (hold == null) return;
+      try {
+        await hold(type);
+      } catch (_) {}
+    }
   }
 
   Future<PresenceState> _presence() async {
